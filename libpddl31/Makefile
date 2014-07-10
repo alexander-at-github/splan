@@ -1,6 +1,9 @@
 CC=clang
 AR=ar
 
+# path to the ANTLR3 runtime.
+ANTLR3.4_C_RUNTIME=/usr/lib/libantlr3c.so
+
 BUILD_DIR=build
 BIN_DIR=bin
 SRC_DIR=src
@@ -16,7 +19,7 @@ LIB_FILE=$(BIN_DIR)/libpddl31.a
 all: $(LIB_FILE)
 
 $(BUILD_DIR):
-	mkdir $@
+	mkdir -p $@
 
 # The -make switch in the antlr3 command should cause it to only build if
 # generated files are older than grammar.
@@ -30,9 +33,16 @@ $(PARSER_OBJ_FILE): $(BUILD_DIR)/pddl31Parser.c $(BUILD_DIR)/pddl31Parser.h
 	$(CC) -c -I$(BUILD_DIR) -o $@ $<
 
 $(LIB_FILE): $(LEXER_OBJ_FILE) $(PARSER_OBJ_FILE)
-	mkdir $(BIN_DIR)
+	mkdir -p $(BIN_DIR)
 	$(AR) rcs $@ $^
 	cp $(BUILD_DIR)/pddl31Lexer.h $(BUILD_DIR)/pddl31Parser.h $(BIN_DIR)
 
 clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
+
+
+
+# Testing
+
+bin/test: $(SRC_DIR)/c/main_test.c all
+	$(CC) -o $@ -I$(BUILD_DIR) -l$(ANTLR3.4_C_RUNTIME) $(BUILD_DIR)/*.c $<

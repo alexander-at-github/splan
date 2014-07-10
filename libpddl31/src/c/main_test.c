@@ -30,11 +30,11 @@ main (int agrc, char **argv)
     //TODO
 
     // Set input file name.
-    fName = (pANTLR3_UINT8)"blocks_domain.pddl";
+    fName = (pANTLR3_UINT8)"../../test_instances/blocks/domain.pddl";
     // Create input stream from file name.
     input = antlr3FileStreamNew(fName, 8); // TODO: What is the second argument?
     if (input == NULL) {
-        ANTLR3_FPRINTF(stderr, "Unable to open file %s doe to malloc() "
+        ANTLR3_FPRINTF(stderr, "Unable to open file %s due to malloc() "
                                "failure1\n", (char *)fName);
     }
 

@@ -10,7 +10,7 @@ $(LIB_PDDL31):
 	cd $(LIB_PDDL31_DIR) && make all
 
 $(BUILD_DIR):
-	mkdir $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 
 clean:
 	cd $(LIB_PDDL31_DIR) && make clean
