@@ -1,0 +1,3 @@
+Using antlr-3.4, because that is the latest version for which there is a C
+runtime. It is important to use the same version to create the code from the
+grammar.
