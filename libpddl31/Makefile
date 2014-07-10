@@ -18,9 +18,9 @@ all: $(LIB_FILE)
 $(BUILD_DIR):
 	mkdir $@
 
+# The -make switch in the antlr3 command should cause it to only build if
+# generated files are older than grammar.
 $(ANTLR3_C_FILES): $(SRC_DIR)/antlr3/pddl31.g $(SRC_DIR)/antlr3/pddl31core.g $(BUILD_DIR)
-	# The -make switch should cause the command to only build if generated
-	# files are older than grammar.
 	java -jar $(TOOL_DIR)/antlr-3.4-complete.jar -make -fo $(BUILD_DIR) $<
 
 $(LEXER_OBJ_FILE): $(BUILD_DIR)/pddl31Lexer.c $(BUILD_DIR)/pddl31Lexer.h
