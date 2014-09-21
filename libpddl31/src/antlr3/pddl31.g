@@ -244,6 +244,14 @@ scope {
 @init {
     $domain::item = malloc(sizeof (*$domain::item));
     pANTLR3_LIST action_list = antlr3ListNew(LIST_SIZE_INIT);
+    $domain::item->numOfRequirements = 0;
+    $domain::item->requirements = NULL;
+    $domain::item->numOfConstants = 0;
+    $domain::item->constants = NULL;
+    $domain::item->numOfPredicates = 0;
+    $domain::item->predicates = NULL;
+    $domain::item->numOfActions = 0;
+    $domain::item->actions = NULL;
 }
 @after {
     action_list->free(action_list);
@@ -545,7 +553,7 @@ goalDescription returns [struct formula *value]
     | '(' 'and' (gd=goalDescription {
                                     and_list->add(and_list,
                                                   $gd.value,
-                                                  NULL);
+                                                  &free);
                                     }
     
                 )* ')'
@@ -576,9 +584,9 @@ effect returns [struct formula *value]
 @after {
         and_list->free(and_list);
 }
-    : '(' 'and' (cEffect  {
-                            and_list->add(and_list, $cEffect.value, NULL);
-                            }
+    : '(' 'and' (cEffect {
+                         and_list->add(and_list, $cEffect.value, &free);
+                         }
                   )* ')'
         {
         $value = malloc(sizeof(*$value));

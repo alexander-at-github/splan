@@ -5,7 +5,10 @@
 #include "pddl31Parser.h"
 #include "pddl31structs.h"
 
-#define INPUT_STREAM_ENCODING 8
+// In order to read Latin-1 input files (pddl-domain or pddl-problem files)
+// set INPUT_STREAM_ENCODING to 7. If you want to read UTF-8 files set it to
+// 8.
+#define INPUT_STREAM_ENCODING 7 //8
 
 void free_parser_aux(   ppddl31Parser *psr,
                         pANTLR3_COMMON_TOKEN_STREAM *tstream,
@@ -173,6 +176,7 @@ void free_formula_rec_aux(struct formula *formula)
         // Free NOT-formula
         if (formula->item.not_formula.p != NULL) {
             free_formula_rec_aux(formula->item.not_formula.p);
+            free(formula->item.not_formula.p);
         }
     } else {
         assert(false && "unkown formula type");
@@ -225,6 +229,9 @@ void libpddl31_domain_free(struct domain *domain)
         }
         free(domain->actions);
     }
+
+    // Free domain itself.
+    free(domain);
 }
 
 void print_term_aux(struct term *term)
@@ -269,6 +276,10 @@ void print_formula_aux(struct formula *formula)
 
 void libpddl31_domain_print(struct domain *domain)
 {
+    if (domain == NULL) {
+        return;
+    }
+
     //printf("[libpddl31_domain_print] \n");
     printf("[libpddl31_domain_print] domain name: %s\n", domain->name);
     printf("[libpddl31_domain_print] \n");
