@@ -31,14 +31,14 @@ WHITESPACE
 
 REQUIRE_KEY
     : ':strips'
-    | ':typing'
+//    | ':typing'
     | ':negative-preconditions'
 //    | ':disjunctive-preconditions'
-    | ':equality'
+//    | ':equality'
 //    | ':existential-preconditions'
-    | ':universal-preconditions'
+//    | ':universal-preconditions'
 //    | ':quantified-preconditions'
-    | ':conditional-effects'
+//    | ':conditional-effects'
 //    | ':fluents'
 //    | ':numeric-fluents'
 //    | ':adl'
