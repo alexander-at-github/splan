@@ -8,14 +8,13 @@ options { /* Attetion: options must be placed right after grammar-statementi. */
 import pddl31core;
 
 @header {
+    #include <stdbool.h>
     #include <stdlib.h>
     #include "pddl31structs.h"
 
     // Size of lists when initialized
     #define LIST_SIZE_INIT 16
 }
-
-// TODO: Fix all memory errors. Use valgrind.
 
 /*** Logic ***/
 /* Rules for types */
@@ -83,6 +82,19 @@ literal_term returns [struct formula *value]
         }
     ;
 
+literal_name returns [struct formula *value]
+    : atomicFormula_name
+        {
+        $value = $atomicFormula_name.value;
+        }
+    | '(' 'not' atomicFormula_name ')'
+        {
+        $value = malloc(sizeof(*$value));
+        $value->type = NOT;
+        $value->item.not_formula.p = $atomicFormula_name.value;
+        }
+    ;
+
 /* Rules for formulas */
 atomicFormulaSkeleton returns [struct predicate *value]
 @init {
@@ -137,6 +149,51 @@ atomicFormula_term returns [struct formula *value]
         }
         }
     |   '(' '=' term term ')' // requires :equality
+        {
+        // TODO
+        }
+    ;
+
+atomicFormula_name returns [struct formula *value]
+@init {
+    pANTLR3_LIST name_list = antlr3ListNew(LIST_SIZE_INIT);
+}
+@after {
+    name_list->free(name_list);
+}
+    :   '(' predicate (NAME {
+                            // names are constants (which are terms)
+                            struct term *term = malloc(sizeof(*term));
+                            term->type = CONSTANT;
+                            term->item.constArgument =
+                                    malloc(sizeof(*term->item.constArgument));
+                            strncpy(term->item.constArgument->name,
+                                    (char *) $NAME.text->chars,
+                                    NAME_LENGTH_MAX);
+                            term->item.constArgument->isTyped = false;
+                            name_list->add(name_list,
+                                           term,
+                                           &free);
+                            }
+                      )* ')'
+        {
+        $value = malloc(sizeof(*$value));
+        $value->type = PREDICATE;
+        strncpy($value->item.predicate_formula.predicate_name,
+                (char *) $predicate.text->chars,
+                NAME_LENGTH_MAX);
+        $value->item.predicate_formula.numOfArguments =
+                                                    name_list->size(name_list);
+        $value->item.predicate_formula.arguments =
+                     malloc(sizeof(*$value->item.predicate_formula.arguments) *
+                     $value->item.predicate_formula.numOfArguments);
+        for (int i = 0; i < $value->item.predicate_formula.numOfArguments; ++i){
+            //List index starts from 1
+            $value->item.predicate_formula.arguments[i] = *(struct term *)
+                                                name_list->get(name_list, i+1);
+        }
+        }
+    |   '(' '=' NAME NAME ')' // requires :equality
         {
         // TODO
         }
@@ -238,20 +295,14 @@ typedList_name[pANTLR3_LIST list]
 
 /*** Domain ***/
 domain returns [struct domain *value]
-scope {
-    struct domain *item;
-}
 @init {
-    $domain::item = malloc(sizeof (*$domain::item));
+    $value = malloc(sizeof (*$value));
+
+    bool hasRequirements = false;
+    bool hasConstants = false;
+    bool hasPredicates = false;
+
     pANTLR3_LIST action_list = antlr3ListNew(LIST_SIZE_INIT);
-    $domain::item->numOfRequirements = 0;
-    $domain::item->requirements = NULL;
-    $domain::item->numOfConstants = 0;
-    $domain::item->constants = NULL;
-    $domain::item->numOfPredicates = 0;
-    $domain::item->predicates = NULL;
-    $domain::item->numOfActions = 0;
-    $domain::item->actions = NULL;
 }
 @after {
     action_list->free(action_list);
@@ -259,10 +310,10 @@ scope {
 // Don't free the domain struct, cause that's what we are actually
 // producing.
     :   '(' 'define' domainName
-        requireDef?
+        (requireDef     { hasRequirements = true; } )?
         // typesDef?    // requires :typing
-        constantsDef?
-        predicatesDef?
+        (constantsDef   { hasConstants = true; }    )?
+        (predicatesDef  { hasPredicates = true; }   )?
         // functionsDef?    // requires :fluents
         // constraints?     // requires :constraints ?
         (structureDef {
@@ -273,19 +324,47 @@ scope {
                       }
         )* ')'
         {
-        strncpy($domain::item->name, $domainName.value, NAME_LENGTH_MAX);
+        strncpy($value->name, $domainName.value, NAME_LENGTH_MAX);
+
+        // Write requrements into struct domain
+        if (hasRequirements) {
+            $value->numOfRequirements = $requireDef.value_num;
+            $value->requirements = $requireDef.value;
+        } else {
+            $value->numOfRequirements = 0;
+            $value->requirements = NULL;
+        }
+
+        // Write constants into struct domain
+        if (hasConstants) {
+            $value->numOfConstants = $constantsDef.value_num;
+            $value->constants = $constantsDef.value;
+        } else {
+            $value->numOfConstants = 0;
+            $value->constants = NULL;
+        }
+
+        // Write predicates into struct domain
+        if (hasPredicates) {
+            $value->numOfPredicates = $predicatesDef.value_num;
+            $value->predicates = $predicatesDef.value;
+        } else {
+            $value->numOfPredicates = 0;
+            $value->predicates = NULL;
+        }
 
         // Copy actions (from structureDef) into domain struct.
-        $domain::item->numOfActions = action_list->size(action_list);
-        $domain::item->actions = malloc(sizeof(*$domain::item->actions) *
-                                        $domain::item->numOfActions);
-        for (int i = 0; i < $domain::item->numOfActions; ++i) {
+        $value->numOfActions = action_list->size(action_list);
+        $value->actions = malloc(sizeof(*$value->actions) *
+                                        $value->numOfActions);
+        for (int i = 0; i < $value->numOfActions; ++i) {
             // antlr list index starts from 1
-            $domain::item->actions[i] = *(struct action *)
+            $value->actions[i] = *(struct action *)
                                         action_list->get(action_list, i+1);
         }
-        $value = $domain::item;
-        //printf("Debug: In domain-rule.\n");
+        if ($value->numOfActions == 0) {
+            $value->actions = NULL;
+        }
         }
     ;
 
@@ -298,7 +377,8 @@ domainName returns [char *value]
     ;
 
 /* Requirements definitions */
-requireDef
+requireDef returns [int32_t value_num,
+                    enum requirement *value]
 @init {
     pANTLR3_LIST req_list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -315,18 +395,12 @@ requireDef
               }
             )+ ')'
         {
-        // Write all collected requirements from req_list to array in 
-        // domain struct.
-        $domain::item->numOfRequirements = req_list->size(req_list);
-        $domain::item->requirements =
-                    malloc(sizeof(*$domain::item->requirements) *
-                    $domain::item->numOfRequirements);
-        for (int i = 0; i < $domain::item->numOfRequirements; ++i) {
-            // Index in ANTLR3-List starts at 1!
-            $domain::item->requirements[i] =    *(enum requirement *)
-                                                req_list->get(req_list, i+1);
+        $value_num = req_list->size(req_list);
+        $value = malloc(sizeof(*$value) * $value_num);
+        for (int i = 0; i < $value_num; ++i) {
+            // Index in antlr3 list starts at 1
+            $value[i] = *(enum requirement *) req_list->get(req_list, i+1);
         }
-        //printf("Debug: in requireDef-rule\n");
         }
     ;
 
@@ -365,7 +439,7 @@ requireKey returns [enum requirement *value]
 /* Types definitions */
 
 /* Constants definitions */
-constantsDef
+constantsDef returns [int32_t value_num, struct constant *value]
 @init {
     pANTLR3_LIST list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -374,21 +448,17 @@ constantsDef
 }
     :   '(' ':constants' typedList_name[list] ')'
         {
-        // Write constants into domain struct.
-        $domain::item->numOfConstants = list->size(list);
-        $domain::item->constants = malloc(sizeof(*$domain::item->constants) *
-                                          $domain::item->numOfConstants);
-        for(int i = 0; i < $domain::item->numOfConstants; ++i) {
-            // Index in ANTLR3-List starts at 1!
-            $domain::item->constants[i] = *(struct constant *)
-                                          list->get(list, i+1);
+        $value_num = list->size(list);
+        $value = malloc(sizeof(*$value) * $value_num);
+        for (int i = 0; i < $value_num; ++i) {
+            // antlr3 lists start at 1
+            $value[i] = *(struct constant *) list->get(list, i+1);
         }
-        //printf("Debug: in constantsDef\n");
         }
     ;
 
 /* Predicate definitions */
-predicatesDef
+predicatesDef returns [int32_t value_num, struct predicate *value]
 @init {
     pANTLR3_LIST list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -402,13 +472,11 @@ predicatesDef
                           }
                           )+ ')'
     {
-    $domain::item->numOfPredicates = list->size(list);
-    $domain::item->predicates = malloc(sizeof(*$domain::item->predicates) *
-                                       $domain::item->numOfPredicates);
-    for (int i = 0; i < $domain::item->numOfPredicates; ++i) {
+    $value_num = list->size(list);
+    $value = malloc(sizeof(*$value) * $value_num);
+    for (int i = 0; i < $value_num; ++i) {
         // Index in ANTLR3-List starts at 1!
-        $domain::item->predicates[i] = *(struct predicate *)
-                                       list->get(list, i+1);
+        $value[i] = *(struct predicate *) list->get(list, i+1);
     }
     }
     ;
@@ -494,7 +562,7 @@ emptyOr_effect returns [struct formula *value]
         }
     |   effect
         {
-        $value = $effect.value; // TODO: What? I think it is done.
+        $value = $effect.value;
         }
     ;
 
@@ -568,6 +636,9 @@ goalDescription returns [struct formula *value]
             $value->item.and_formula.p[i] = *(struct formula *)
                                             and_list->get(and_list, i+1);
         }
+        if ($value->item.and_formula.numOfParameters == 0) {
+            $value->item.and_formula.p = NULL;
+        }
         }
     //| '(' 'forall' '(' typedList_variable ')' goalDescription ')' // requires :universal-preconditions
     //| '(' 'or' goalDescription* ')' // requires :disjunctive-preconditions
@@ -636,4 +707,138 @@ pEffect returns [struct formula *value]
     //| '(' assignOp fHead fExp ')' // requires :numeric-fluents
     //| '(' 'assign' function_term term ')' //requires :object-fluents
     //| '(' 'assign' function_term 'undefined' ')' //requires :object-fluents
+    ;
+
+/*** Problem ***/
+problem returns [struct problem *value]
+@init {
+    $value = malloc(sizeof(*value));
+
+    bool hasRequirements = false;
+    bool hasObjects = false;
+}
+    : '(' 'define' '(' 'problem' pName=NAME ')'
+            '(' ':domain' dName=NAME ')'
+            (requireDef         { hasRequirements = true; } )?
+            (objectDeclaration  { hasObjects = true; }      )?
+            init
+            goal
+            //constraints?  // requires :constraints
+            //metricSpec?   // requires :numeric-fluents
+            //lengthSpec?   // deprecated since PDDL 2.1
+      ')'
+      {
+      // Write name into struct problem
+      strncpy($value->name,
+              (char *) $pName.text->chars,
+              NAME_LENGTH_MAX);
+
+      // Write coresponding domain name into struct problem
+      strncpy($value->domainName,
+              (char *) $dName.text->chars,
+              NAME_LENGTH_MAX);
+
+      // Write requirements into struct problem.
+      if (hasRequirements) {
+          $value->numOfRequirements = $requireDef.value_num;
+          $value->requirements = $requireDef.value;
+      } else {
+          $value->numOfRequirements = 0;
+          $value->requirements = NULL;
+      }
+
+      // Write objects into struct problem.
+      if (hasObjects) {
+          $value->numOfObjects = $objectDeclaration.value_num;
+          $value->objects = $objectDeclaration.value;
+      } else {
+          $value->numOfObjects = 0;
+          $value->objects = NULL;
+      }
+
+      // Write initial state to struct problem
+      $value->init = $init.value;
+
+      // Write goal to struct problem
+      $value->goal = $goal.value;
+      }
+    ;
+
+objectDeclaration returns [int32_t value_num, struct constant *value]
+@init {
+    pANTLR3_LIST obj_list = antlr3ListNew(LIST_SIZE_INIT);
+}
+@after {
+    obj_list->free(obj_list);
+}
+    : '(' ':objects' typedList_name[obj_list] ')'
+      {
+      $value_num = obj_list->size(obj_list);
+      if ($value_num == 0) {
+        $value = NULL;
+      } else {
+          $value = malloc (sizeof(*$value) * $value_num);
+          for (int i = 0; i < $value_num; ++i) {
+              // antlr3 list index starts from 1
+              $value[i] = *(struct constant *) obj_list->get(obj_list, i+1);
+          }
+      }
+      }
+    ;
+
+init returns [struct formula *value]
+@init {
+    pANTLR3_LIST init_list = antlr3ListNew(LIST_SIZE_INIT);
+}
+@after {
+    init_list->free(init_list);
+}
+    : '(' ':init' (initEl {
+                          init_list->add(init_list, $initEl.value, &free);
+                          }
+                  )* ')'
+        {
+        int32_t numOfInits = init_list->size(init_list);
+        if (numOfInits < 1) {
+            // No initial state. That does not make sense, but the PDDL3.1
+            // definition allows it.
+            $value = NULL;
+        } else if (numOfInits == 1) {
+            // list index starts at 1
+            $value = init_list->get(init_list, 1);
+        } else { // (numOfInits > 1)
+            // produce AND-formula
+            $value = malloc(sizeof(*$value));
+            $value->type = AND;
+            $value->item.and_formula.numOfParameters = numOfInits;
+            $value->item.and_formula.p =
+                                malloc(sizeof(*$value->item.and_formula.p) *
+                                       numOfInits);
+            for (int i = 0;
+                 i < $value->item.and_formula.numOfParameters;
+                 ++i) {
+                // antlr list index starts at 1
+                $value->item.and_formula.p[i] = *(struct formula *)
+                                               init_list->get(init_list, i+1);
+            }
+        }
+        }
+
+    ;
+
+initEl returns [struct formula *value]
+    : literal_name
+      {
+      $value = $literal_name.value;
+      }
+    //| '(' 'at' <number> <literal(name)> ')' // requires :timed−initial−literals 
+    //| '(' '=' <basic-function-term> <number> ')' // requires :numeric-fluents 
+    //| '(' '=' <basic-function-term> <name> ')' // requires :object-fluents
+    ;
+
+goal returns [struct formula *value]
+    : '(' ':goal' preconditionGoalDescription ')'
+      {
+      $value = $preconditionGoalDescription.value;
+      }
     ;

@@ -48,6 +48,24 @@ struct domain
     struct action *actions;
 };
 
+struct problem
+{
+    char name[NAME_LENGTH_MAX];
+
+    char domainName[NAME_LENGTH_MAX];
+
+    int32_t numOfRequirements;
+    enum requirement *requirements;
+
+    int32_t numOfObjects;
+    // objects are constants
+    struct constant *objects;
+    
+    struct formula *init;
+
+    struct formula *goal;
+};
+
 struct predicate
 {
     char name[NAME_LENGTH_MAX];
@@ -74,12 +92,8 @@ struct action
     int32_t numOfParameters;
     struct variable *parameters;
     
-    //int32_t numOfPreconditions;
-    // There is only one precondition.
     struct formula *precondition;
 
-    //int32_t numOfEffects;
-    // There is only one effect
     struct formula *effect;
 };
 
