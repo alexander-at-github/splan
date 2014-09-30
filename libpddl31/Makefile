@@ -1,7 +1,7 @@
 CC=clang
 AR=ar
 
-CFLAGS=-g # for debug symbols
+CFLAGS=# -g # for debug symbols
 
 # path to the ANTLR3 runtime.
 # Both versions do work
@@ -14,7 +14,7 @@ BIN_DIR=bin
 SRC_DIR=src
 TOOL_DIR=tool
 
-ANTLR3_C_FILES=$(BUILD_DIR)/pddl31Lexer.c $(BUILD_DIR)/pddl31Lexer.h $(BUILD_DIR)/pddl31Parser.c $(BUILD_DIR)/pddl31Parser.h $(BUILD_DIR)/pddl31_pddl31core.c $(BUILD_DIR)/pddl31_pddl31core.h $(BUILD_DIR)/pddl31.tokens $(BUILD_DIR)/pddl31core.tokens
+STRUCTS_HEADER_FILE=$(SRC_DIR)/c/pddl31structs.h
 LEXER_OBJ_FILE=$(BUILD_DIR)/pddl31Lexer.o
 LEXER_HEADER_FILE=$(BUILD_DIR)/pddl31Lexer.h
 LEXER_CORE_OBJ_FILE=$(BUILD_DIR)/pddl31_pddl31core.o
@@ -70,7 +70,7 @@ $(LIB_OBJ_FILE): $(SRC_DIR)/c/libpddl31.c $(LEXER_HEADER_FILE) $(PARSER_HEADER_F
 $(LIB_FILE): $(LIB_OBJ_FILE) $(LEXER_OBJ_FILE) $(LEXER_CORE_OBJ_FILE) $(PARSER_OBJ_FILE)
 	mkdir -p $(BIN_DIR)
 	$(AR) rcs $@ $^
-	cp $(LIB_HEADER_FILE) $(BIN_DIR)
+	cp $(LIB_HEADER_FILE) $(STRUCTS_HEADER_FILE) $(BIN_DIR)
 
 clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR)

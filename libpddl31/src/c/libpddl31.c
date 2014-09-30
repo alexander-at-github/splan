@@ -1,3 +1,7 @@
+// TODO: When freeing memory of struct domain and struct problem do check
+// each pointer for NULL first.
+
+
 #include <assert.h>
 
 #include "libpddl31.h"
@@ -191,32 +195,96 @@ struct problem *libpddl31_problem_parse(char *filename)
     return problem;
 }
 
-void free_term_aux(struct term *term)
+void free_struct_constant_aux(struct constant *constant)
+{
+    //printf("Debug: free_struct_constant_aux( %p )\n", (void *) constant);
+    if (constant->name != NULL) {
+        free(constant->name);
+        constant->name = NULL;
+    }
+    if (constant->isTyped && constant->type != NULL) {
+        if (constant->type->name != NULL) {
+            free(constant->type->name);
+            constant->type->name = NULL;
+        }
+        free(constant->type);
+        constant->type = NULL;
+    }
+}
+
+void free_struct_variable_aux(struct variable *variable)
+{
+    //printf("Debug: free_struct_variable_aux( %p )\n", (void *) variable);
+    if (variable->name != NULL) {
+        free(variable->name);
+        variable->name = NULL;
+    }
+    if (variable->isTyped && variable->type != NULL) {
+        if (variable->type->name != NULL) {
+            free(variable->type->name);
+            variable->type->name = NULL;
+        }
+        free(variable->type);
+        variable->type = NULL;
+    }
+}
+
+void free_struct_predicate_aux(struct predicate *predicate)
+{
+    if (predicate == NULL) {
+        return;
+    }
+    if (predicate->name != NULL) {
+        free(predicate->name);
+    }
+    // Free parameters
+    if (predicate->parameters != NULL) {
+        for (int i = 0; i < predicate->numOfParameters; ++i) {
+            free_struct_variable_aux(&predicate->parameters[i]);
+        }
+        free(predicate->parameters);
+    }
+}
+
+void free_struct_term_aux(struct term *term)
 {
     if (term == NULL) {
         return;
     }
     if (term->type == CONSTANT) {
-        free(term->item.constArgument);
+        free_struct_constant_aux(term->item.constArgument);
+        if (term->item.constArgument != NULL) {
+            free(term->item.constArgument);
+            term->item.constArgument = NULL;
+        }
     } else if (term->type == VARIABLE) {
-        free(term->item.varArgument);
+        free_struct_variable_aux(term->item.varArgument);
+        if (term->item.varArgument != NULL) {
+            free(term->item.varArgument);
+            term->item.varArgument = NULL;
+        }
     } else {
         assert(false && "unkown term type");
     }
 }
 
-void free_formula_rec_aux(struct formula *formula)
+void free_struct_formula_rec_aux(struct formula *formula)
 {
     if (formula == NULL) {
         return;
     }
     if (formula->type == PREDICATE) {
+        if (formula->item.predicate_formula.name != NULL) {
+            free(formula->item.predicate_formula.name);
+            formula->item.predicate_formula.name = NULL;
+        }
         // Free predicate arguments
         if (formula->item.predicate_formula.arguments != NULL) {
             for (int i = 0;
                  i < formula->item.predicate_formula.numOfArguments;
                  ++i) {
-                free_term_aux(&formula->item.predicate_formula.arguments[i]);
+                free_struct_term_aux(
+                                &formula->item.predicate_formula.arguments[i]);
             }
             free(formula->item.predicate_formula.arguments);
         }
@@ -227,14 +295,14 @@ void free_formula_rec_aux(struct formula *formula)
             for (int i = 0;
                  i < formula->item.and_formula.numOfParameters;
                  ++i) {
-                free_formula_rec_aux(&formula->item.and_formula.p[i]);
+                free_struct_formula_rec_aux(&formula->item.and_formula.p[i]);
             }
             free(formula->item.and_formula.p);
         }
     } else if (formula->type == NOT) {
         // Free NOT-formula
         if (formula->item.not_formula.p != NULL) {
-            free_formula_rec_aux(formula->item.not_formula.p);
+            free_struct_formula_rec_aux(formula->item.not_formula.p);
             free(formula->item.not_formula.p);
         }
     } else {
@@ -242,6 +310,34 @@ void free_formula_rec_aux(struct formula *formula)
     }
     // Do *not* free formula itself, cause it might just be one element of an
     // array of formulas, which will (must) be freed as an entity.
+}
+
+void free_struct_action_aux(struct action *action)
+{
+    if (action == NULL) {
+        return;
+    }
+    if (action->name != NULL) {
+        free(action->name);
+        action->name = NULL;
+    }
+    if (action->parameters != NULL) {
+        for (int i = 0; i < action->numOfParameters; ++i) {
+            free_struct_variable_aux(&action->parameters[i]);
+        }
+        free(action->parameters);
+        action->parameters = NULL;
+    }
+    free_struct_formula_rec_aux(action->precondition);
+    if (action->precondition != NULL) {
+        free(action->precondition);
+        action->precondition = NULL;
+    }
+    free_struct_formula_rec_aux(action->effect);
+    if (action->effect != NULL) {
+        free(action->effect);
+        action->effect = NULL;
+    }
 }
 
 void libpddl31_domain_free(struct domain *domain)
@@ -252,7 +348,10 @@ void libpddl31_domain_free(struct domain *domain)
         return;
     }
 
-    // TODO: Free name, if neccessary
+    // Free name.
+    if (domain->name != NULL) {
+        free(domain->name);
+    }
  
     // Free requirements
     if (domain->requirements != NULL) {
@@ -261,17 +360,16 @@ void libpddl31_domain_free(struct domain *domain)
  
     // Free constants
     if (domain->constants != NULL) {
+        for (int i = 0; i < domain->numOfConstants; ++i) {
+            free_struct_constant_aux(&domain->constants[i]);
+        }
         free(domain->constants);
     }
 
     // Free predicates
     if (domain->predicates != NULL) {
         for (int i = 0; i < domain->numOfPredicates; ++i) {
-            struct predicate p = domain->predicates[i];
-            // Free parameters
-            if (p.parameters != NULL) {
-                free(p.parameters);
-            }
+            free_struct_predicate_aux(&domain->predicates[i]);
         }
         free(domain->predicates);
     }
@@ -279,12 +377,7 @@ void libpddl31_domain_free(struct domain *domain)
     // Free actions
     if (domain->actions != NULL) {
         for (int i = 0; i < domain->numOfActions; ++i) {
-            struct action a = domain->actions[i];
-            free(a.parameters);
-            free_formula_rec_aux(a.precondition);
-            free(a.precondition);
-            free_formula_rec_aux(a.effect);
-            free(a.effect);
+            free_struct_action_aux(&domain->actions[i]);
         }
         free(domain->actions);
     }
@@ -301,7 +394,13 @@ void libpddl31_problem_free(struct problem *problem)
         return;
     }
 
-    // TODO: free names if neccessary
+    // Free names
+    if (problem->name != NULL) {
+        free(problem->name);
+    }
+    if (problem->domainName != NULL) {
+        free(problem->domainName);
+    }
 
     // Free requirements
     if (problem->requirements != NULL) {
@@ -310,18 +409,21 @@ void libpddl31_problem_free(struct problem *problem)
 
     // Free objects
     if (problem->objects != NULL) {
+        for (int i = 0; i < problem->numOfObjects; ++i) {
+            free_struct_constant_aux(&problem->objects[i]);
+        }
         free(problem->objects);
     }
 
     // Free initial state
     if (problem->init != NULL) {
-        free_formula_rec_aux(problem->init);
+        free_struct_formula_rec_aux(problem->init);
         free(problem->init);
     }
 
     // Free goal state
     if (problem->goal != NULL) {
-        free_formula_rec_aux(problem->goal);
+        free_struct_formula_rec_aux(problem->goal);
         free(problem->goal);
     }
 
@@ -347,7 +449,7 @@ void print_formula_aux(struct formula *formula)
     }
     int32_t indent_inc = 2; // increment of spaces for indent
     if (formula->type == PREDICATE) {
-        printf("(%s", formula->item.predicate_formula.predicate_name);
+        printf("(%s", formula->item.predicate_formula.name);
         for (int i = 0;
              i < formula->item.predicate_formula.numOfArguments; 
              ++i) {
@@ -400,7 +502,7 @@ void libpddl31_domain_print(struct domain *domain)
         struct constant *c = domain->constants;
         printf("[libpddl31_domain_print] constant: %s", c[i].name);
         if (c[i].isTyped) {
-            printf(" - %s", c[i].type.name);
+            printf(" - %s", c[i].type->name);
         }
         printf("\n");
     }
@@ -417,7 +519,7 @@ void libpddl31_domain_print(struct domain *domain)
             struct variable *par = p[i].parameters;
             printf(" %s", par[j].name);
             if (par[j].isTyped) {
-                printf(" - %s", par[j].type.name);
+                printf(" - %s", par[j].type->name);
             }
         }
         printf("\n");
@@ -435,7 +537,7 @@ void libpddl31_domain_print(struct domain *domain)
             struct variable par = a.parameters[j];
             printf(" %s", par.name);
             if (par.isTyped) {
-                printf(" - %s", par.type.name);
+                printf(" - %s", par.type->name);
             }
         }
         printf("\n");
@@ -459,7 +561,7 @@ void libpddl31_problem_print(struct problem *problem)
 
     //printf("[libpddl32_problem_print]\n");
     printf("[libpddl32_problem_print] problem name: %s\n", problem->name);
-    printf("[libpddl32_problem_print] problem for domain: %s\n",
+    printf("[libpddl32_problem_print] this problem is for domain: %s\n",
            problem->domainName);
     printf("[libpddl32_problem_print]\n");
 
@@ -482,7 +584,7 @@ void libpddl31_problem_print(struct problem *problem)
         struct constant obj = problem->objects[i];
         printf("[libpddl31_problem_print] object: %s", obj.name);
         if (obj.isTyped) {
-            printf(" - %s", obj.type.name);
+            printf(" - %s", obj.type->name);
         }
         printf("\n");
     }
@@ -506,7 +608,7 @@ void libpddl31_problem_print(struct problem *problem)
 bool libpddl31_problem_is_member_of_domain( struct problem *problem,
                                             struct domain *domain)
 {
-    int equals = strncmp(problem->domainName, domain->name, NAME_LENGTH_MAX);
+    int equals = strcmp(problem->domainName, domain->name);
     return equals == 0;
 }
 

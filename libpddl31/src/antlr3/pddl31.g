@@ -10,10 +10,33 @@ import pddl31core;
 @header {
     #include <stdbool.h>
     #include <stdlib.h>
+    #include <string.h>
+
+    #include <antlr3interfaces.h>
+    #include <antlr3string.h>
+
     #include "pddl31structs.h"
 
     // Size of lists when initialized
     #define LIST_SIZE_INIT 16
+}
+@members {
+    /* A helper function. Allocates memory for a string and copies content from
+     * src to newly allocated memory.
+     * returns destination
+     */
+    char *string_malloc_copy(pANTLR3_STRING src)
+    {
+        // antlr3-string->size includes terminating '\0' byte
+        char *dest = malloc(sizeof(*dest) * src->size);
+        if (dest == NULL) {
+            return NULL;
+        }
+        strncpy(dest, (char *) src->chars, src->size);
+        // Set last byte.
+        dest[src->size - 1] = '\0';
+        return dest;
+    }
 }
 
 /*** Logic ***/
@@ -43,18 +66,14 @@ term returns [struct term *value]
         $value->type = CONSTANT;
         $value->item.constArgument = 
                                 malloc(sizeof(*$value->item.constArgument));
-        strncpy($value->item.constArgument->name,
-                (char *) $NAME.text->chars,
-                NAME_LENGTH_MAX);
+        $value->item.constArgument->name = string_malloc_copy($NAME.text);
         $value->item.constArgument->isTyped = false;
         }
     | variable
         {
         $value->type = VARIABLE;
         $value->item.varArgument = malloc(sizeof(*$value->item.varArgument));
-        strncpy($value->item.varArgument->name,
-                (char *) $variable.text->chars,
-                NAME_LENGTH_MAX);
+        $value->item.varArgument->name = string_malloc_copy($variable.text);
         $value->item.varArgument->isTyped = false;
         }
     ;
@@ -106,7 +125,7 @@ atomicFormulaSkeleton returns [struct predicate *value]
     :   '(' predicate typedList_variable[variable_list] ')'
     {
     $value = malloc(sizeof(*$value));
-    strncpy($value->name, (char *) $predicate.text->chars, NAME_LENGTH_MAX);
+    $value->name = string_malloc_copy($predicate.text);
     $value->numOfParameters = variable_list->size(variable_list);
     $value->parameters = malloc(sizeof(*$value->parameters) *
                                 $value->numOfParameters);
@@ -134,9 +153,7 @@ atomicFormula_term returns [struct formula *value]
         {
         $value = malloc(sizeof(*$value));
         $value->type = PREDICATE;
-        strncpy($value->item.predicate_formula.predicate_name,
-                (char *) $predicate.text->chars,
-                NAME_LENGTH_MAX);
+        value->item.predicate_formula.name =string_malloc_copy($predicate.text);
         $value->item.predicate_formula.numOfArguments =
                                                     term_list->size(term_list);
         $value->item.predicate_formula.arguments =
@@ -148,10 +165,10 @@ atomicFormula_term returns [struct formula *value]
                                                 term_list->get(term_list, i+1);
         }
         }
-    |   '(' '=' term term ')' // requires :equality
-        {
-        // TODO
-        }
+    //|   '(' '=' term term ')' // requires :equality
+    //    {
+    //    // TODO
+    //    }
     ;
 
 atomicFormula_name returns [struct formula *value]
@@ -167,9 +184,8 @@ atomicFormula_name returns [struct formula *value]
                             term->type = CONSTANT;
                             term->item.constArgument =
                                     malloc(sizeof(*term->item.constArgument));
-                            strncpy(term->item.constArgument->name,
-                                    (char *) $NAME.text->chars,
-                                    NAME_LENGTH_MAX);
+                            term->item.constArgument->name =
+                                                string_malloc_copy($NAME.text);
                             term->item.constArgument->isTyped = false;
                             name_list->add(name_list,
                                            term,
@@ -179,9 +195,8 @@ atomicFormula_name returns [struct formula *value]
         {
         $value = malloc(sizeof(*$value));
         $value->type = PREDICATE;
-        strncpy($value->item.predicate_formula.predicate_name,
-                (char *) $predicate.text->chars,
-                NAME_LENGTH_MAX);
+        $value->item.predicate_formula.name =
+                                            string_malloc_copy($predicate.text);
         $value->item.predicate_formula.numOfArguments =
                                                     name_list->size(name_list);
         $value->item.predicate_formula.arguments =
@@ -193,10 +208,10 @@ atomicFormula_name returns [struct formula *value]
                                                 name_list->get(name_list, i+1);
         }
         }
-    |   '(' '=' NAME NAME ')' // requires :equality
-        {
-        // TODO
-        }
+    //|   '(' '=' NAME NAME ')' // requires :equality
+    //    {
+    //    // TODO
+    //    }
     ;
 
 /* Miscellaneous */
@@ -209,32 +224,29 @@ typedList_variable[pANTLR3_LIST list]
 }
     :   (variable {
                   struct variable *item = malloc(sizeof(*item));
-                  strncpy(item->name,
-                          (char *) $variable.text->chars,
-                          NAME_LENGTH_MAX);
+                  item->name = string_malloc_copy($variable.text);
                   item->isTyped = false;
+                  item->type = NULL;
                   // Do free structs. They must be COPIED into an array later.
                   $list->add($list, item, &free);
                   }
         )*
+    /* *** requires typing ***
     |   (variable {
                   struct variable *item = malloc(sizeof(*item));
-                  strncpy(item->name,
-                          (char *) $variable.text->chars,
-                          NAME_LENGTH_MAX);
+                  item->name = string_malloc_copy($variable.text);
                   item->isTyped = true;
+                  item->type = NULL;
                   // Save these names in a local list first.
                   // Don't free. 'list' will do that.
                   local_list->add(local_list, item, NULL);
                   }
         )+ '-' type {
                     // Now we know the type of the identifiers.
-                    struct type t;
-                    strncpy(t.name,
-                            (char *) $type.text->chars,
-                            NAME_LENGTH_MAX);
                     // ANTLR3_LIST index starts from 1
                     for (int i = 1; i <= local_list->size(local_list); ++i) {
+                        struct type *t = malloc(sizeof(*t));;
+                        t->name = string_malloc_copy($type.text);
                         // Add type information
                         struct variable *item = local_list->get(local_list, i);
                         item->type = t;
@@ -245,6 +257,7 @@ typedList_variable[pANTLR3_LIST list]
                     }
                     }
         typedList_variable[$list] // requires :typing
+    */
     ;
 
 // The parameter LIST will be filled by this rule.
@@ -257,30 +270,36 @@ typedList_name[pANTLR3_LIST list]
 }
     :   (NAME {
               struct constant *item = malloc(sizeof (*item));
-              strncpy(item->name, (char *) $NAME.text->chars, NAME_LENGTH_MAX);
+              item->name = string_malloc_copy($NAME.text);
               item->isTyped = false;
+              item->type = NULL;
               // Do free structs. They must be COPIED into an array later.
               $list->add($list, item, &free);
               }
         )*
+    /* *** requires typing ***
     |   (NAME {
               struct constant *item = malloc(sizeof (*item));
-              strncpy(item->name, (char *) $NAME.text->chars, NAME_LENGTH_MAX);
+              item->name = string_malloc_copy($NAME.text);
               item->isTyped = true;
+              // Type will be assigned later.
+              item->type = NULL;
               // Save these names in a local list first.
               // Don't free. 'list' will do that.
               local_list->add(local_list, item, NULL);
               }
         )+ '-' type {
                     // Now we know the type of the identifiers.
-                    struct type t;
-                    strncpy(t.name,
-                            (char *) $type.text->chars,
-                            NAME_LENGTH_MAX);
                     // ANTLR3_LIST index starts from 1
                     for (int i = 1; i <= local_list->size(local_list); ++i) {
                         // Add type information
                         struct constant *item = local_list->get(local_list, i);
+                        // Malloc type for every instance of "object",
+                        // cause it is much easier to free. Now you can just
+                        // free it on any " object". That is not efficient. If
+                        // typing is realy needed this should be improved.
+                        struct type *t = malloc(sizeof(*t));
+                        t->name = string_malloc_copy($type.text);
                         item->type = t;
                         // Add names to input-output list
                         // Do free structs. They must be COPIED into an array
@@ -289,6 +308,7 @@ typedList_name[pANTLR3_LIST list]
                     }
                     }
         typedList_name[$list] // requires :typing
+    */
     ;
 
 
@@ -324,7 +344,7 @@ domain returns [struct domain *value]
                       }
         )* ')'
         {
-        strncpy($value->name, $domainName.value, NAME_LENGTH_MAX);
+        $value->name = string_malloc_copy($domainName.value);
 
         // Write requrements into struct domain
         if (hasRequirements) {
@@ -369,10 +389,10 @@ domain returns [struct domain *value]
     ;
 
 /* Domain name */
-domainName returns [char *value]
+domainName returns [pANTLR3_STRING value]
     :   '(' 'domain' NAME ')'
         {
-        $value = (char *) $NAME.text->chars;
+        $value = $NAME.text;
         }
     ;
 
@@ -412,7 +432,7 @@ requireKey returns [enum requirement *value]
       {
       *$value = STRIPS;
       }
-//    | ':typing'
+//    | ':typing' // TODO or not todo?
     | ':negative-preconditions'
       {
       *$value = NEGATIVE_PRECONDITION;
@@ -506,9 +526,7 @@ actionDef returns [struct action *value]
         actionDefBody ')'
         {
         $value = malloc(sizeof(*$value));
-        strncpy($value->name,
-                (char *) $actionSymbol.text->chars,
-                NAME_LENGTH_MAX);
+        $value->name = string_malloc_copy($actionSymbol.text);
         $value->numOfParameters = var_list->size(var_list);
         $value->parameters = malloc(sizeof(*$value->parameters) *
                                     $value->numOfParameters);
@@ -609,7 +627,7 @@ goalDescription returns [struct formula *value]
     and_list->free(and_list);
 }
     /*
-    : atomicFormula_term
+    : atomicFormula_merm
     | literal_term // requires :negative-preconditions
     */
     //: atomicFormula_term
@@ -729,14 +747,10 @@ problem returns [struct problem *value]
       ')'
       {
       // Write name into struct problem
-      strncpy($value->name,
-              (char *) $pName.text->chars,
-              NAME_LENGTH_MAX);
+      $value->name = string_malloc_copy($pName.text);
 
       // Write coresponding domain name into struct problem
-      strncpy($value->domainName,
-              (char *) $dName.text->chars,
-              NAME_LENGTH_MAX);
+      $value->domainName = string_malloc_copy($dName.text);
 
       // Write requirements into struct problem.
       if (hasRequirements) {

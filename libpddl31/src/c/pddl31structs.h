@@ -4,8 +4,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define NAME_LENGTH_MAX 256
-
 enum requirement
 {
     STRIPS
@@ -33,7 +31,7 @@ enum requirement
 
 struct domain
 {
-    char name[NAME_LENGTH_MAX];
+    char *name;
 
     int32_t numOfRequirements;
     enum requirement *requirements;
@@ -46,13 +44,16 @@ struct domain
 
     int32_t numOfActions;
     struct action *actions;
+
+    //int32_t numOfTypes;
+    //struct type *types;
 };
 
 struct problem
 {
-    char name[NAME_LENGTH_MAX];
+    char *name;
 
-    char domainName[NAME_LENGTH_MAX];
+    char *domainName;
 
     int32_t numOfRequirements;
     enum requirement *requirements;
@@ -68,26 +69,26 @@ struct problem
 
 struct predicate
 {
-    char name[NAME_LENGTH_MAX];
+    char *name;
     int32_t numOfParameters;
     struct variable *parameters;
 };
 
 struct type
 {
-    char name[NAME_LENGTH_MAX];
+    char *name;
 };
 
 struct constant
 {
-    char name[NAME_LENGTH_MAX];
+    char *name;
     bool isTyped;
-    struct type type; // :requirement typing
+    struct type *type; // :requirement typing
 };
 
 struct action
 {
-    char name[NAME_LENGTH_MAX];
+    char *name;
 
     int32_t numOfParameters;
     struct variable *parameters;
@@ -109,8 +110,7 @@ struct formula
     enum formulaType type;
     union {
         struct {
-            char predicate_name[NAME_LENGTH_MAX];
-            //struct predicate *p;
+            char *name;
             int32_t numOfArguments;
             struct term *arguments; // Arguments are terms
         } predicate_formula;
@@ -127,9 +127,9 @@ struct formula
 // TODO: That is the same as struct constant. Do we need both? Time will tell.
 struct variable
 {
-    char name[NAME_LENGTH_MAX];
+    char *name;
     bool isTyped;
-    struct type type; // :requiremnt typing
+    struct type *type; // :requiremnt typing
 };
 
 enum termType

@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "pddl31structs.h"
+
 struct domain *libpddl31_domain_parse(char *filename);
 void libpddl31_domain_free(struct domain *domain);
 void libpddl31_domain_print(struct domain *domain);
