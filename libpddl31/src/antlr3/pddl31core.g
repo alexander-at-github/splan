@@ -28,26 +28,3 @@ LINE_COMMENT
 WHITESPACE
 	:	(' '|'\t'|'\r'|'\n')+ { SKIP(); }
 	;
-
-REQUIRE_KEY
-    : ':strips'
-//    | ':typing'
-    | ':negative-preconditions'
-//    | ':disjunctive-preconditions'
-//    | ':equality'
-//    | ':existential-preconditions'
-//    | ':universal-preconditions'
-//    | ':quantified-preconditions'
-//    | ':conditional-effects'
-//    | ':fluents'
-//    | ':numeric-fluents'
-//    | ':adl'
-//    | ':durative-actions'
-//    | ':durative-inequalities'
-//    | ':continuous-effects'
-//    | ':derived-predicates'
-//    | ':timed-initial-literals'
-//    | ':preferences'
-//    | ':constraints'
-//    | ':action-costs'
-    ;
