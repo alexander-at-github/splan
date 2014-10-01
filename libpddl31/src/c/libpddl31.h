@@ -18,4 +18,7 @@ void libpddl31_problem_print(struct problem *problem);
 bool libpddl31_problem_is_member_of_domain( struct problem *problem,
                                             struct domain *domain);
 
+void libpddl31_formula_free_rec(struct formula *formula);
+void libpddl31_formula_print(struct formula *formula);
+
 #endif // LIBPDDL31_H

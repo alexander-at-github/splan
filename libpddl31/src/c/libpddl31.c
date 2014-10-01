@@ -268,7 +268,7 @@ void free_struct_term_aux(struct term *term)
     }
 }
 
-void free_struct_formula_rec_aux(struct formula *formula)
+void libpddl31_formula_free_rec(struct formula *formula)
 {
     if (formula == NULL) {
         return;
@@ -295,14 +295,14 @@ void free_struct_formula_rec_aux(struct formula *formula)
             for (int i = 0;
                  i < formula->item.and_formula.numOfParameters;
                  ++i) {
-                free_struct_formula_rec_aux(&formula->item.and_formula.p[i]);
+                libpddl31_formula_free_rec(&formula->item.and_formula.p[i]);
             }
             free(formula->item.and_formula.p);
         }
     } else if (formula->type == NOT) {
         // Free NOT-formula
         if (formula->item.not_formula.p != NULL) {
-            free_struct_formula_rec_aux(formula->item.not_formula.p);
+            libpddl31_formula_free_rec(formula->item.not_formula.p);
             free(formula->item.not_formula.p);
         }
     } else {
@@ -328,12 +328,12 @@ void free_struct_action_aux(struct action *action)
         free(action->parameters);
         action->parameters = NULL;
     }
-    free_struct_formula_rec_aux(action->precondition);
+    libpddl31_formula_free_rec(action->precondition);
     if (action->precondition != NULL) {
         free(action->precondition);
         action->precondition = NULL;
     }
-    free_struct_formula_rec_aux(action->effect);
+    libpddl31_formula_free_rec(action->effect);
     if (action->effect != NULL) {
         free(action->effect);
         action->effect = NULL;
@@ -417,13 +417,13 @@ void libpddl31_problem_free(struct problem *problem)
 
     // Free initial state
     if (problem->init != NULL) {
-        free_struct_formula_rec_aux(problem->init);
+        libpddl31_formula_free_rec(problem->init);
         free(problem->init);
     }
 
     // Free goal state
     if (problem->goal != NULL) {
-        free_struct_formula_rec_aux(problem->goal);
+        libpddl31_formula_free_rec(problem->goal);
         free(problem->goal);
     }
 
@@ -442,7 +442,7 @@ void print_term_aux(struct term *term)
     }
 }
 
-void print_formula_aux(struct formula *formula)
+void libpddl31_formula_print(struct formula *formula)
 {
     if (formula == NULL) {
         return;
@@ -461,12 +461,12 @@ void print_formula_aux(struct formula *formula)
         printf("(and");
         for (int i = 0; i < formula->item.and_formula.numOfParameters; ++i) {
             printf(" ");
-            print_formula_aux(&formula->item.and_formula.p[i]);
+            libpddl31_formula_print(&formula->item.and_formula.p[i]);
         }
         printf(")");
     } else if (formula->type == NOT) {
         printf("(not ");
-        print_formula_aux(formula->item.not_formula.p);
+        libpddl31_formula_print(formula->item.not_formula.p);
         printf(")");
     } else {
         assert(false && "unkown formula type");
@@ -543,11 +543,11 @@ void libpddl31_domain_print(struct domain *domain)
         printf("\n");
         printf("[libpddl31_domain_print]\t precondition:\n");
         printf("[libpddl31_domain_print]\t  ");
-        print_formula_aux(a.precondition);
+        libpddl31_formula_print(a.precondition);
         printf("\n");
         printf("[libpddl31_domain_print]\t effect:\n");
         printf("[libpddl31_domain_print]\t  ");
-        print_formula_aux(a.effect);
+        libpddl31_formula_print(a.effect);
         printf("\n");
     }
     printf("[libpddl31_domain_print]\n");
@@ -593,14 +593,14 @@ void libpddl31_problem_print(struct problem *problem)
     // Print initial state
     printf("[libpddl31_problem_print] initial state:\n");
     printf("[libpddl31_problem_print]  ");
-    print_formula_aux(problem->init);
+    libpddl31_formula_print(problem->init);
     printf("\n");
     printf("[libpddl31_problem_print]\n");
 
     // Print goal state
     printf("[libpddl31_problem_print] goal state:\n");
     printf("[libpddl31_problem_print]  ");
-    print_formula_aux(problem->goal);
+    libpddl31_formula_print(problem->goal);
     printf("\n");
     printf("[libpddl31_problem_print]\n");
 }
