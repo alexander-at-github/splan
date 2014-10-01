@@ -1,0 +1,4 @@
+﻿* pddl typing is very basic and inefficient.
+    Every pddl constant or variable, which does have a type will allocate memory
+    for that type. That is, types are not implemented as Singletons. If pddl
+    types are important, this must be improved.
