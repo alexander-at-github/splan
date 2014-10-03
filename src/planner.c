@@ -5,13 +5,14 @@
 
 #include "libpddl31.h"
 
-// Two grounded predicates. Returns true if they are equal. False otherwise.
-// Precondition: Both formulas are of type predicate and grounded.
-bool grounded_predicates_equal_aux(struct formula *f1, struct formula *f2)
+// Two predicates. Returns true if they are equal. False otherwise.
+// Precondition: Both formulas are not NULL, of type predicate.
+bool predicates_equal_aux(struct formula *f1, struct formula *f2)
 {
     if (f1 == NULL || f2 == NULL ||
         f1->type != PREDICATE || f2->type != PREDICATE) {
 
+        assert(false && "prconditions not met");
         return false;
     }
     
@@ -37,27 +38,138 @@ bool grounded_predicates_equal_aux(struct formula *f1, struct formula *f2)
 
         struct term *f1A = f1->item.predicate_formula.arguments;
         struct term *f2A = f2->item.predicate_formula.arguments;
+
+        char *f1A_name = NULL;
+        char *f2A_name = NULL;
+        bool f1A_isTyped = false;
+        bool f2A_isTyped = false;
         if (f1A->type == CONSTANT && f2A->type == CONSTANT) {
-            int32_t equal = strcmp(f1A->item.constArgument->name,
-                                   f2A->item.constArgument->name);
-            if (f1A->item.constArgument->isTyped ||
-                f2A->item.constArgument->isTyped) {
-                
-                // Todo: if typing, implement here.
-                assert(false && "this planner does not support "
-                                "typing");
-            }
-            argsEqual = equal == 0; // sets argsEqual to false if necessary
+            f1A_name = f1A->item.constArgument->name;
+            f2A_name = f2A->item.constArgument->name;
+            f1A_isTyped = f1A->item.constArgument->isTyped;
+            f2A_isTyped = f2A->item.constArgument->isTyped;
+        } else if (f1A->type == VARIBALE && f2A == VARIABLE) {
+            f1A_name = f1A->item.varArgument->name;
+            f2A_name = f2A->item.varArgument->name;
+            f1A_isTyped = f1A->item.varArgument->isTyped;
+            f2A_isTyped = f2A->item.varArgument->isTyped;
         } else {
-            assert(false && "ungrounded predicate");
+            assert(false && "unkown term type");
         }
+
+        int32_t equal = strcmp(f1A_name, f2A_name);
+        if (f1A_isTyped || f2A_isTyped) {
+            // Todo: if typing, implement here.
+            assert(false && "this planner does not support "
+                            "typing");
+        }
+        argsEqual = equal == 0; // sets argsEqual to false if necessary
     }
     return argsEqual; // returns false if necessary
 }
 
+// Forms a conjunction of a formula and a predicate.
+// Retruns the conjunction of two formulas. Might return NULL on error.
+// This function also changes the argument 'formula'.
+// Will not merge nested conjunctions.
+// preconditions: both arguments are not NULL. The argument 'predicate' is
+// indeed a predicate, i.e. predicate->type == PREDICATE holds.
+struct formula *conjunction(struct formula *formula, struct formula *predicate)
+{
+    if (formula == NULL || predicate == NULL || predicate->type != PREDICATE) {
+        assert(false && "precondition not met");
+        return NULL;
+    }
+    // Check whether conjunction is necessary at all. That is, if 'formula' is a
+    // conjunction and already includes 'predicate'.
+    if (formula->type == AND) {
+        for (int i = 0; i < formula->itme.and_formula.numOfArguments; ++i) {
+            struct formula *andArg = &formula->item.and_formula.p[i];
+            if (andArg->type == PREDICATE) {
+                if (predicates_equal_aux(andArg, predicate)) {
+                    // Nothing to do. Just return formula.
+                    return formula;
+                }
+            }
+        }
+    }
+    
+    // Prepare conjunction parameters. Using local variables just to avoid
+    // typing long names.
+    int32_t numOfParam = 2; // A conjunction of two formulas.
+    struct formula *param = malloc(sizeof(*param) * numOfParam);
+    // Copy predicates into their new destination.
+    memcpy(&param[0], formula, sizeof(*formula));
+    memcpy(&param[1], predicate, sizeof(*predicate));
+    // Reuse formula data structure. This makes shure that the hole memory
+    // can be freed by freeing the result. Without that it would be difficult
+    // to know which memory must be freed or must not be freed later.
+    struct formula *result = formula;
+    // Copy values into result
+    result->type = AND
+    result->item.and_formula.numOfParameters = numOfParam;
+    result->item.and_formula.p = param;
+    return result;
+}
+
+// Function to merge nested conjunctions.
+// May return NULL on error.
+// TODO
+struct formula *merge_conjunction(struct formula *formula)
+{
+    switch (formula->type) {
+    case PREDICATE: {
+        // Nothing to do
+        return formula;
+        break;
+    }
+    case AND: {
+        for (int i = 0; i < formula->item.and_formula.numOfParameters; ++i) {
+            // TODO
+            struct formula *localF = formula->item.and_formula.p;
+            // Recurse
+            merge_conjunction(localF);
+            // Check for nested conjunction
+            if (localF->type == AND) {
+                // Do merge nested conjunctions
+                int32_t numOfParams = formula->item.and_formula.numOfParameters
+                                     + localF->item.and_formula.numOfParameters;
+                // Note: We are using realloc. No need to free the old memory.
+                struct formula *newParams =
+                                    realloc(formula->item.and_formula.p,
+                                            sizeof(*newParams) * numOfParams);
+                // Check for NULL, cause in that case old memory is untouched.
+                if (newParams == NULL) {
+                    // TODO: What to do? return?
+                    return NULL;
+                }
+                memcpy(&newParams[formula->item.and_formula.numOfParameters],
+                       localF->item.and_formula.p,
+                       localF->item.and_formula.numOfParameters);
+                formula->item.and_formula.numOfParameters = numOfParams;
+                formula->item.and_formula.p = newParams;
+                // TODO: Check for memory leaks
+                // Free memory, which we do not need anymore.
+                free(localF->item.and_formula.p);
+            }
+        }
+        return formula;
+        break;
+    }
+    case NOT: {
+        // TODO
+        // TODO struct formula *localF = formula->item.not_formula.p;
+        formula->item.not_formula.p =
+                                merge_conjunction(formula->item.not_formula.p);
+        return formula;
+        break;
+    }
+    } // switch (formula->type)
+}
 
 // This function returns a pointer to the new state. It might change the old
-// state (the argument) though. This junction might return NULL on error.
+// state (the argument) though. This function might return NULL on error.
+// TODO
 struct formula *planner_apply_effect(   struct formula *stateOld,
                                         struct formula *effect)
 {
@@ -68,31 +180,17 @@ struct formula *planner_apply_effect(   struct formula *stateOld,
     case PREDICATE: {
         switch (stateOld->type) {
         case PREDICATE: {
-
-            if (grounded_predicates_equal_aux(stateOld, effect)) {
+            if (predicates_equal_aux(stateOld, effect)) {
                 // Just return old state. Nothing more to do.
                 return stateOld;
             } else {
                 // Result is a conjunction.
-                // Prepare conjunction parameters
-                int32_t numOfParam = 2; // A conjunction of two prediactes.
-                struct formula *param = malloc(sizeof(*param) * numOfParam);
-                // Copy predicates into their new destination.
-                memcpy(&param[0], stateOld, sizeof(*stateOld));
-                memcpy(&param[1], effect, sizeof(*effect));
-
-                // Reuse memory of stateOld and copy values.
-                struct formula *stateNew = stateOld;
-                stateNew->type = AND;
-                stateNew->item.and_formula.numOfParameters = numOfParam;
-                stateNew->item.and_formula.p = param;
-
-                return stateNew;
+                return conjunction(stateOld, effect);
             }
             break;
 	    }
         case AND: {
-            // TODO: continue here
+            return conjunction(stateOld, effect);
             break;
 	    }
         case NOT: {
