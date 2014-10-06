@@ -103,6 +103,7 @@ enum formulaType
     PREDICATE 
     ,AND
     ,NOT
+    ,EMPTY  // TODO: do we need that?
 };
 
 struct formula

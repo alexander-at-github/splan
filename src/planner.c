@@ -48,7 +48,7 @@ bool predicates_equal_aux(struct formula *f1, struct formula *f2)
             f2A_name = f2A->item.constArgument->name;
             f1A_isTyped = f1A->item.constArgument->isTyped;
             f2A_isTyped = f2A->item.constArgument->isTyped;
-        } else if (f1A->type == VARIBALE && f2A == VARIABLE) {
+        } else if (f1A->type == VARIABLE && f2A->type == VARIABLE) {
             f1A_name = f1A->item.varArgument->name;
             f2A_name = f2A->item.varArgument->name;
             f1A_isTyped = f1A->item.varArgument->isTyped;
@@ -83,7 +83,7 @@ struct formula *conjunction(struct formula *formula, struct formula *predicate)
     // Check whether conjunction is necessary at all. That is, if 'formula' is a
     // conjunction and already includes 'predicate'.
     if (formula->type == AND) {
-        for (int i = 0; i < formula->itme.and_formula.numOfArguments; ++i) {
+        for (int i = 0; i < formula->item.and_formula.numOfParameters; ++i) {
             struct formula *andArg = &formula->item.and_formula.p[i];
             if (andArg->type == PREDICATE) {
                 if (predicates_equal_aux(andArg, predicate)) {
@@ -106,7 +106,7 @@ struct formula *conjunction(struct formula *formula, struct formula *predicate)
     // to know which memory must be freed or must not be freed later.
     struct formula *result = formula;
     // Copy values into result
-    result->type = AND
+    result->type = AND;
     result->item.and_formula.numOfParameters = numOfParam;
     result->item.and_formula.p = param;
     return result;
@@ -114,8 +114,9 @@ struct formula *conjunction(struct formula *formula, struct formula *predicate)
 
 // Function to merge nested conjunctions.
 // May return NULL on error.
+// Does alter argument.
 // TODO
-struct formula *merge_conjunction(struct formula *formula)
+struct formula *merge_conjunctions(struct formula *formula)
 {
     switch (formula->type) {
     case PREDICATE: {
@@ -126,9 +127,9 @@ struct formula *merge_conjunction(struct formula *formula)
     case AND: {
         for (int i = 0; i < formula->item.and_formula.numOfParameters; ++i) {
             // TODO
-            struct formula *localF = formula->item.and_formula.p;
+            struct formula *localF = &formula->item.and_formula.p[i];
             // Recurse
-            merge_conjunction(localF);
+            merge_conjunctions(localF);
             // Check for nested conjunction
             if (localF->type == AND) {
                 // Do merge nested conjunctions
@@ -140,8 +141,9 @@ struct formula *merge_conjunction(struct formula *formula)
                                             sizeof(*newParams) * numOfParams);
                 // Check for NULL, cause in that case old memory is untouched.
                 if (newParams == NULL) {
-                    // TODO: What to do? return?
-                    return NULL;
+                    // error. What to do?
+                    assert(false && "error locating memory");
+                    continue;
                 }
                 memcpy(&newParams[formula->item.and_formula.numOfParameters],
                        localF->item.and_formula.p,
@@ -157,10 +159,7 @@ struct formula *merge_conjunction(struct formula *formula)
         break;
     }
     case NOT: {
-        // TODO
-        // TODO struct formula *localF = formula->item.not_formula.p;
-        formula->item.not_formula.p =
-                                merge_conjunction(formula->item.not_formula.p);
+        merge_conjunctions(formula->item.not_formula.p);
         return formula;
         break;
     }
@@ -194,8 +193,15 @@ struct formula *planner_apply_effect(   struct formula *stateOld,
             break;
 	    }
         case NOT: {
+            // TODO: error? What to do?
             break;
 	    }
+        case EMPTY: {
+            // TODO: Free stateOld?
+            free(stateOld);
+            return effect;
+            break;
+        }
         default: {
             assert(false && "unkown formula type");
             break;
@@ -204,9 +210,49 @@ struct formula *planner_apply_effect(   struct formula *stateOld,
         break;
 	}
     case AND: {
+        struct formula *stateNew = stateOld;
+        // Apply one effect after another
+        for (int i = 0; i < effect->item.and_formula.numOfParameters; ++i) {
+            stateNew = planner_apply_effect(stateNew,
+                                            &effect->item.and_formula.p[i]);
+        }
+        return stateNew;
         break;
 	}
     case NOT: {
+        struct formula *delEff = effect->item.not_formula.p;
+        if (delEff->type != PREDICATE) {
+            // Error
+            assert(false && "can not apply malformed effect");
+            return stateOld;
+        }
+        // TODO: What about two nested NOT-formulas?
+
+
+        // Delete predicate from state
+        struct formula *stateNew = merge_conjunctions(stateOld);
+        switch (stateNew->type) {
+        case PREDICATE: {
+            if (predicates_equal_aux(stateNew, delEff)) {
+                libpddl31_formula_free_rec(stateNew);
+                stateNew->type = EMPTY;
+            }
+            return
+            break;
+        }
+        case AND: {
+            for (int i = 0;
+                 i < stateNew->item.and_formula.numOfParameters;
+                 ++i) {
+
+                // TODO: remove 
+            }
+            break;
+        }
+        case NOT: {
+            break;
+        }
+        } // switch (stateOld->type)
         break;
 	}
     default: {
@@ -215,5 +261,9 @@ struct formula *planner_apply_effect(   struct formula *stateOld,
 	}
     } // switch (effect->type)
 
+    assert(false);
     return NULL;
 }
+
+
+// TODO: Introduce a struct state?

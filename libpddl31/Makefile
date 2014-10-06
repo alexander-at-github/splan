@@ -1,7 +1,7 @@
 CC=clang
 AR=ar
 
-CFLAGS= -g # for debug symbols
+CFLAGS=#-dNDEBUG #-g # for debug symbols
 
 # path to the ANTLR3 runtime.
 # Both versions do work
