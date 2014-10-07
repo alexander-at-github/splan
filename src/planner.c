@@ -164,6 +164,7 @@ struct formula *merge_conjunctions(struct formula *formula)
         break;
     }
     } // switch (formula->type)
+    return formula; // TODO: check if right
 }
 
 // This function returns a pointer to the new state. It might change the old
@@ -237,7 +238,7 @@ struct formula *planner_apply_effect(   struct formula *stateOld,
                 libpddl31_formula_free_rec(stateNew);
                 stateNew->type = EMPTY;
             }
-            return
+            return stateNew;
             break;
         }
         case AND: {

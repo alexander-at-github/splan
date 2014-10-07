@@ -62,7 +62,7 @@ struct problem
     // objects are constants
     struct constant *objects;
     
-    struct formula *init;
+    struct state *init;
 
     struct formula *goal;
 };
@@ -103,7 +103,7 @@ enum formulaType
     PREDICATE 
     ,AND
     ,NOT
-    ,EMPTY  // TODO: do we need that?
+    ,EMPTY  // TODO: do we need that? TODO: delete
 };
 
 struct formula
@@ -146,6 +146,23 @@ struct term
         struct constant *constArgument;
         struct variable *varArgument;
     } item;
+};
+
+// Basically a ground predicate
+struct fluent
+{
+    char *name;
+    int32_t numOfArguments;
+    struct constant *arguments; // Arguments are terms
+};
+
+// A state is a conjunction of fluents, that are ground atoms. Closed world
+// assumption and unique name assumption apply. The state can be treated as
+// a set of fluents.
+struct state
+{
+    int32_t numOfFluents;
+    struct fluent *fluents;
 };
 
 #endif //PDDL31STRUCTS_H

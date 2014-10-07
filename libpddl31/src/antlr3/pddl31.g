@@ -8,6 +8,7 @@ options { /* Attetion: options must be placed right after grammar-statementi. */
 import pddl31core;
 
 @header {
+    #include <assert.h>
     #include <stdbool.h>
     #include <stdlib.h>
     #include <string.h>
@@ -16,6 +17,7 @@ import pddl31core;
     #include <antlr3string.h>
 
     #include "pddl31structs.h"
+    #include "libpddl31.h"
 
     // Size of lists when initialized
     #define LIST_SIZE_INIT 16
@@ -800,7 +802,7 @@ objectDeclaration returns [int32_t value_num, struct constant *value]
       }
     ;
 
-init returns [struct formula *value]
+init returns [struct state *value]
 @init {
     pANTLR3_LIST init_list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -812,30 +814,82 @@ init returns [struct formula *value]
                           }
                   )* ')'
         {
-        int32_t numOfInits = init_list->size(init_list);
-        if (numOfInits < 1) {
-            // No initial state. That does not make sense, but the PDDL3.1
-            // definition allows it.
-            $value = NULL;
-        } else if (numOfInits == 1) {
-            // list index starts at 1
-            $value = init_list->get(init_list, 1);
-        } else { // (numOfInits > 1)
-            // produce AND-formula
-            $value = malloc(sizeof(*$value));
-            $value->type = AND;
-            $value->item.and_formula.numOfParameters = numOfInits;
-            $value->item.and_formula.p =
-                                malloc(sizeof(*$value->item.and_formula.p) *
-                                       numOfInits);
-            for (int i = 0;
-                 i < $value->item.and_formula.numOfParameters;
-                 ++i) {
-                // antlr list index starts at 1
-                $value->item.and_formula.p[i] = *(struct formula *)
-                                               init_list->get(init_list, i+1);
+        $value = malloc(sizeof(*$value));
+        /*** Closed world assumption applies. ***/
+        // Negative literals will be ignored and only positive literals
+        // will be included in the state
+        // I have to parse negative literals just because of pddl 3.1
+        // specification.
+
+        pANTLR3_LIST fluent_list = antlr3ListNew(LIST_SIZE_INIT);
+        for (int i = 0; i < init_list->size(init_list); ++i) {
+            // antlr3 list index starts from 1
+            struct formula *f =
+                            (struct formula *) init_list->get(init_list, i+1);
+            switch (f->type) {
+            case PREDICATE: {
+                // Do not use free here, cause init_list->free() will free the
+                // elements.
+                fluent_list->add(fluent_list, f, NULL);
+                break;
+            }
+            case AND: {
+                // init should be a set of fluents. ANDs are not allowed.
+                assert(false);
+                // Free unused structures immediately
+                libpddl31_formula_free_rec(f);
+                break;
+            }
+            case NOT: {
+                // We just ignore NOT-formulas, because of closed world
+                // assumption.
+
+                // Free unused structures immediately
+                libpddl31_formula_free_rec(f);
+                break;
+            }
+            default: {
+                assert(false);
+                break;
+            }
             }
         }
+        // Now all positive literals are in the fluent_list.
+        $value->numOfFluents = fluent_list->size(fluent_list);
+        $value->fluents = malloc(   sizeof(*$value->fluents) *
+                                    $value->numOfFluents);
+        for (int i = 0; i < $value->numOfFluents; ++i) {
+            struct formula *form =   (struct formula *)
+                                     fluent_list->get(fluent_list, i+1);
+            assert (form->type == PREDICATE);
+ 
+            struct fluent fluent;
+            fluent.name = form->item.predicate_formula.name;
+            fluent.numOfArguments = form->item.predicate_formula.numOfArguments;
+            fluent.arguments = malloc(  sizeof(*fluent.arguments) *
+                                        fluent.numOfArguments);
+            for (int j = 0; j < fluent.numOfArguments; ++j) {
+                if (form->item.predicate_formula.arguments[j].type == VARIABLE){
+                    assert (false && "ungrounded predicate in initial state");
+                    libpddl31_term_free(
+                                    &form->item.predicate_formula.arguments[j]);
+                    continue;
+                }
+                assert (form->item.predicate_formula.arguments[j].type ==
+                                                                    CONSTANT);
+                // Copy constant arguments into fluent
+                fluent.arguments[j] =
+                  *form->item.predicate_formula.arguments[j].item.constArgument;
+                // Tricky free() calls!
+                free(form->item.predicate_formula.arguments[j].
+                                                            item.constArgument);
+            }
+            free(form->item.predicate_formula.arguments);
+            
+            // Copy fluent into state
+            memcpy(&$value->fluents[i], &fluent, sizeof(fluent));
+        }
+        fluent_list->free(fluent_list);
         }
 
     ;

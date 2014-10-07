@@ -1,5 +1,5 @@
 // TODO: When freeing memory of struct domain and struct problem do check
-// each pointer for NULL first.
+// each pointer for NULL first and set pointer to NULL after call to free.
 
 
 #include <assert.h>
@@ -198,6 +198,9 @@ struct problem *libpddl31_problem_parse(char *filename)
 void free_struct_constant_aux(struct constant *constant)
 {
     //printf("Debug: free_struct_constant_aux( %p )\n", (void *) constant);
+    if (constant == NULL) {
+        return;
+    }
     if (constant->name != NULL) {
         free(constant->name);
         constant->name = NULL;
@@ -215,6 +218,9 @@ void free_struct_constant_aux(struct constant *constant)
 void free_struct_variable_aux(struct variable *variable)
 {
     //printf("Debug: free_struct_variable_aux( %p )\n", (void *) variable);
+    if(variable == NULL) {
+        return;
+    }
     if (variable->name != NULL) {
         free(variable->name);
         variable->name = NULL;
@@ -246,7 +252,40 @@ void free_struct_predicate_aux(struct predicate *predicate)
     }
 }
 
-void free_struct_term_aux(struct term *term)
+void free_struct_fluent_aux(struct fluent *fluent)
+{
+    if (fluent == NULL) {
+        return;
+    }
+    if (fluent->name != NULL) {
+        free(fluent->name);
+        fluent->name = NULL;
+    }
+    // Free arguments
+    if (fluent->arguments != NULL) {
+        for (int i = 0; i < fluent->numOfArguments; ++i) {
+            free_struct_constant_aux(&fluent->arguments[i]);
+        }
+        free(fluent->arguments);
+        fluent->arguments = NULL;
+    }
+}
+
+void free_struct_state_aux(struct state *state)
+{
+    if (state == NULL) {
+        return;
+    }
+    if (state->fluents != NULL) {
+        for (int i = 0; i < state->numOfFluents; ++i) {
+            free_struct_fluent_aux(&state->fluents[i]);
+        }
+        free(state->fluents);
+        state->fluents = NULL;
+    }
+}
+
+void libpddl31_term_free(struct term *term)
 {
     if (term == NULL) {
         return;
@@ -283,7 +322,7 @@ void libpddl31_formula_free_rec(struct formula *formula)
             for (int i = 0;
                  i < formula->item.predicate_formula.numOfArguments;
                  ++i) {
-                free_struct_term_aux(
+                libpddl31_term_free(
                                 &formula->item.predicate_formula.arguments[i]);
             }
             free(formula->item.predicate_formula.arguments);
@@ -417,7 +456,7 @@ void libpddl31_problem_free(struct problem *problem)
 
     // Free initial state
     if (problem->init != NULL) {
-        libpddl31_formula_free_rec(problem->init);
+        free_struct_state_aux(problem->init);
         free(problem->init);
     }
 
@@ -431,14 +470,62 @@ void libpddl31_problem_free(struct problem *problem)
     free(problem);
 }
 
+void print_constant_aux(struct constant *constant)
+{
+    if (constant == NULL) {
+        return;
+    }
+    if (constant->name != NULL) {
+        printf("%s", constant->name);
+    }
+    if (constant->isTyped && constant->type != NULL) {
+        printf(" - %s", constant->type->name);
+    }
+}
+
 void print_term_aux(struct term *term)
 {
     if (term->type == CONSTANT) {
-        printf(" %s", term->item.constArgument->name);
+        print_constant_aux(term->item.constArgument);
+        //printf("%s", term->item.constArgument->name);
     } else if (term->type == VARIABLE) {
-        printf(" %s", term->item.varArgument->name);
+        printf("%s", term->item.varArgument->name);
     } else {
         assert(false && "unknown term type");
+    }
+}
+
+void print_fluent_aux(struct fluent *fluent)
+{
+    if (fluent == NULL) {
+        return;
+    }
+    printf("(");
+    if (fluent->name != NULL) {
+        printf("%s", fluent->name);
+    }
+    if (fluent->arguments != NULL) {
+        for (int i = 0; i < fluent->numOfArguments; ++i) {
+            printf(" ");
+            print_constant_aux(&fluent->arguments[i]);
+        }
+    }
+    printf(")");
+}
+
+void libpddl31_state_print(struct state *state)
+{
+    if (state == NULL) {
+        return;
+    }
+    if (state->fluents != NULL) {
+        for (int i = 0; i < state->numOfFluents; ++i) {
+            print_fluent_aux(&state->fluents[i]);
+            if (i < state->numOfFluents - 1) {
+                // separate fluents by blanks
+                printf(" ");
+            }
+        }
     }
 }
 
@@ -447,7 +534,6 @@ void libpddl31_formula_print(struct formula *formula)
     if (formula == NULL) {
         return;
     }
-    int32_t indent_inc = 2; // increment of spaces for indent
     if (formula->type == PREDICATE) {
         printf("(%s", formula->item.predicate_formula.name);
         for (int i = 0;
@@ -593,7 +679,7 @@ void libpddl31_problem_print(struct problem *problem)
     // Print initial state
     printf("[libpddl31_problem_print] initial state:\n");
     printf("[libpddl31_problem_print]  ");
-    libpddl31_formula_print(problem->init);
+    libpddl31_state_print(problem->init);
     printf("\n");
     printf("[libpddl31_problem_print]\n");
 
