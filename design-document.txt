@@ -1,0 +1,44 @@
+﻿*** PDDL 3.1 requirements to implement:
+  Core:
+    * strips
+    * action-costs: Only parsing. No consideration in data structures or
+      planner (for now).
+    * negative preconditions
+    * conditional effects
+    * typing: that makes grounding smaller.
+  Nice to have:
+    * adl
+  Explicitly not part of this project:
+    * derived predicates
+
+*** Grounder:
+  Operation breakdown:
+    Grounder module has a ground-action pool. Each step in planning it grounds
+    all applicable actions with all objects and adds newly generated grounded
+    actions to pool. We believe that a fix point of ground actions is reached
+    and the planner only reuses actions from this pool thereafter.
+
+*** Types:
+  * Every object has a type. If there is no type given explicitly in the PDDL
+    file, it will be given the type 'object'.
+  * Types form a hierarchy. Every type is child of another type. If no
+    parent type is given explicitly, it will be the child of 'object'. That is,
+    'object' is the root of the type hierarchy.
+  * There is a module for managing types.
+  * The parser calls types_getID(<type-name>) for any type it encounters. If the
+    types module does not know this type, it will add it to its list of type
+    names.
+  * A call to types_getID(<type-name>) always returns an integer identifier for
+    that type.
+  * types_nameForID(<type-id>) returns the name of type for given identifier.
+
+*** Predicates:
+  * Should there be a module for predicates similar to the types module?
+
+
+
+
+TODO:
+* Turn off assertions for time measurments.
+* Put return value and function name on separate lines.
+
