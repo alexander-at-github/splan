@@ -5,11 +5,15 @@
 int
 main (int agrc, char **argv)
 {
-    char *domainFilename = "test_instances/blocks_domain_altered.pddl";
+    char *domainFilename =
+                        "../test_instances/openstacks-strips/p01-domain.pddl";
+                        //"test_instances/blocks_domain_altered.pddl";
     struct domain *domain = libpddl31_domain_parse(domainFilename);
     libpddl31_domain_print(domain);
 
-    char *problemFilename = "test_instances/probBLOCKS-4-0_altered.pddl";
+    char *problemFilename =
+                        "../test_instances/openstacks-strips/p01.pddl";
+                        //"test_instances/probBLOCKS-4-0_altered.pddl";
     struct problem *problem = libpddl31_problem_parse(problemFilename);
     libpddl31_problem_print(problem);
 

@@ -49,13 +49,17 @@ primitiveType
     ;
 
 // Should I support that at all? FastDownward does not support that.
-//eitherType 
+// eitherType 
 //    :   '(' 'either' primitiveType+ ')'
 //    ;
 
 type
     :   primitiveType
     //|   eitherType
+    ;
+
+functionType
+    : 'number'  // requires action-costs or numberic-fluents
     ;
 
 /* Rules for terms */
@@ -168,9 +172,6 @@ atomicFormula_term returns [struct formula *value]
         }
         }
     //|   '(' '=' term term ')' // requires :equality
-    //    {
-    //    // TODO
-    //    }
     ;
 
 atomicFormula_name returns [struct formula *value]
@@ -336,6 +337,9 @@ domain returns [struct domain *value]
         // typesDef?    // requires :typing
         (constantsDef   { hasConstants = true; }    )?
         (predicatesDef  { hasPredicates = true; }   )?
+        // Special arrangement to parse action-costs only (and no other
+        // functions.
+        ( '(' ':functions' '(' 'total-cost' ')' ('-' functionType)? ')' )?
         // functionsDef?    // requires :fluents
         // constraints?     // requires :constraints ?
         (structureDef {
@@ -434,7 +438,10 @@ requireKey returns [enum requirement *value]
       {
       *$value = STRIPS;
       }
-//    | ':typing' // TODO or not todo?
+    | ':typing'
+      {
+      *$value = TYPING;
+      }
     | ':negative-preconditions'
       {
       *$value = NEGATIVE_PRECONDITION;
@@ -455,7 +462,10 @@ requireKey returns [enum requirement *value]
 //    | ':timed-initial-literals'
 //    | ':preferences'
 //    | ':constraints'
-//    | ':action-costs'
+    | ':action-costs'
+      {
+      *$value = ACTION_COSTS;
+      }
     ;
 
 /* Types definitions */
@@ -724,6 +734,8 @@ pEffect returns [struct formula *value]
         {
         $value = $atomicFormula_term.value;
         }
+    // Special arrangement to parse action-costs
+    | '(' 'increase' '(' 'total-cost' ')' NUMBER ')'
     //| '(' assignOp fHead fExp ')' // requires :numeric-fluents
     //| '(' 'assign' function_term term ')' //requires :object-fluents
     //| '(' 'assign' function_term 'undefined' ')' //requires :object-fluents
@@ -810,7 +822,11 @@ init returns [struct state *value]
     init_list->free(init_list);
 }
     : '(' ':init' (initEl {
-                          init_list->add(init_list, $initEl.value, &free);
+                          // Check for NULL, because action-cost initializations
+                          // return NULL.
+                          if ($initEl.value != NULL) {
+                              init_list->add(init_list, $initEl.value, &free);
+                          }
                           }
                   )* ')'
         {
@@ -898,6 +914,13 @@ initEl returns [struct formula *value]
     : literal_name
       {
       $value = $literal_name.value;
+      }
+      // Special arrangement for action-costs. According to the pddl 3.1
+      // specification total-cost must be initialized to 0. I will just ignore
+      // that since the algorithm will just ignore action costs.
+    | '(' '=' '(' 'total-cost' ')' '0' ')'
+      {
+      $value = NULL;
       }
     //| '(' 'at' <number> <literal(name)> ')' // requires :timed−initial−literals 
     //| '(' '=' <basic-function-term> <number> ')' // requires :numeric-fluents 
