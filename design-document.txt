@@ -22,17 +22,17 @@
   * Every type must be declared before it is used. The only exception to
     this rule is the type 'object', which we call the root of the type
     system.
+  * Types form a hierarchy. Every type is child of another type. The
+    only exception to this rule is the root type. It does not have a
+    parent. If no parent type is given explicitly, it will be a direct
+    child of the root.
   * Every variable or constant has a type. If there is no type given
     explicitly in the PDDL file, it will be given the root type.
-  * Ty*pes form a hierarchy. Every type is child of another type. The
-    on ly exception to this rule is the root type. It does not have a
-    pa rent. If no parent type is given explicitly, it will be a direct
-    ch*ild of the root.
-  * Th ere is a module for managing types.
-  * Th*e parser calls types_getID(<type-name>) for any type it encounters. If the
-    ty pes module does not know this type, it will add it to its list of type
-    na mes.
-  * A  call to types_getID(<type-name>) always returns an integer identifier for
+  * There is a module for managing types.
+  * The parser calls types_getID(<type-name>) for any type it encounters. If the
+    types module does not know this type, it will add it to its list of type
+    names.
+  * A call to types_getID(<type-name>) always returns an integer identifier for
     that type.
   * types_nameForID(<type-id>) returns the name of type for given identifier.
 
