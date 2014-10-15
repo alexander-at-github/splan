@@ -29,12 +29,6 @@
   * Every variable or constant has a type. If there is no type given
     explicitly in the PDDL file, it will be given the root type.
   * There is a module for managing types.
-  * The parser calls types_getID(<type-name>) for any type it encounters. If the
-    types module does not know this type, it will add it to its list of type
-    names.
-  * A call to types_getID(<type-name>) always returns an integer identifier for
-    that type.
-  * types_nameForID(<type-id>) returns the name of type for given identifier.
 
 *** Predicates:
   * Should there be a module for predicates similar to the types module?
