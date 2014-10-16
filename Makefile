@@ -37,6 +37,3 @@ clean:
 	cd $(LIB_PDDL31_DIR) && make clean
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
 
-# Testing
-build/test_types: src/types.c test/types.c $(BUILD_DIR)
-	$(CC) $(CFLAGS) -I$(SRC_DIR) -o $@ -I$(TOOLS_DIR) src/types.c test/types.c 

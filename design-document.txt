@@ -12,11 +12,14 @@
     * derived predicates
 
 *** Grounder:
-  Operation breakdown:
+  * Operation breakdown:
     Grounder module has a ground-action pool. Each step in planning it grounds
     all applicable actions with all objects and adds newly generated grounded
     actions to pool. We believe that a fix point of ground actions is reached
     and the planner only reuses actions from this pool thereafter.
+  * A grounding is a binding from struct variable to struct constant for a
+    specific action.
+
 
 *** Types:
   * Every type must be declared before it is used. The only exception to
@@ -33,6 +36,16 @@
 *** Predicates:
   * Should there be a module for predicates similar to the types module?
 
+*** Effects with conditional effects in PDDL:
+
+    effect----|-and-------|-literal
+              |           |-forall------effect
+              |           |-when------|-and---------literal
+              |                       |-literal
+              |-literal
+              |-forall------effect
+              |-when------|-and---------literal
+                          |-literal
 
 
 

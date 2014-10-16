@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "types.h"
+
 enum requirement
 {
     STRIPS
@@ -36,17 +38,16 @@ struct domain
     int32_t numOfRequirements;
     enum requirement *requirements;
 
-    int32_t numOfConstants;
-    struct constant *constants;
+    int32_t numOfCons;
+    struct constant *cons;
 
-    int32_t numOfPredicates;
-    struct predicate *predicates; 
+    int32_t numOfPreds;
+    struct predicate *predes; 
 
     int32_t numOfActions;
     struct action *actions;
 
-    //int32_t numOfTypes;
-    //struct type *types;
+    struct typeSystem *typeSystem;
 };
 
 struct problem
@@ -64,40 +65,157 @@ struct problem
     
     struct state *init;
 
-    struct formula *goal;
-};
-
-struct predicate
-{
-    char *name;
-    int32_t numOfParameters;
-    struct variable *parameters;
-};
-
-struct type
-{
-    char *name;
+    struct goal *goal;
 };
 
 struct constant
 {
     char *name;
-    bool isTyped;
-    struct type *type; // :requirement typing
+    struct type *type;
 };
 
+// struct variable is the same as struct constant. I want to differentiate that
+// though.
+struct variable
+{
+    char *name;
+    struct type *type;
+};
+
+struct predicate
+{
+    char *name;
+    int32_t numOfParams;
+};
+
+// Basically a ground predicate or atom.
+struct fluent
+{
+    struct predicate *pred;
+    // The number of arguments is in fluent->predicate->numOfParams
+    struct constant *args;
+};
+
+// Semantics: A state is a conjunction of fluents.
+// Closed world assumption and unique name assumption apply. The state can be
+// treated as a set of fluents.
+struct state
+{
+    int32_t numOfFluents;
+    struct fluent *fluents;
+};
+
+/** Goal **/
+// Composition of a predicate and constants of an goal, for example
+struct pred_cons
+{
+    struct predicate *pred;
+    // Number of constants is pred_cons->pred->numOfParams
+    struct constant *cons;
+};
+
+// Semantics: conjunction
+struct goal
+{
+    // positive literals in this conjunction
+    int32_t numOfPos;
+    struct pred_cons *posLiterals;
+    // negative literals in this conjunction
+    int32_t numOfNeg;
+    struct pred_cons *negLiterals;
+};
+
+/*** Action ***/
 struct action
 {
     char *name;
 
-    int32_t numOfParameters;
-    struct variable *parameters;
+    int32_t numOfParams;
+    struct variable *params;
     
-    struct formula *precondition;
+    struct precond *precond;
 
-    struct formula *effect;
+    struct effect *effect;
 };
 
+// Composition of a predicate and variables of an action, for example.
+struct pred_var
+{
+    struct predicate *pred;
+    // Number of variables is pred_var->predicate->numOfParams
+    struct variable *var;
+};
+
+/** Precondition **/
+
+// Semantics: A conjunction of literals (positive or negated atoms)
+struct precond
+{
+    // positive literals in this conjunction
+    int32_t numOfPos;
+    struct pred_var *posLiterals;
+    // negative literals in this conjunction
+    int32_t numOfNeg;
+    struct pred_var *negLiterals;
+};
+
+
+/** Effects **/
+
+enum effElemType
+{
+    POS_LITERAL
+    ,NEG_LITERAL
+    ,FORALL
+    ,WHEN
+};
+
+struct effectElem
+{   
+    enum effElemType type;
+    union {
+        // Use variable 'literal' for positive and negative literals
+        struct pred_var *literal;
+        struct forall *forall;
+        struct when *when;
+    } it;
+};
+
+// An effect is always a conjunction of either literals, forall-clauses or
+// when clauses. It might contain only one element. Then it is strictly speaking
+// not a conjunction.
+struct effect
+{
+    int32_t numOfElems;
+    // Semantics: conjunction
+    struct effectElem elems;
+};
+
+struct forall
+{
+    // For all ...
+    int32_t numOfVars;
+    struct variable *vars;
+
+    // ... apply the effect
+    struct effect *effect;
+};
+
+struct when
+{
+    // If precondition evaluates to true ...
+    struct precond *precond;
+
+    // ... apply this conjunction of literals
+        // atoms (i.e. positive literals)
+    int32_t numOfPos;
+    struct pred_var *posLiterals;
+        // negative literals
+    int32_t numOfNeg;
+    struct pred_var *negLiterals;
+};
+
+/*
 enum formulaType
 {
     PREDICATE 
@@ -125,13 +243,6 @@ struct formula
     } item;
 };
 
-// TODO: That is the same as struct constant. Do we need both? Time will tell.
-struct variable
-{
-    char *name;
-    bool isTyped;
-    struct type *type; // :requiremnt typing
-};
 
 enum termType
 {
@@ -147,22 +258,6 @@ struct term
         struct variable *varArgument;
     } item;
 };
-
-// Basically a ground predicate
-struct fluent
-{
-    char *name;
-    int32_t numOfArguments;
-    struct constant *arguments; // Arguments are terms
-};
-
-// A state is a conjunction of fluents, that are ground atoms. Closed world
-// assumption and unique name assumption apply. The state can be treated as
-// a set of fluents.
-struct state
-{
-    int32_t numOfFluents;
-    struct fluent *fluents;
-};
+*/
 
 #endif //PDDL31STRUCTS_H
