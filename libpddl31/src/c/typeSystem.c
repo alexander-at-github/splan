@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "types.h"
+#include "typeSystem.h"
 
 #define ARRAY_SIZE_INIT 16
 #define ARRAY_SIZE_SCALE 2
@@ -23,7 +23,7 @@ string_malloc_copy_aux(char *string)
 }
 
 struct typeSystem *
-types_createTypeSystem()
+typeSystem_create()
 {
     struct typeSystem *typeSystem = malloc(sizeof(*typeSystem));
 
@@ -47,7 +47,7 @@ types_createTypeSystem()
 
 // Frees the give datastructure. The given pointer is invalid afterwards.
 void
-types_freeTypeSystem(struct typeSystem *typeSystem)
+typeSystem_free(struct typeSystem *typeSystem)
 {
     if (typeSystem == NULL) {
         return;
@@ -71,7 +71,7 @@ types_freeTypeSystem(struct typeSystem *typeSystem)
 // Arguemtn parentName may be NULL.
 // This function returns true on success and false on error.
 bool
-types_addType(  struct typeSystem *ts,
+typeSystem_addType(  struct typeSystem *ts,
                 char *newTypeName,
                 char *parentName)
 {
@@ -143,7 +143,7 @@ types_addType(  struct typeSystem *ts,
 // Precondition: both arguments are not NULL.
 // This function may return NULL.
 struct type *
-types_getType(struct typeSystem *ts, char *name)
+typeSystem_getType(struct typeSystem *ts, char *name)
 {
     if (ts == NULL || name == NULL) {
         //assert(false);
@@ -162,7 +162,7 @@ types_getType(struct typeSystem *ts, char *name)
 
 // Precondition: ts is not NULL
 void
-types_printTypeSystem(struct typeSystem *ts)
+typeSystem_print(struct typeSystem *ts)
 {
     assert(ts != NULL);
     printf("[");

@@ -4,7 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "types.h"
+#include "typeSystem.h"
+#include "predManag.h"
 
 enum requirement
 {
@@ -39,10 +40,10 @@ struct domain
     enum requirement *requirements;
 
     int32_t numOfCons;
-    struct constant *cons;
+    // constants are terms
+    struct term *cons;
 
-    int32_t numOfPreds;
-    struct predicate *predes; 
+    struct predManag *predManag;
 
     int32_t numOfActions;
     struct action *actions;
@@ -68,6 +69,20 @@ struct problem
     struct goal *goal;
 };
 
+// A term is either a constant or a variable. We need terms, cause a
+// precondition can include constants and variables.
+struct term
+{
+    // true: is variable
+    // false: is constant
+    bool isVariable;
+    // In PDDL a variables name starts with the '?' character.
+    // If this structure is a constant, then the name is also its value.
+    char *name;
+    struct type *type;
+};
+
+/*
 struct constant
 {
     char *name;
@@ -81,11 +96,17 @@ struct variable
     char *name;
     struct type *type;
 };
+*/
 
+// This is a formal predicate. That is, a predicate definition
 struct predicate
 {
     char *name;
     int32_t numOfParams;
+    // We store the parameter just in order to store the types. The names
+    // of the parameter are not needed.
+    // This terms are all variables.
+    struct term *params;
 };
 
 // Basically a ground predicate or atom.
@@ -106,12 +127,12 @@ struct state
 };
 
 /** Goal **/
-// Composition of a predicate and constants of an goal, for example
-struct pred_cons
+// Composition of a predicate and terms as arguments.
+struct atom 
 {
     struct predicate *pred;
     // Number of constants is pred_cons->pred->numOfParams
-    struct constant *cons;
+    struct term *term;
 };
 
 // Semantics: conjunction
@@ -119,10 +140,10 @@ struct goal
 {
     // positive literals in this conjunction
     int32_t numOfPos;
-    struct pred_cons *posLiterals;
+    struct atom *posLiterals;
     // negative literals in this conjunction
     int32_t numOfNeg;
-    struct pred_cons *negLiterals;
+    struct atom *negLiterals;
 };
 
 /*** Action ***/
@@ -131,12 +152,16 @@ struct action
     char *name;
 
     int32_t numOfParams;
-    struct variable *params;
+    // These must be variables though.
+    struct term *params;
     
-    struct precond *precond;
+    struct goal *precond;
 
     struct effect *effect;
 };
+
+/* precondition is also a goal. PDDL does not make destinction. That is,
+ * in any goal or precondition you can have variables and constants.
 
 // Composition of a predicate and variables of an action, for example.
 struct pred_var
@@ -145,8 +170,6 @@ struct pred_var
     // Number of variables is pred_var->predicate->numOfParams
     struct variable *var;
 };
-
-/** Precondition **/
 
 // Semantics: A conjunction of literals (positive or negated atoms)
 struct precond
@@ -158,6 +181,7 @@ struct precond
     int32_t numOfNeg;
     struct pred_var *negLiterals;
 };
+*/
 
 
 /** Effects **/
@@ -175,7 +199,7 @@ struct effectElem
     enum effElemType type;
     union {
         // Use variable 'literal' for positive and negative literals
-        struct pred_var *literal;
+        struct atom *literal;
         struct forall *forall;
         struct when *when;
     } it;
@@ -188,14 +212,14 @@ struct effect
 {
     int32_t numOfElems;
     // Semantics: conjunction
-    struct effectElem elems;
+    struct effectElem *elems;
 };
 
 struct forall
 {
     // For all ...
     int32_t numOfVars;
-    struct variable *vars;
+    struct term *vars;
 
     // ... apply the effect
     struct effect *effect;
@@ -204,15 +228,15 @@ struct forall
 struct when
 {
     // If precondition evaluates to true ...
-    struct precond *precond;
+    struct goal *precond;
 
     // ... apply this conjunction of literals
         // atoms (i.e. positive literals)
     int32_t numOfPos;
-    struct pred_var *posLiterals;
+    struct atom *posLiterals;
         // negative literals
     int32_t numOfNeg;
-    struct pred_var *negLiterals;
+    struct atom *negLiterals;
 };
 
 /*

@@ -9,8 +9,10 @@ main (int agrc, char **argv)
                         "../test_instances/openstacks-strips/p01-domain.pddl";
                         //"test_instances/blocks_domain_altered.pddl";
     struct domain *domain = libpddl31_domain_parse(domainFilename);
-    libpddl31_domain_print(domain);
+    //libpddl31_domain_print(domain);
+    //libpddl31_problem_free(problem);
 
+    /*
     char *problemFilename =
                         "../test_instances/openstacks-strips/p01.pddl";
                         //"test_instances/probBLOCKS-4-0_altered.pddl";
@@ -21,7 +23,7 @@ main (int agrc, char **argv)
     bool isMember = libpddl31_problem_is_member_of_domain(problem, domain);
     printf("problem is member of domain: %s\n", isMember ? "true" : "false");
     printf("\n");
+    */
 
-    libpddl31_problem_free(problem);
     libpddl31_domain_free(domain);
 }

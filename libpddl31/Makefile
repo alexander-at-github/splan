@@ -81,8 +81,8 @@ clean:
 
 # Testing
 
-build/test_types: src/c/types.c test/c/types.c $(BUILD_DIR)
-	$(CC) $(CFLAGS) -I$(SRC_DIR)/c -o $@ -I$(TOOL_DIR) src/c/types.c test/c/types.c 
+build/test_typeSystem: src/c/typeSystem.c test/c/typeSystem.c $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(SRC_DIR)/c -o $@ -I$(TOOL_DIR) src/c/typeSystem.c test/c/typeSystem.c 
 
 bin/test: $(SRC_DIR)/c/main_test.c $(LIB_FILE)
 	$(CC) -o $@ -I$(BIN_DIR) -l$(ANTLR3.4_C_RUNTIME) $^

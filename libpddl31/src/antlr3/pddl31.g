@@ -16,8 +16,10 @@ import pddl31core;
     #include <antlr3interfaces.h>
     #include <antlr3string.h>
 
-    #include "pddl31structs.h"
     #include "libpddl31.h"
+    #include "pddl31structs.h"
+    #include "predManag.h"
+    #include "typeSystem.h"
 
     // Size of lists when initialized
     #define LIST_SIZE_INIT 16
@@ -39,6 +41,13 @@ import pddl31core;
         dest[src->size - 1] = '\0';
         return dest;
     }
+
+    /* The type system. We always need that, therefor we make it a global
+     * variable.
+     * It will be initialized by the domain-rule or problem-rule.
+     */
+    struct typeSystem *global_typeSystem = NULL;
+    struct predManag *global_predManag;
 }
 
 /*** Logic ***/
@@ -69,18 +78,15 @@ term returns [struct term *value]
 }
     : NAME
         {
-        $value->type = CONSTANT;
-        $value->item.constArgument = 
-                                malloc(sizeof(*$value->item.constArgument));
-        $value->item.constArgument->name = string_malloc_copy($NAME.text);
-        $value->item.constArgument->isTyped = false;
+        $value->isVariable = false;
+        $value->name = string_malloc_copy($NAME.text);
+        $value->type = global_typeSystem->root;
         }
     | variable
         {
-        $value->type = VARIABLE;
-        $value->item.varArgument = malloc(sizeof(*$value->item.varArgument));
-        $value->item.varArgument->name = string_malloc_copy($variable.text);
-        $value->item.varArgument->isTyped = false;
+        $value->isVariable = true;
+        $value->name = string_malloc_copy($variable.text);
+        $value->type = global_typeSystem->root;
         }
     ;
 
@@ -94,33 +100,34 @@ predicate
     ;
 
 /* Rules for literals */
-literal_term returns [struct formula *value]
+// A literal is positive or negated atom
+literal_term returns [bool value_pos, struct atom *value]
     : atomicFormula_term
         {
+        $value_pos = true;
         $value = $atomicFormula_term.value;
         }
     | '(' 'not' atomicFormula_term ')'
         {
-        $value = malloc(sizeof(*$value));
-        $value->type = NOT;
-        $value->item.not_formula.p = $atomicFormula_term.value;
+        $value_pos = false;
+        $value = $atomicFormula_term.value;
         }
     ;
 
-literal_name returns [struct formula *value]
+literal_name returns [bool value_pos, struct atom *value]
     : atomicFormula_name
         {
+        $value_pos = true;
         $value = $atomicFormula_name.value;
         }
     | '(' 'not' atomicFormula_name ')'
         {
-        $value = malloc(sizeof(*$value));
-        $value->type = NOT;
-        $value->item.not_formula.p = $atomicFormula_name.value;
+        $value_pos = false;
+        $value = $atomicFormula_name.value;
         }
     ;
 
-/* Rules for formulas */
+/* Rules for predicates */
 atomicFormulaSkeleton returns [struct predicate *value]
 @init {
     pANTLR3_LIST variable_list = antlr3ListNew(LIST_SIZE_INIT);
@@ -132,18 +139,18 @@ atomicFormulaSkeleton returns [struct predicate *value]
     {
     $value = malloc(sizeof(*$value));
     $value->name = string_malloc_copy($predicate.text);
-    $value->numOfParameters = variable_list->size(variable_list);
-    $value->parameters = malloc(sizeof(*$value->parameters) *
-                                $value->numOfParameters);
-    for (int i = 0; i < $value->numOfParameters; ++i) {
+    $value->numOfParams = variable_list->size(variable_list);
+    $value->params = malloc(sizeof(*$value->params) *
+                                $value->numOfParams);
+    for (int i = 0; i < $value->numOfParams; ++i) {
         //List index starts from 1
-        $value->parameters[i] = *(struct variable*)
+        $value->params[i] = *(struct term *)
                                variable_list->get(variable_list, i+1);
     }
     }
     ;
 
-atomicFormula_term returns [struct formula *value]
+atomicFormula_term returns [struct atom *value]
 @init {
     pANTLR3_LIST term_list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -158,23 +165,28 @@ atomicFormula_term returns [struct formula *value]
                       )* ')'
         {
         $value = malloc(sizeof(*$value));
-        $value->type = PREDICATE;
-        value->item.predicate_formula.name =string_malloc_copy($predicate.text);
-        $value->item.predicate_formula.numOfArguments =
-                                                    term_list->size(term_list);
-        $value->item.predicate_formula.arguments =
-                     malloc(sizeof(*$value->item.predicate_formula.arguments) *
-                     $value->item.predicate_formula.numOfArguments);
-        for (int i = 0; i < $value->item.predicate_formula.numOfArguments; ++i){
-            //List index starts from 1
-            $value->item.predicate_formula.arguments[i] = *(struct term *)
-                                                term_list->get(term_list, i+1);
+        $value->pred = predManag_getPred(global_predManag,
+                                         (char *) $predicate.text->chars);
+        if ($value->pred == NULL) {
+            fprintf(stderr,
+                    "error parsing predicate '\%s'\n",
+                    $predicate.text->chars);
+        }
+        if (term_list->size(term_list) != $value->pred->numOfParams) {
+            fprintf(stderr,
+                  "error parsing predicate '\%s'. Wrong number of arguments\n",
+                  $predicate.text->chars);
+        }
+        $value->term = malloc(sizeof(*$value->term) *
+                              $value->pred->numOfParams);
+        for (size_t i = 0; i < $value->pred->numOfParams; ++i) {
+            $value->term[i] = *(struct term *) term_list->get(term_list, i+1);
         }
         }
     //|   '(' '=' term term ')' // requires :equality
     ;
 
-atomicFormula_name returns [struct formula *value]
+atomicFormula_name returns [struct atom *value]
 @init {
     pANTLR3_LIST name_list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -182,33 +194,29 @@ atomicFormula_name returns [struct formula *value]
     name_list->free(name_list);
 }
     :   '(' predicate (NAME {
-                            // names are constants (which are terms)
-                            struct term *term = malloc(sizeof(*term));
-                            term->type = CONSTANT;
-                            term->item.constArgument =
-                                    malloc(sizeof(*term->item.constArgument));
-                            term->item.constArgument->name =
-                                                string_malloc_copy($NAME.text);
-                            term->item.constArgument->isTyped = false;
-                            name_list->add(name_list,
-                                           term,
-                                           &free);
+                            char *name = string_malloc_copy($NAME.text);
+                            // Do not free here.
+                            name_list->add(name_list, name, NULL);
                             }
                       )* ')'
         {
         $value = malloc(sizeof(*$value));
-        $value->type = PREDICATE;
-        $value->item.predicate_formula.name =
-                                            string_malloc_copy($predicate.text);
-        $value->item.predicate_formula.numOfArguments =
-                                                    name_list->size(name_list);
-        $value->item.predicate_formula.arguments =
-                     malloc(sizeof(*$value->item.predicate_formula.arguments) *
-                     $value->item.predicate_formula.numOfArguments);
-        for (int i = 0; i < $value->item.predicate_formula.numOfArguments; ++i){
-            //List index starts from 1
-            $value->item.predicate_formula.arguments[i] = *(struct term *)
-                                                name_list->get(name_list, i+1);
+        $value->pred = predManag_getPred(global_predManag,
+                                         (char *) $predicate.text->chars);
+        if ($value->pred == NULL) {
+            fprintf(stderr,
+                    "error parsing predicate '\%s'\n",
+                    $predicate.text->chars);
+        }
+        if (name_list->size(name_list) != $value->pred->numOfParams) {
+            fprintf(stderr,
+                  "error parsing predicate '\%s'. Wrong number of arguments\n",
+                  $predicate.text->chars);
+        }
+        $value->term = malloc(sizeof(*$value->term) *
+                              $value->pred->numOfParams);
+        for (size_t i = 0; i < $value->pred->numOfParams; ++i) {
+            $value->term[i] = *(struct term *) name_list->get(name_list, i+1);
         }
         }
     //|   '(' '=' NAME NAME ')' // requires :equality
@@ -226,19 +234,18 @@ typedList_variable[pANTLR3_LIST list]
     local_list->free(local_list);
 }
     :   (variable {
-                  struct variable *item = malloc(sizeof(*item));
+                  struct term *item = malloc(sizeof(*item));
+                  item->isVariable = true;
                   item->name = string_malloc_copy($variable.text);
-                  item->isTyped = false;
-                  item->type = NULL;
+                  item->type = global_typeSystem->root;
                   // Do free structs. They must be COPIED into an array later.
                   $list->add($list, item, &free);
                   }
         )*
-    /* *** requires typing ***
     |   (variable {
-                  struct variable *item = malloc(sizeof(*item));
+                  struct term *item = malloc(sizeof(*item));
+                  item->isVariable = true;
                   item->name = string_malloc_copy($variable.text);
-                  item->isTyped = true;
                   item->type = NULL;
                   // Save these names in a local list first.
                   // Don't free. 'list' will do that.
@@ -248,11 +255,16 @@ typedList_variable[pANTLR3_LIST list]
                     // Now we know the type of the identifiers.
                     // ANTLR3_LIST index starts from 1
                     for (int i = 1; i <= local_list->size(local_list); ++i) {
-                        struct type *t = malloc(sizeof(*t));;
-                        t->name = string_malloc_copy($type.text);
                         // Add type information
-                        struct variable *item = local_list->get(local_list, i);
-                        item->type = t;
+                        struct term *item = local_list->get(local_list, i);
+                        item->type = typeSystem_getType(global_typeSystem,
+                                                    (char *)$type.text->chars);
+                        if (item->type == NULL) {
+                            fprintf(stderr,
+                                    "type error parsing '\%s - \%s'",
+                                    item->name,
+                                    $type.text->chars);
+                        }
                         // Add names to input-output list
                         // Do free structs. They must be COPIED into an array
                         // later.
@@ -260,7 +272,6 @@ typedList_variable[pANTLR3_LIST list]
                     }
                     }
         typedList_variable[$list] // requires :typing
-    */
     ;
 
 // The parameter LIST will be filled by this rule.
@@ -272,19 +283,18 @@ typedList_name[pANTLR3_LIST list]
     local_list->free(local_list);
 }
     :   (NAME {
-              struct constant *item = malloc(sizeof (*item));
+              struct term *item = malloc(sizeof (*item));
+              item->isVariable = false;
               item->name = string_malloc_copy($NAME.text);
-              item->isTyped = false;
-              item->type = NULL;
+              item->type = global_typeSystem->root;
               // Do free structs. They must be COPIED into an array later.
               $list->add($list, item, &free);
               }
         )*
-    /* *** requires typing ***
     |   (NAME {
-              struct constant *item = malloc(sizeof (*item));
+              struct term *item = malloc(sizeof (*item));
+              item->isVariable = false;
               item->name = string_malloc_copy($NAME.text);
-              item->isTyped = true;
               // Type will be assigned later.
               item->type = NULL;
               // Save these names in a local list first.
@@ -296,14 +306,15 @@ typedList_name[pANTLR3_LIST list]
                     // ANTLR3_LIST index starts from 1
                     for (int i = 1; i <= local_list->size(local_list); ++i) {
                         // Add type information
-                        struct constant *item = local_list->get(local_list, i);
-                        // Malloc type for every instance of "object",
-                        // cause it is much easier to free. Now you can just
-                        // free it on any " object". That is not efficient. If
-                        // typing is realy needed this should be improved.
-                        struct type *t = malloc(sizeof(*t));
-                        t->name = string_malloc_copy($type.text);
-                        item->type = t;
+                        struct term *item = local_list->get(local_list, i);
+                        item->type = typeSystem_getType(global_typeSystem,
+                                                    (char *)$type.text->chars);
+                        if (item->type == NULL) {
+                            fprintf(stderr,
+                                    "type error parsing '\%s - \%s'",
+                                    item->name,
+                                    $type.text->chars);
+                        }
                         // Add names to input-output list
                         // Do free structs. They must be COPIED into an array
                         // later.
@@ -311,7 +322,6 @@ typedList_name[pANTLR3_LIST list]
                     }
                     }
         typedList_name[$list] // requires :typing
-    */
     ;
 
 
@@ -320,6 +330,12 @@ typedList_name[pANTLR3_LIST list]
 domain returns [struct domain *value]
 @init {
     $value = malloc(sizeof (*$value));
+    // Initialize type system
+    $value->typeSystem = typeSystem_create();
+    // Set global pointer to type system
+    global_typeSystem = $value->typeSystem;
+    // Set default for global predicate manager.
+    global_predManag = NULL;
 
     bool hasRequirements = false;
     bool hasConstants = false;
@@ -334,11 +350,15 @@ domain returns [struct domain *value]
 // producing.
     :   '(' 'define' domainName
         (requireDef     { hasRequirements = true; } )?
-        // typesDef?    // requires :typing
+        (typesDef[$value->typeSystem])?
         (constantsDef   { hasConstants = true; }    )?
-        (predicatesDef  { hasPredicates = true; }   )?
+        (predicatesDef  {
+                        global_predManag = $predicatesDef.value;
+                        $value->predManag = global_predManag;        
+                        }
+        )?
         // Special arrangement to parse action-costs only (and no other
-        // functions.
+        // functions).
         ( '(' ':functions' '(' 'total-cost' ')' ('-' functionType)? ')' )?
         // functionsDef?    // requires :fluents
         // constraints?     // requires :constraints ?
@@ -363,20 +383,11 @@ domain returns [struct domain *value]
 
         // Write constants into struct domain
         if (hasConstants) {
-            $value->numOfConstants = $constantsDef.value_num;
-            $value->constants = $constantsDef.value;
+            $value->numOfCons = $constantsDef.value_num;
+            $value->cons = $constantsDef.value;
         } else {
-            $value->numOfConstants = 0;
-            $value->constants = NULL;
-        }
-
-        // Write predicates into struct domain
-        if (hasPredicates) {
-            $value->numOfPredicates = $predicatesDef.value_num;
-            $value->predicates = $predicatesDef.value;
-        } else {
-            $value->numOfPredicates = 0;
-            $value->predicates = NULL;
+            $value->numOfCons = 0;
+            $value->cons = NULL;
         }
 
         // Copy actions (from structureDef) into domain struct.
@@ -392,6 +403,52 @@ domain returns [struct domain *value]
             $value->actions = NULL;
         }
         }
+    ;
+
+typesDef[struct typeSystem *typeSystem]
+    : '(' ':types' typesDefAux[typeSystem] ')'
+    ;
+
+// parsing-wise similar to typed list of name
+typesDefAux[struct typeSystem *typeSystem]
+@init {
+    pANTLR3_LIST local_list = antlr3ListNew(LIST_SIZE_INIT);
+}
+@after {
+    local_list->free(local_list);
+}
+    : (NAME
+        {
+        bool success = typeSystem_addType(global_typeSystem,
+                                          (char *)$NAME.text->chars,
+                                          NULL);
+        if (!success) {
+            fprintf(stderr, "error parsing type '\%s'\n", $NAME.text->chars);
+        }
+        }
+      )*
+    | (NAME
+        {
+        char *name = string_malloc_copy($NAME.text);
+        local_list->add(local_list, name, &free);
+        }
+      )+ '-' type
+        {
+        for (int i = 0; i < local_list->size(local_list); ++i) {
+            // Antlr3 list index starts from 1
+            char *typeName = (char *) local_list->get(local_list, i+1);
+            bool success = typeSystem_addType(typeSystem,
+                                              typeName,
+                                              (char *)$type.text->chars);
+            if (!success) {
+                fprintf(stderr,
+                        "error parsing type '\%s - \%s'",
+                        typeName,
+                        $type.text->chars);
+            }
+        }
+        }
+      typesDefAux[typeSystem]
     ;
 
 /* Domain name */
@@ -451,7 +508,10 @@ requireKey returns [enum requirement *value]
 //    | ':existential-preconditions'
 //    | ':universal-preconditions'
 //    | ':quantified-preconditions'
-//    | ':conditional-effects'
+    | ':conditional-effects'
+      {
+      *$value = CONDITIONAL_EFFECTS;
+      }
 //    | ':fluents'
 //    | ':numeric-fluents'
 //    | ':adl'
@@ -471,7 +531,7 @@ requireKey returns [enum requirement *value]
 /* Types definitions */
 
 /* Constants definitions */
-constantsDef returns [int32_t value_num, struct constant *value]
+constantsDef returns [int32_t value_num, struct term *value]
 @init {
     pANTLR3_LIST list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -484,13 +544,13 @@ constantsDef returns [int32_t value_num, struct constant *value]
         $value = malloc(sizeof(*$value) * $value_num);
         for (int i = 0; i < $value_num; ++i) {
             // antlr3 lists start at 1
-            $value[i] = *(struct constant *) list->get(list, i+1);
+            $value[i] = *(struct term *) list->get(list, i+1);
         }
         }
     ;
 
 /* Predicate definitions */
-predicatesDef returns [int32_t value_num, struct predicate *value]
+predicatesDef returns [struct predManag *value]
 @init {
     pANTLR3_LIST list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -504,20 +564,9 @@ predicatesDef returns [int32_t value_num, struct predicate *value]
                           }
                           )+ ')'
     {
-    $value_num = list->size(list);
-    $value = malloc(sizeof(*$value) * $value_num);
-    for (int i = 0; i < $value_num; ++i) {
-        // Index in ANTLR3-List starts at 1!
-        $value[i] = *(struct predicate *) list->get(list, i+1);
-    }
+    $value = predManag_create(list);
     }
     ;
-
-/* Funtion definitions */
-//TODO
-
-/*/ Constraint definitions */
-//TODO
 
 /* Structure definitions */
 structureDef returns [struct action *value]
@@ -539,15 +588,14 @@ actionDef returns [struct action *value]
         {
         $value = malloc(sizeof(*$value));
         $value->name = string_malloc_copy($actionSymbol.text);
-        $value->numOfParameters = var_list->size(var_list);
-        $value->parameters = malloc(sizeof(*$value->parameters) *
-                                    $value->numOfParameters);
-        for (int i = 0; i < $value->numOfParameters; ++i) {
+        $value->numOfParams = var_list->size(var_list);
+        $value->params = malloc(sizeof(*$value->params) *
+                                $value->numOfParams);
+        for (int i = 0; i < $value->numOfParams; ++i) {
             // antlr3 list indizes are based on 1
-            $value->parameters[i] = *(struct variable *)
-                                    var_list->get(var_list, i+1);
+            $value->params[i] = *(struct term*)var_list->get(var_list, i+1);
         }
-        $value->precondition = $actionDefBody.value_precondition;
+        $value->precond = $actionDefBody.value_precondition;
         $value->effect = $actionDefBody.value_effect;
         }
     ;
@@ -556,8 +604,8 @@ actionSymbol
     :   NAME
     ;
 
-actionDefBody returns [struct formula *value_precondition,
-                       struct formula *value_effect]
+actionDefBody returns [struct goal *value_precondition,
+                       struct effect *value_effect]
 @init {
     $value_precondition = NULL;
     $value_effect = NULL;
@@ -574,7 +622,7 @@ actionDefBody returns [struct formula *value_precondition,
         )?
     ;
 
-emptyOr_preconditionGoalDescription returns [struct formula *value]
+emptyOr_preconditionGoalDescription returns [struct goal *value]
     :   '(' ')'
         {
         $value = NULL;
@@ -585,7 +633,7 @@ emptyOr_preconditionGoalDescription returns [struct formula *value]
         }
     ;
 
-emptyOr_effect returns [struct formula *value]
+emptyOr_effect returns [struct effect *value]
     :   '(' ')'
         {
         $value = NULL;
@@ -615,23 +663,23 @@ emptyOr_effect returns [struct formula *value]
 //    : '(' 'forall' '(' typedList_variable ')' preconditionGoalDescription ')'
 //    ;
 /* cause we don't support :preferences */
-preconditionGoalDescription returns [struct formula *value]
+preconditionGoalDescription returns [struct goal *value]
     : goalDescription
         {
         $value = $goalDescription.value;
         }
     ;
 
-preferencesGoalDescription
-    :   goalDescription
-    //| '(' 'preference' preferenceName? goalDescription ')'  // requires :preferences
-    ;
+//preferencesGoalDescription
+//    :   goalDescription
+//    //| '(' 'preference' preferenceName? goalDescription ')'  // requires :preferences
+//    ;
 
-preferenceName
-    :   NAME
-    ;
+//preferenceName
+//    :   NAME
+//    ;
 
-goalDescription returns [struct formula *value]
+goalDescription returns [struct goal *value]
 @init {
     pANTLR3_LIST and_list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -644,9 +692,15 @@ goalDescription returns [struct formula *value]
     */
     //: atomicFormula_term
     // The following line includes atomicFormula_term
-    : literal_term // requires :negative-preconditions TODO
+    : literal_term // requires :negative-preconditions
         {
-        $value = $literal_term.value;
+        $value = malloc(sizeof(*$value));
+
+        bool pos = $literal_term.value_pos;
+        $value->numOfPos = pos ? 1 : 0;
+        $value->numOfNeg = pos ? 0 : 1;
+        $value->posLiterals = pos ? $literal_term.value : NULL;
+        $value->negLiterals = pos ? NULL : $literal_term.value;
         }
     | '(' 'and' (gd=goalDescription {
                                     and_list->add(and_list,
@@ -657,18 +711,33 @@ goalDescription returns [struct formula *value]
                 )* ')'
         {
         $value = malloc(sizeof(*$value));
-        $value->type = AND;
-        $value->item.and_formula.numOfParameters = and_list->size(and_list);
-        $value->item.and_formula.p =malloc(sizeof(*$value->item.and_formula.p) *
-                                      $value->item.and_formula.numOfParameters);
-        for (int i = 0; i < $value->item.and_formula.numOfParameters; ++i) {
-            // antlr3 list index starts from 1.
-            $value->item.and_formula.p[i] = *(struct formula *)
-                                            and_list->get(and_list, i+1);
+        // Count positive and negative literals in goalDescriptions
+        $value->numOfPos = 0;
+        $value->numOfNeg = 0;
+        for (size_t i = 0; i < and_list->size(and_list); ++i) {
+            struct goal *subGoal = and_list->get(and_list, i+1);
+            $value->numOfPos += subGoal->numOfPos;
+            $value->numOfNeg += subGoal->numOfNeg;
         }
-        if ($value->item.and_formula.numOfParameters == 0) {
-            $value->item.and_formula.p = NULL;
+        $value->posLiterals = malloc(sizeof(*$value->posLiterals) *
+                                     $value->numOfPos);
+        $value->negLiterals = malloc(sizeof(*$value->negLiterals) *
+                                     $value->numOfNeg);
+        size_t posIndex = 0;
+        size_t negIndex = 0;
+        for (size_t i = 0; i < and_list->size(and_list); ++i) {
+            struct goal *subGoal = and_list->get(and_list, i+1);
+            for (size_t j = 0; j < subGoal->numOfPos; ++j) {
+                $value->posLiterals[posIndex] = subGoal->posLiterals[j];
+                posIndex++;
+            }
+            for (size_t j = 0; j < subGoal->numOfNeg; ++j) {
+                $value->negLiterals[negIndex] = subGoal->negLiterals[j];
+                negIndex++;
+            }
+            // TODO: Do we have to free anything here? I don't think so.
         }
+        assert(posIndex == $value->numOfPos && negIndex == $value->numOfNeg);
         }
     //| '(' 'forall' '(' typedList_variable ')' goalDescription ')' // requires :universal-preconditions
     //| '(' 'or' goalDescription* ')' // requires :disjunctive-preconditions
@@ -678,7 +747,7 @@ goalDescription returns [struct formula *value]
     //| fComp // requires :atomic-fluents
     ;
 
-effect returns [struct formula *value]
+effect returns [struct effect *value]
 @init {
         pANTLR3_LIST and_list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -686,250 +755,361 @@ effect returns [struct formula *value]
         and_list->free(and_list);
 }
     : '(' 'and' (cEffect {
-                         and_list->add(and_list, $cEffect.value, &free);
+                         if ($cEffect.value != NULL) {
+                             and_list->add(and_list, $cEffect.value, &free);
+                         }
                          }
                   )* ')'
         {
         $value = malloc(sizeof(*$value));
-        $value->type = AND;
-        $value->item.and_formula.numOfParameters = and_list->size(and_list);
-        $value->item.and_formula.p =malloc(sizeof(*$value->item.and_formula.p) *
-                                      $value->item.and_formula.numOfParameters);
-        for (int i = 0; i < $value->item.and_formula.numOfParameters; ++i) {
+        $value->numOfElems = and_list->size(and_list);
+        $value->elems = malloc(sizeof(*$value->elems) * $value->numOfElems);
+        for (int i = 0; i < $value->numOfElems; ++i) {
             // Antlr3 list index starts from 1.
-            $value->item.and_formula.p[i] = *(struct formula *)
+            $value->elems[i] = *(struct effectElem *)
                                             and_list->get(and_list, i+1);
         }
         }
     | cEffect
         {
-        $value = $cEffect.value;
+        $value = malloc(sizeof(*$value));
+        $value->numOfElems = 1;
+        $value->elems = $cEffect.value;
         }
     ;
 
-cEffect returns [struct formula *value]
-    //: '(' 'forall' '(' typedList_variable ')' effect ')' // requires :conditional-effects
-    //| '(' 'when' goalDescription condEffect ')' // requires :conditional-effects
-    //|
-    : pEffect
-        {
-        $value = $pEffect.value;
-        }
-    ;
-
-condEffect
-    : '(' 'and' pEffect* ')'
-    | pEffect
-    ;
-
-pEffect returns [struct formula *value]
-// TODO: check: That is the same as a literal_term - right?
-    : '(' 'not' atomicFormula_term ')'
+// Attention: May return NULL.
+cEffect returns [struct effectElem *value]
+@init {
+    pANTLR3_LIST var_list = antlr3ListNew(LIST_SIZE_INIT);
+}
+@after {
+    var_list->free(var_list);
+}
+    : '(' 'forall' '(' typedList_variable[var_list] ')' effect ')'
         {
         $value = malloc(sizeof(*$value));
-        $value->type = NOT;
-        $value->item.not_formula.p = $atomicFormula_term.value;
+        $value->type = FORALL;
+        $value->it.forall = malloc(sizeof(*$value->it.forall));
+        $value->it.forall->numOfVars = var_list->size(var_list);
+        $value->it.forall->vars = malloc(sizeof(*$value->it.forall->vars) *
+                                         $value->it.forall->numOfVars);
+        for (int i = 0; i < $value->it.forall->numOfVars; ++i) {
+            $value->it.forall->vars[i] = *(struct term *)
+                                                var_list->get(var_list, i+1);
+        }
+        $value->it.forall->effect = $effect.value;
+        }
+    | condEffectPre
+        {
+        $value = $condEffectPre.value;
+        }
+    | pEffect
+        {
+        if ($pEffect.value == NULL) {
+            $value = NULL;
+        } else {
+            $value = malloc(sizeof(*$value));
+            $value->type = $pEffect.value_pos ? POS_LITERAL : NEG_LITERAL;
+            $value->it.literal = $pEffect.value;
+        }
+        }
+    ;
+
+// May return NULL
+condEffectPre returns [struct effectElem *value]
+@init {
+    pANTLR3_LIST posAtoms = antlr3ListNew(LIST_SIZE_INIT);
+    pANTLR3_LIST negAtoms = antlr3ListNew(LIST_SIZE_INIT);
+}
+@after {
+    posAtoms->free(posAtoms);
+    negAtoms->free(negAtoms);
+}
+    : '(' 'when' goalDescription condEffect[posAtoms, negAtoms] ')'
+        {
+        if (posAtoms->size(posAtoms) == 0 && negAtoms->size(negAtoms) == 0) {
+            $value = NULL;
+        } else {
+            $value = malloc(sizeof(*$value));
+            $value->type = WHEN;
+            struct when *when = $value->it.when;
+            when->precond = $goalDescription.value;
+            when->numOfPos = posAtoms->size(posAtoms);
+            when->numOfNeg = negAtoms->size(negAtoms);
+            when->posLiterals = malloc(sizeof(*when->posLiterals) *
+                                         when->numOfPos);
+            when->negLiterals = malloc(sizeof(*when->negLiterals) *
+                                         when->numOfNeg);
+            for (int i = 0; i < when->numOfPos; ++i) {
+                when->posLiterals[i] = *(struct atom *)
+                                                posAtoms->get(posAtoms, i+1);
+            }
+            for (int i = 0; i < when->numOfNeg; ++i) {
+                when->negLiterals[i] = *(struct atom *)
+                                                negAtoms->get(negAtoms, i+1);
+            }
+        }
+        }
+    ;
+
+// This rule fills the lists passed as arguments.
+condEffect[pANTLR3_LIST posAtoms, pANTLR3_LIST negAtoms]
+    : '(' 'and' (pEffect
+                        {
+                        if ($pEffect.value == NULL) {
+                            // Do not do anything
+                        } else {
+                            if ($pEffect.value_pos) {
+                                // Do free?
+                                $posAtoms->add($posAtoms,
+                                               $pEffect.value,
+                                               &free);
+                            } else {
+                                assert (!$pEffect.value_pos);
+                                // Do free?
+                                $negAtoms->add($negAtoms,
+                                               $pEffect.value,
+                                               &free);
+                            }
+                        }
+                        }
+        
+                        )* ')'
+    | pEffect
+        {
+        if ($pEffect.value == NULL) {
+            // Do not do anything
+        } else {
+            if ($pEffect.value_pos) {
+                // Do free?
+                $posAtoms->add($posAtoms,
+                               $pEffect.value,
+                               &free);
+            } else {
+                assert (!$pEffect.value_pos);
+                // Do free?
+                $negAtoms->add($negAtoms,
+                               $pEffect.value,
+                               &free);
+            }
+        }
+        }
+    ;
+
+// Attention: May return NULL.
+pEffect returns [bool value_pos, struct atom *value]
+    : '(' 'not' atomicFormula_term ')'
+        {
+        $value_pos = false;
+        $value = $atomicFormula_term.value;
         }
     | atomicFormula_term
         {
+        $value_pos = true;
         $value = $atomicFormula_term.value;
         }
     // Special arrangement to parse action-costs
     | '(' 'increase' '(' 'total-cost' ')' NUMBER ')'
+        {
+        $value = NULL; // we have to check that in the caller.
+        $value_pos = true;
+        }
     //| '(' assignOp fHead fExp ')' // requires :numeric-fluents
     //| '(' 'assign' function_term term ')' //requires :object-fluents
     //| '(' 'assign' function_term 'undefined' ')' //requires :object-fluents
     ;
 
-/*** Problem ***/
-problem returns [struct problem *value]
-@init {
-    $value = malloc(sizeof(*value));
-
-    bool hasRequirements = false;
-    bool hasObjects = false;
-}
-    : '(' 'define' '(' 'problem' pName=NAME ')'
-            '(' ':domain' dName=NAME ')'
-            (requireDef         { hasRequirements = true; } )?
-            (objectDeclaration  { hasObjects = true; }      )?
-            init
-            goal
-            //constraints?  // requires :constraints
-            //metricSpec?   // requires :numeric-fluents
-            //lengthSpec?   // deprecated since PDDL 2.1
-      ')'
-      {
-      // Write name into struct problem
-      $value->name = string_malloc_copy($pName.text);
-
-      // Write coresponding domain name into struct problem
-      $value->domainName = string_malloc_copy($dName.text);
-
-      // Write requirements into struct problem.
-      if (hasRequirements) {
-          $value->numOfRequirements = $requireDef.value_num;
-          $value->requirements = $requireDef.value;
-      } else {
-          $value->numOfRequirements = 0;
-          $value->requirements = NULL;
-      }
-
-      // Write objects into struct problem.
-      if (hasObjects) {
-          $value->numOfObjects = $objectDeclaration.value_num;
-          $value->objects = $objectDeclaration.value;
-      } else {
-          $value->numOfObjects = 0;
-          $value->objects = NULL;
-      }
-
-      // Write initial state to struct problem
-      $value->init = $init.value;
-
-      // Write goal to struct problem
-      $value->goal = $goal.value;
-      }
-    ;
-
-objectDeclaration returns [int32_t value_num, struct constant *value]
-@init {
-    pANTLR3_LIST obj_list = antlr3ListNew(LIST_SIZE_INIT);
-}
-@after {
-    obj_list->free(obj_list);
-}
-    : '(' ':objects' typedList_name[obj_list] ')'
-      {
-      $value_num = obj_list->size(obj_list);
-      if ($value_num == 0) {
-        $value = NULL;
-      } else {
-          $value = malloc (sizeof(*$value) * $value_num);
-          for (int i = 0; i < $value_num; ++i) {
-              // antlr3 list index starts from 1
-              $value[i] = *(struct constant *) obj_list->get(obj_list, i+1);
-          }
-      }
-      }
-    ;
-
-init returns [struct state *value]
-@init {
-    pANTLR3_LIST init_list = antlr3ListNew(LIST_SIZE_INIT);
-}
-@after {
-    init_list->free(init_list);
-}
-    : '(' ':init' (initEl {
-                          // Check for NULL, because action-cost initializations
-                          // return NULL.
-                          if ($initEl.value != NULL) {
-                              init_list->add(init_list, $initEl.value, &free);
-                          }
-                          }
-                  )* ')'
-        {
-        $value = malloc(sizeof(*$value));
-        /*** Closed world assumption applies. ***/
-        // Negative literals will be ignored and only positive literals
-        // will be included in the state
-        // I have to parse negative literals just because of pddl 3.1
-        // specification.
-
-        pANTLR3_LIST fluent_list = antlr3ListNew(LIST_SIZE_INIT);
-        for (int i = 0; i < init_list->size(init_list); ++i) {
-            // antlr3 list index starts from 1
-            struct formula *f =
-                            (struct formula *) init_list->get(init_list, i+1);
-            switch (f->type) {
-            case PREDICATE: {
-                // Do not use free here, cause init_list->free() will free the
-                // elements.
-                fluent_list->add(fluent_list, f, NULL);
-                break;
-            }
-            case AND: {
-                // init should be a set of fluents. ANDs are not allowed.
-                assert(false);
-                // Free unused structures immediately
-                libpddl31_formula_free_rec(f);
-                break;
-            }
-            case NOT: {
-                // We just ignore NOT-formulas, because of closed world
-                // assumption.
-
-                // Free unused structures immediately
-                libpddl31_formula_free_rec(f);
-                break;
-            }
-            default: {
-                assert(false);
-                break;
-            }
-            }
-        }
-        // Now all positive literals are in the fluent_list.
-        $value->numOfFluents = fluent_list->size(fluent_list);
-        $value->fluents = malloc(   sizeof(*$value->fluents) *
-                                    $value->numOfFluents);
-        for (int i = 0; i < $value->numOfFluents; ++i) {
-            struct formula *form =   (struct formula *)
-                                     fluent_list->get(fluent_list, i+1);
-            assert (form->type == PREDICATE);
- 
-            struct fluent fluent;
-            fluent.name = form->item.predicate_formula.name;
-            fluent.numOfArguments = form->item.predicate_formula.numOfArguments;
-            fluent.arguments = malloc(  sizeof(*fluent.arguments) *
-                                        fluent.numOfArguments);
-            for (int j = 0; j < fluent.numOfArguments; ++j) {
-                if (form->item.predicate_formula.arguments[j].type == VARIABLE){
-                    assert (false && "ungrounded predicate in initial state");
-                    libpddl31_term_free(
-                                    &form->item.predicate_formula.arguments[j]);
-                    continue;
-                }
-                assert (form->item.predicate_formula.arguments[j].type ==
-                                                                    CONSTANT);
-                // Copy constant arguments into fluent
-                fluent.arguments[j] =
-                  *form->item.predicate_formula.arguments[j].item.constArgument;
-                // Tricky free() calls!
-                free(form->item.predicate_formula.arguments[j].
-                                                            item.constArgument);
-            }
-            free(form->item.predicate_formula.arguments);
-            
-            // Copy fluent into state
-            memcpy(&$value->fluents[i], &fluent, sizeof(fluent));
-        }
-        fluent_list->free(fluent_list);
-        }
-
-    ;
-
-initEl returns [struct formula *value]
-    : literal_name
-      {
-      $value = $literal_name.value;
-      }
-      // Special arrangement for action-costs. According to the pddl 3.1
-      // specification total-cost must be initialized to 0. I will just ignore
-      // that since the algorithm will just ignore action costs.
-    | '(' '=' '(' 'total-cost' ')' '0' ')'
-      {
-      $value = NULL;
-      }
-    //| '(' 'at' <number> <literal(name)> ')' // requires :timed−initial−literals 
-    //| '(' '=' <basic-function-term> <number> ')' // requires :numeric-fluents 
-    //| '(' '=' <basic-function-term> <name> ')' // requires :object-fluents
-    ;
-
-goal returns [struct formula *value]
-    : '(' ':goal' preconditionGoalDescription ')'
-      {
-      $value = $preconditionGoalDescription.value;
-      }
-    ;
+// TODO TODO TODO
+///*** Problem ***/
+//problem returns [struct problem *value]
+//@init {
+//    $value = malloc(sizeof(*value));
+//
+//    bool hasRequirements = false;
+//    bool hasObjects = false;
+//}
+//    : '(' 'define' '(' 'problem' pName=NAME ')'
+//            '(' ':domain' dName=NAME ')'
+//            (requireDef         { hasRequirements = true; } )?
+//            (objectDeclaration  { hasObjects = true; }      )?
+//            init
+//            goal
+//            //constraints?  // requires :constraints
+//            //metricSpec?   // requires :numeric-fluents
+//            //lengthSpec?   // deprecated since PDDL 2.1
+//      ')'
+//      {
+//      // Write name into struct problem
+//      $value->name = string_malloc_copy($pName.text);
+//
+//      // Write coresponding domain name into struct problem
+//      $value->domainName = string_malloc_copy($dName.text);
+//
+//      // Write requirements into struct problem.
+//      if (hasRequirements) {
+//          $value->numOfRequirements = $requireDef.value_num;
+//          $value->requirements = $requireDef.value;
+//      } else {
+//          $value->numOfRequirements = 0;
+//          $value->requirements = NULL;
+//      }
+//
+//      // Write objects into struct problem.
+//      if (hasObjects) {
+//          $value->numOfObjects = $objectDeclaration.value_num;
+//          $value->objects = $objectDeclaration.value;
+//      } else {
+//          $value->numOfObjects = 0;
+//          $value->objects = NULL;
+//      }
+//
+//      // Write initial state to struct problem
+//      $value->init = $init.value;
+//
+//      // Write goal to struct problem
+//      $value->goal = $goal.value;
+//      }
+//    ;
+//
+//objectDeclaration returns [int32_t value_num, struct constant *value]
+//@init {
+//    pANTLR3_LIST obj_list = antlr3ListNew(LIST_SIZE_INIT);
+//}
+//@after {
+//    obj_list->free(obj_list);
+//}
+//    : '(' ':objects' typedList_name[obj_list] ')'
+//      {
+//      $value_num = obj_list->size(obj_list);
+//      if ($value_num == 0) {
+//        $value = NULL;
+//      } else {
+//          $value = malloc (sizeof(*$value) * $value_num);
+//          for (int i = 0; i < $value_num; ++i) {
+//              // antlr3 list index starts from 1
+//              $value[i] = *(struct constant *) obj_list->get(obj_list, i+1);
+//          }
+//      }
+//      }
+//    ;
+//
+//init returns [struct state *value]
+//@init {
+//    pANTLR3_LIST init_list = antlr3ListNew(LIST_SIZE_INIT);
+//}
+//@after {
+//    init_list->free(init_list);
+//}
+//    : '(' ':init' (initEl {
+//                          // Check for NULL, because action-cost initializations
+//                          // return NULL.
+//                          if ($initEl.value != NULL) {
+//                              init_list->add(init_list, $initEl.value, &free);
+//                          }
+//                          }
+//                  )* ')'
+//        {
+//        $value = malloc(sizeof(*$value));
+//        /*** Closed world assumption applies. ***/
+//        // Negative literals will be ignored and only positive literals
+//        // will be included in the state
+//        // I have to parse negative literals just because of pddl 3.1
+//        // specification.
+//
+//        pANTLR3_LIST fluent_list = antlr3ListNew(LIST_SIZE_INIT);
+//        for (int i = 0; i < init_list->size(init_list); ++i) {
+//            // antlr3 list index starts from 1
+//            struct formula *f =
+//                            (struct formula *) init_list->get(init_list, i+1);
+//            switch (f->type) {
+//            case PREDICATE: {
+//                // Do not use free here, cause init_list->free() will free the
+//                // elements.
+//                fluent_list->add(fluent_list, f, NULL);
+//                break;
+//            }
+//            case AND: {
+//                // init should be a set of fluents. ANDs are not allowed.
+//                assert(false);
+//                // Free unused structures immediately
+//                libpddl31_formula_free_rec(f);
+//                break;
+//            }
+//            case NOT: {
+//                // We just ignore NOT-formulas, because of closed world
+//                // assumption.
+//
+//                // Free unused structures immediately
+//                libpddl31_formula_free_rec(f);
+//                break;
+//            }
+//            default: {
+//                assert(false);
+//                break;
+//            }
+//            }
+//        }
+//        // Now all positive literals are in the fluent_list.
+//        $value->numOfFluents = fluent_list->size(fluent_list);
+//        $value->fluents = malloc(   sizeof(*$value->fluents) *
+//                                    $value->numOfFluents);
+//        for (int i = 0; i < $value->numOfFluents; ++i) {
+//            struct formula *form =   (struct formula *)
+//                                     fluent_list->get(fluent_list, i+1);
+//            assert (form->type == PREDICATE);
+// 
+//            struct fluent fluent;
+//            fluent.name = form->item.predicate_formula.name;
+//            fluent.numOfArguments = form->item.predicate_formula.numOfArguments;
+//            fluent.arguments = malloc(  sizeof(*fluent.arguments) *
+//                                        fluent.numOfArguments);
+//            for (int j = 0; j < fluent.numOfArguments; ++j) {
+//                if (form->item.predicate_formula.arguments[j].type == VARIABLE){
+//                    assert (false && "ungrounded predicate in initial state");
+//                    libpddl31_term_free(
+//                                    &form->item.predicate_formula.arguments[j]);
+//                    continue;
+//                }
+//                assert (form->item.predicate_formula.arguments[j].type ==
+//                                                                    CONSTANT);
+//                // Copy constant arguments into fluent
+//                fluent.arguments[j] =
+//                  *form->item.predicate_formula.arguments[j].item.constArgument;
+//                // Tricky free() calls!
+//                free(form->item.predicate_formula.arguments[j].
+//                                                            item.constArgument);
+//            }
+//            free(form->item.predicate_formula.arguments);
+//            
+//            // Copy fluent into state
+//            memcpy(&$value->fluents[i], &fluent, sizeof(fluent));
+//        }
+//        fluent_list->free(fluent_list);
+//        }
+//
+//    ;
+//
+//initEl returns [struct formula *value]
+//    : literal_name
+//      {
+//      $value = $literal_name.value;
+//      }
+//      // Special arrangement for action-costs. According to the pddl 3.1
+//      // specification total-cost must be initialized to 0. I will just ignore
+//      // that since the algorithm will just ignore action costs.
+//    | '(' '=' '(' 'total-cost' ')' '0' ')'
+//      {
+//      $value = NULL;
+//      }
+//    //| '(' 'at' <number> <literal(name)> ')' // requires :timed−initial−literals 
+//    //| '(' '=' <basic-function-term> <number> ')' // requires :numeric-fluents 
+//    //| '(' '=' <basic-function-term> <name> ')' // requires :object-fluents
+//    ;
+//
+//goal returns [struct formula *value]
+//    : '(' ':goal' preconditionGoalDescription ')'
+//      {
+//      $value = $preconditionGoalDescription.value;
+//      }
+//    ;

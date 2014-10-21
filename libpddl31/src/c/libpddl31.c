@@ -150,6 +150,7 @@ struct domain *libpddl31_domain_parse(char *filename)
     return domain;
 }
 
+/*
 struct problem *libpddl31_problem_parse(char *filename)
 {
     // ANTLR3 character input stream
@@ -697,4 +698,4 @@ bool libpddl31_problem_is_member_of_domain( struct problem *problem,
     int equals = strcmp(problem->domainName, domain->name);
     return equals == 0;
 }
-
+*/
