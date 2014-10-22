@@ -45,7 +45,7 @@ typeSystem_create()
     return typeSystem;
 }
 
-// Frees the give datastructure. The given pointer is invalid afterwards.
+// Frees the given data  structure. The given pointer is freed too.
 void
 typeSystem_free(struct typeSystem *typeSystem)
 {

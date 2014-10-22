@@ -45,8 +45,7 @@ struct domain
 
     struct predManag *predManag;
 
-    int32_t numOfActions;
-    struct action *actions;
+    struct actionManag *actionManag;
 
     struct typeSystem *typeSystem;
 };

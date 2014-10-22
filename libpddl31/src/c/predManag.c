@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <antlr3interfaces.h>
 
 #include "predManag.h"
@@ -7,7 +8,7 @@ predManag_create(pANTLR3_LIST preds)
 {
     struct predManag *result = malloc(sizeof(*result));
     result->numOfPreds = preds->size(preds);
-    result->preds = malloc(sizeof(*reslut->preds) * result->numOfPreds);
+    result->preds = malloc(sizeof(*result->preds) * result->numOfPreds);
     for (int i = 0; i < result->numOfPreds; ++i) {
         // The antlr3 list index starts from 1.
         result->preds[i] = *(struct predicate *) preds->get(preds, i+1);
@@ -15,11 +16,42 @@ predManag_create(pANTLR3_LIST preds)
     return result;
 };
 
-void 
-predManag_free(struct predManag)
+static void
+free_predicate_aux(struct predicate *pred)
 {
-    assert(false);
-    // TODO
+    if (pred == NULL) {
+        return;
+    }
+
+    if (pred->name != NULL) {
+        free(pred->name);
+        pred->name = NULL;
+    }
+
+    if (pred->params != NULL) {
+        for (int i = 0; i < pred->numOfParams; ++i) {
+            libpddl31_term_free(&pred->params[i]);
+        }
+        free(pred->params);
+        pred->params = NULL;
+    }
+}
+
+void 
+predManag_free(struct predManag *predManag)
+{
+    if (predManag == NULL) {
+        return;
+    }
+
+    if (predManag->preds != NULL) {
+        for (int i = 0; i < predManag->numOfPreds; ++i) {
+            free_predicate_aux(&predManag->preds[i]);
+        }
+        free(predManag->preds),
+        predManag->preds = NULL;
+    }
+    free(predManag);
 };
 
 struct predicate *

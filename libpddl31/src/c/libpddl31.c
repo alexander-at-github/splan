@@ -142,12 +142,58 @@ struct domain *libpddl31_domain_parse(char *filename)
                                "aborted.\n",
                                psr->pParser->rec->state->errorCount);
         // free domain itself, it might be allocated incompletely.
-        libpddl31_domain_free(domain);
+        // TODO: uncomment. //libpddl31_domain_free(domain);
         return NULL;
     }
     // No error
 
     return domain;
+}
+
+void
+libpddl31_term_free(struct term *term)
+{
+    if (term == NULL) {
+        return;
+    }
+
+    if (term->name != NULL) {
+        free(term->name);
+        term->name = NULL;
+    }
+
+    // Don't free type of term, it should be freed by the type system.
+}
+
+void
+libpddl31_domain_free(struct domain *domain)
+{
+    if (domain == NULL) {
+        return;
+    }
+
+    if (domain->cons != NULL) {
+        for (int i = 0; i < domain->numOfCons; ++i) {
+            libpddl31_term_free(&domain->cons[i]);
+        }
+        free(domain->cons);
+        domain->cons = NULL;
+    }
+
+    if (domain->predManag != NULL) {
+        predManag_free(domain->predManag);
+        domain->predManag = NULL;
+    }
+
+    if (domain->actions != NULL) {
+       actionManag_free(domain->actionManag);
+       domain->actionManag = NULL;
+    }
+
+    if (domain->typeSystem != NULL) {
+        typeSystem_free(domain->typeSystem);
+        domain->typeSystem = NULL;
+    }
 }
 
 /*

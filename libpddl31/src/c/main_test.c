@@ -25,5 +25,5 @@ main (int agrc, char **argv)
     printf("\n");
     */
 
-    libpddl31_domain_free(domain);
+    // TODO: uncomment. //libpddl31_domain_free(domain);
 }

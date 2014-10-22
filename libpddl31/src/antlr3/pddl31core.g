@@ -4,6 +4,8 @@ lexer grammar pddl31core;
 
 }
 
+// Rules with the keyword 'fragment' can only be used in lexer rules.
+
 NAME	:	LETTER ANYCHAR*
 	;
 fragment LETTER
@@ -12,7 +14,7 @@ fragment LETTER
 fragment ANYCHAR
 	:	LETTER | DIGIT | '-' | '_'
 	;
-fragment NUMBER
+NUMBER
 	:	DIGIT+ DECIMAL?
 	;
 fragment DIGIT
