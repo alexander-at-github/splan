@@ -1,7 +1,7 @@
 CC=clang
 AR=ar
 
-CFLAGS=#-dNDEBUG #-g # for debug symbols
+CFLAGS=-g #-dNDEBUG #-g # for debug symbols
 
 # path to the ANTLR3 runtime.
 # Both versions do work
@@ -67,7 +67,11 @@ $(PARSER_OBJ_FILE): $(BUILD_DIR)/pddl31Parser.c $(BUILD_DIR)/pddl31Parser.h
 $(LIB_OBJ_FILE): $(SRC_DIR)/c/libpddl31.c $(LEXER_HEADER_FILE) $(PARSER_HEADER_FILE)
 	$(CC) $(CFLAGS) -c -I$(BUILD_DIR) -I$(SRC_DIR)/c -o $@ $<
 
-$(LIB_FILE): $(LIB_OBJ_FILE) $(LEXER_OBJ_FILE) $(LEXER_CORE_OBJ_FILE) $(PARSER_OBJ_FILE)
+# general rule
+$(BUILD_DIR)/%.o: $(SRC_DIR)/c/%.c
+	$(CC) $(CFLAGS) -c -I$(SRC_DIR)/c -o $@ $<
+
+$(LIB_FILE): $(LIB_OBJ_FILE) $(LEXER_OBJ_FILE) $(LEXER_CORE_OBJ_FILE) $(PARSER_OBJ_FILE) $(BUILD_DIR)/predManag.o $(BUILD_DIR)/actionManag.o $(BUILD_DIR)/typeSystem.o 
 	mkdir -p $(BIN_DIR)
 	$(AR) rcs $@ $^
 	cp $(LIB_HEADER_FILE) $(STRUCTS_HEADER_FILE) $(BIN_DIR)

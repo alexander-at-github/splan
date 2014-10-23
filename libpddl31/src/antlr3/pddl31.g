@@ -19,6 +19,7 @@ import pddl31core;
     #include "libpddl31.h"
     #include "pddl31structs.h"
     #include "predManag.h"
+    #include "actionManag.h"
     #include "typeSystem.h"
 
     // Size of lists when initialized
@@ -390,18 +391,7 @@ domain returns [struct domain *value]
             $value->cons = NULL;
         }
 
-        // Copy actions (from structureDef) into domain struct.
-        $value->numOfActions = action_list->size(action_list);
-        $value->actions = malloc(sizeof(*$value->actions) *
-                                        $value->numOfActions);
-        for (int i = 0; i < $value->numOfActions; ++i) {
-            // antlr list index starts from 1
-            $value->actions[i] = *(struct action *)
-                                        action_list->get(action_list, i+1);
-        }
-        if ($value->numOfActions == 0) {
-            $value->actions = NULL;
-        }
+        $value->actionManag = actionManag_create(action_list);
         }
     ;
 
@@ -735,7 +725,13 @@ goalDescription returns [struct goal *value]
                 $value->negLiterals[negIndex] = subGoal->negLiterals[j];
                 negIndex++;
             }
-            // TODO: Do we have to free anything here? I don't think so.
+            // Important to free the arrays the sub-goal allocated.
+            if (subGoal->posLiterals != NULL) {
+                free(subGoal->posLiterals);
+            }
+            if (subGoal->negLiterals != NULL) {
+                free(subGoal->negLiterals);
+            }
         }
         assert(posIndex == $value->numOfPos && negIndex == $value->numOfNeg);
         }

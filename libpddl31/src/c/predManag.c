@@ -2,6 +2,7 @@
 #include <antlr3interfaces.h>
 
 #include "predManag.h"
+#include "libpddl31.h"
 
 struct predManag *
 predManag_create(pANTLR3_LIST preds)

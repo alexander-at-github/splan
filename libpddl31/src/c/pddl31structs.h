@@ -61,7 +61,7 @@ struct problem
 
     int32_t numOfObjects;
     // objects are constants
-    struct constant *objects;
+    struct constant *objects; // TODO: struct constant ??? struct term!
     
     struct state *init;
 

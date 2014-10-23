@@ -8,6 +8,9 @@
 #include "pddl31Lexer.h"
 #include "pddl31Parser.h"
 #include "pddl31structs.h"
+#include "predManag.h"
+#include "actionManag.h"
+#include "typeSystem.h"
 
 // In order to read Latin-1 input files (pddl-domain or pddl-problem files)
 // set INPUT_STREAM_ENCODING to 7. If you want to read UTF-8 files set it to
@@ -165,11 +168,22 @@ libpddl31_term_free(struct term *term)
     // Don't free type of term, it should be freed by the type system.
 }
 
+// Frees also the pointer handed as argument.
 void
 libpddl31_domain_free(struct domain *domain)
 {
     if (domain == NULL) {
         return;
+    }
+
+    if (domain->name != NULL) {
+        free(domain->name);
+        domain->name = NULL;
+    }
+
+    if (domain->requirements != NULL) {
+        free(domain->requirements);
+        domain->requirements = NULL;
     }
 
     if (domain->cons != NULL) {
@@ -180,19 +194,196 @@ libpddl31_domain_free(struct domain *domain)
         domain->cons = NULL;
     }
 
+
+    // Order of frees of these is important.
+    // Action Manager uses Predicate Manager. So, Predicate Manager must still
+    // exist when freeing Action Manager.
+    if (domain->actionManag != NULL) {
+       actionManag_free(domain->actionManag);
+       domain->actionManag = NULL;
+    }
+
     if (domain->predManag != NULL) {
         predManag_free(domain->predManag);
         domain->predManag = NULL;
     }
 
-    if (domain->actions != NULL) {
-       actionManag_free(domain->actionManag);
-       domain->actionManag = NULL;
-    }
-
     if (domain->typeSystem != NULL) {
         typeSystem_free(domain->typeSystem);
         domain->typeSystem = NULL;
+    }
+
+    free(domain);
+}
+
+void
+free_atom(struct atom *atom)
+{
+    if (atom == NULL) {
+        return;
+    }
+
+    // Ne need to free predicate, it just points to a member of the predicate
+    // manager.
+
+    if (atom->term != NULL) {
+        for (int i = 0; i < atom->pred->numOfParams; ++i) {
+            libpddl31_term_free(&atom->term[i]);
+        }
+        free(atom->term);
+        atom->term = NULL;
+    }   
+}
+
+void
+free_goal(struct goal *goal)
+{
+    if (goal == NULL) {
+        return;
+    }
+
+    if (goal->posLiterals != NULL) {
+        for (int i = 0; i < goal->numOfPos; ++i) {
+            free_atom(&goal->posLiterals[i]);
+        }
+        free(goal->posLiterals);
+        goal->posLiterals = NULL;
+    }
+    if (goal->negLiterals != NULL) {
+        for (int i = 0; i < goal->numOfNeg; ++i) {
+            free_atom(&goal->negLiterals[i]);
+        }
+        free(goal->negLiterals);
+        goal->negLiterals = NULL;
+    }
+}
+
+// Forward declaration
+void free_effect(struct effect *e);
+
+
+void free_forall(struct forall *forall)
+{
+    if (forall == NULL) {
+        return;
+    }
+
+    if (forall->vars != NULL) {
+        for (int i = 0; i < forall->numOfVars; ++i) {
+            libpddl31_term_free(&forall->vars[i]);
+        }
+        free(forall->vars);
+        forall->vars = NULL;
+    }
+
+    if (forall->effect != NULL) {
+        free_effect(forall->effect);
+        free(forall->effect);
+        forall->effect = NULL;
+    }
+}
+
+void free_when(struct when *when)
+{
+    if (when == NULL) {
+        return;
+    }
+
+    if (when->precond != NULL) {
+        free_goal(when->precond);
+        free(when->precond);
+    }
+
+    if (when->posLiterals != NULL) {
+        for (int i = 0; i < when->numOfPos; ++i) {
+            free_atom(&when->posLiterals[i]);
+        }
+        free(when->posLiterals);
+        when->posLiterals = NULL;
+    }
+    if (when->negLiterals != NULL) {
+        for (int i = 0; i < when->numOfNeg; ++i) {
+            free_atom(&when->negLiterals[i]);
+        }
+        free(when->negLiterals);
+        when->negLiterals = NULL;
+    }
+}
+
+void free_effectElem(struct effectElem *eElem)
+{
+    if (eElem == NULL) {
+        return;
+    }
+
+    switch(eElem->type) {
+    case POS_LITERAL: // drop into next case
+    case NEG_LITERAL: {
+        free_atom(eElem->it.literal);
+        free(eElem->it.literal);
+        break;
+    }
+    case FORALL: {
+        free_forall(eElem->it.forall);
+        free(eElem->it.forall);
+        break;
+    }
+    case WHEN: {
+        free_when(eElem->it.when);
+        free(eElem->it.when);
+        break;
+    }
+    default: {
+        assert(false);
+        break;
+    }
+    }
+}
+
+void free_effect(struct effect *effect)
+{
+    if(effect == NULL) {
+        return;
+    }
+
+    if (effect->elems != NULL) {
+        for (int i = 0; i < effect->numOfElems; ++i) {
+            free_effectElem(&effect->elems[i]);
+        }
+        free(effect->elems);
+        effect->elems = NULL;
+    }
+}
+
+void libpddl31_action_free(struct action *action)
+{
+    if (action == NULL) {
+        return;
+    }
+
+    if (action->name != NULL) {
+        free(action->name);
+        action->name = NULL;
+    }
+
+    if (action->params != NULL) {
+        for (int i = 0; i < action->numOfParams; ++i) {
+            libpddl31_term_free(&action->params[i]);
+        }
+        free(action->params);
+        action->params = NULL;
+    }
+
+    if (action->precond != NULL) {
+        free_goal(action->precond);
+        free(action->precond);
+        action->precond = NULL;
+    }
+
+    if (action->effect != NULL) {
+        free_effect(action->effect);
+        free(action->effect);
+        action->effect = NULL;
     }
 }
 
