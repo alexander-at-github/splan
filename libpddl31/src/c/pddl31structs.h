@@ -39,9 +39,8 @@ struct domain
     int32_t numOfRequirements;
     enum requirement *requirements;
 
-    int32_t numOfCons;
-    // constants are terms
-    struct term *cons;
+    // Constants will be treated as objects.
+    struct objManag *objManag;
 
     struct predManag *predManag;
 
@@ -59,9 +58,7 @@ struct problem
     int32_t numOfRequirements;
     enum requirement *requirements;
 
-    int32_t numOfObjects;
-    // objects are constants, which are terms
-    struct term *objects;
+    // Objects will be saved in the domains object manager
     
     struct state *init;
 

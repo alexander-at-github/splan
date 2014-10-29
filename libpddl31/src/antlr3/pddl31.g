@@ -18,6 +18,7 @@ import pddl31core;
 
     #include "libpddl31.h"
     #include "pddl31structs.h"
+    #include "objManag.h"
     #include "predManag.h"
     #include "actionManag.h"
     #include "typeSystem.h"
@@ -43,12 +44,13 @@ import pddl31core;
         return dest;
     }
 
+    struct objManag *global_objManag = NULL;
     /* The type system. We always need that, therefor we make it a global
      * variable.
      * It will be initialized by the domain-rule or problem-rule.
      */
     struct typeSystem *global_typeSystem = NULL;
-    struct predManag *global_predManag;
+    struct predManag *global_predManag = NULL;
 }
 
 /*** Logic ***/
@@ -187,6 +189,8 @@ atomicFormula_term returns [struct atom *value]
     //|   '(' '=' term term ')' // requires :equality
     ;
 
+// Atomic formula name is only used by the initial state!
+// TODO: Query object manager!
 atomicFormula_name returns [struct atom *value]
 @init {
     pANTLR3_LIST name_list = antlr3ListNew(LIST_SIZE_INIT);
@@ -217,14 +221,22 @@ atomicFormula_name returns [struct atom *value]
         $value->term = malloc(sizeof(*$value->term) *
                               $value->pred->numOfParams);
         for (size_t i = 0; i < $value->pred->numOfParams; ++i) {
-            // TODO
-            $value->term[i].name = *(struct term *) name_list->get(name_list, i+1);
+            /*
+                // TODO TODO TODO !!!
+            //$value->term[i].name = name_list->get(name_list, i+1);
+            //$value->term[i].isVariable = false;
+            //$value->term[i].type = global_typeSystem->root;
+            */
+            char *name = name_list->get(name_list, i+1);
+            $value->term[i] = objManag_getObject(global_objManag, name);
+            if ($value->term[i] == NULL) {
+                fprintf(stderr,
+                        "error parsing object '\%s'. Unkown object\n",
+                        name);
+            }
         }
         }
     //|   '(' '=' NAME NAME ')' // requires :equality
-    //    {
-    //    // TODO
-    //    }
     ;
 
 /* Miscellaneous */
@@ -332,6 +344,9 @@ typedList_name[pANTLR3_LIST list]
 domain returns [struct domain *value]
 @init {
     $value = malloc(sizeof (*$value));
+    // Initialize object manager
+    $value->objManag = objManag_create();
+    global_objManag = $value->objManag;
     // Initialize type system
     $value->typeSystem = typeSystem_create();
     // Set global pointer to type system
@@ -353,7 +368,13 @@ domain returns [struct domain *value]
     :   '(' 'define' domainName
         (requireDef     { hasRequirements = true; } )?
         (typesDef[$value->typeSystem])?
-        (constantsDef   { hasConstants = true; }    )?
+        (constantsDef   {
+                        objManag_add(   $value->objManag,
+                                        $constantsDef.value_num,
+                                        $constantsDef.value);
+                        free ($constantsDef.value); // TODO: Is it right?
+                        }
+        )?
         (predicatesDef  {
                         global_predManag = $predicatesDef.value;
                         $value->predManag = global_predManag;        
@@ -381,15 +402,6 @@ domain returns [struct domain *value]
         } else {
             $value->numOfRequirements = 0;
             $value->requirements = NULL;
-        }
-
-        // Write constants into struct domain
-        if (hasConstants) {
-            $value->numOfCons = $constantsDef.value_num;
-            $value->cons = $constantsDef.value;
-        } else {
-            $value->numOfCons = 0;
-            $value->cons = NULL;
         }
 
         $value->actionManag = actionManag_create(action_list);
@@ -925,6 +937,7 @@ problem[struct domain *domain] returns [struct problem *value]
     bool hasRequirements = false;
     bool hasObjects = false;
 
+    global_objManag = $domain->objManag;
     // Set global pointer to type system
     global_typeSystem = $domain->typeSystem;
     // Set default for global predicate manager.
@@ -933,7 +946,15 @@ problem[struct domain *domain] returns [struct problem *value]
     : '(' 'define' '(' 'problem' pName=NAME ')'
             '(' ':domain' dName=NAME ')'
             (requireDef         { hasRequirements = true; } )?
-            (objectDeclaration  { hasObjects = true; }      )?
+            (od=objectDeclaration  {
+                                // Adding the objects to the domains
+                                // object manager
+                                objManag_add(   $domain->objManag,
+                                                $od.value_num,
+                                                $od.value);
+                                }
+            
+            )?
             init
             goal
             //constraints?  // requires :constraints
@@ -957,15 +978,6 @@ problem[struct domain *domain] returns [struct problem *value]
       } else {
           $value->numOfRequirements = 0;
           $value->requirements = NULL;
-      }
-
-      // Write objects into struct problem.
-      if (hasObjects) {
-          $value->numOfObjects = $objectDeclaration.value_num;
-          $value->objects = $objectDeclaration.value;
-      } else {
-          $value->numOfObjects = 0;
-          $value->objects = NULL;
       }
 
       // Write initial state to struct problem

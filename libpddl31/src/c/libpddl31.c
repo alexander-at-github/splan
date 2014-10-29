@@ -8,6 +8,7 @@
 #include "pddl31Lexer.h"
 #include "pddl31Parser.h"
 #include "pddl31structs.h"
+#include "objManag.h"
 #include "predManag.h"
 #include "actionManag.h"
 #include "typeSystem.h"
@@ -186,14 +187,10 @@ libpddl31_domain_free(struct domain *domain)
         domain->requirements = NULL;
     }
 
-    if (domain->cons != NULL) {
-        for (int i = 0; i < domain->numOfCons; ++i) {
-            libpddl31_term_free(&domain->cons[i]);
-        }
-        free(domain->cons);
-        domain->cons = NULL;
+    if (domain->objManag != NULL) {
+        objManag_free(domain->objManag);
+        domain->objManag = NULL;
     }
-
 
     // Order of frees of these is important.
     // Action Manager uses Predicate Manager. So, Predicate Manager must still
