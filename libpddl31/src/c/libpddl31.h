@@ -7,11 +7,13 @@
 #include "pddl31structs.h"
 
 struct domain *libpddl31_domain_parse(char *filename);
+// Attention: struct problem must be free'd before domain!
 void libpddl31_domain_free(struct domain *domain);
 //void libpddl31_domain_print(struct domain *domain);
 
 struct problem *libpddl31_problem_parse(struct domain *domain, char *filename);
-//void libpddl31_problem_free(struct problem *problem);
+// Attention: struct problem must be free'd before domain!
+void libpddl31_problem_free(struct problem *problem);
 //void libpddl31_problem_print(struct problem *problem);
 //
 ///* Checks if a problem is member of a domain */

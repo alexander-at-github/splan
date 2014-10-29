@@ -163,7 +163,7 @@ atomicFormula_term returns [struct atom *value]
     :   '(' predicate (term {
                             term_list->add(term_list,
                                            $term.value,
-                                           &free);
+                                           NULL); // TODO changed 29.10 22:00
                             }
                       )* ')'
         {
@@ -183,14 +183,13 @@ atomicFormula_term returns [struct atom *value]
         $value->term = malloc(sizeof(*$value->term) *
                               $value->pred->numOfParams);
         for (size_t i = 0; i < $value->pred->numOfParams; ++i) {
-            $value->term[i] = *(struct term *) term_list->get(term_list, i+1);
+            $value->term[i] = (struct term *) term_list->get(term_list, i+1);
         }
         }
     //|   '(' '=' term term ')' // requires :equality
     ;
 
 // Atomic formula name is only used by the initial state!
-// TODO: Query object manager!
 atomicFormula_name returns [struct atom *value]
 @init {
     pANTLR3_LIST name_list = antlr3ListNew(LIST_SIZE_INIT);
@@ -200,8 +199,8 @@ atomicFormula_name returns [struct atom *value]
 }
     :   '(' predicate (NAME {
                             char *name = string_malloc_copy($NAME.text);
-                            // Do not free here.
-                            name_list->add(name_list, name, NULL);
+                            // Do free here.
+                            name_list->add(name_list, name, &free);
                             }
                       )* ')'
         {
@@ -222,7 +221,6 @@ atomicFormula_name returns [struct atom *value]
                               $value->pred->numOfParams);
         for (size_t i = 0; i < $value->pred->numOfParams; ++i) {
             /*
-                // TODO TODO TODO !!!
             //$value->term[i].name = name_list->get(name_list, i+1);
             //$value->term[i].isVariable = false;
             //$value->term[i].type = global_typeSystem->root;
@@ -952,6 +950,7 @@ problem[struct domain *domain] returns [struct problem *value]
                                 objManag_add(   $domain->objManag,
                                                 $od.value_num,
                                                 $od.value);
+                                free($od.value);
                                 }
             
             )?

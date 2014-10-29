@@ -146,7 +146,7 @@ struct domain *libpddl31_domain_parse(char *filename)
                                "aborted.\n",
                                psr->pParser->rec->state->errorCount);
         // free domain itself, it might be allocated incompletely.
-        // TODO: uncomment. //libpddl31_domain_free(domain);
+        libpddl31_domain_free(domain);
         return NULL;
     }
     // No error
@@ -225,7 +225,8 @@ libpddl31_atom_free(struct atom *atom)
 
     if (atom->term != NULL) {
         for (int i = 0; i < atom->pred->numOfParams; ++i) {
-            libpddl31_term_free(&atom->term[i]);
+            libpddl31_term_free(atom->term[i]);
+            free(atom->term[i]);
         }
         free(atom->term);
         atom->term = NULL;
@@ -421,12 +422,67 @@ struct problem *libpddl31_problem_parse(struct domain *domain, char *filename)
                                "aborted.\n",
                                psr->pParser->rec->state->errorCount);
         // free problem itself, it might be allocated incompletely.
-        // TODO!!! libpddl31_problem_free(problem);
+        libpddl31_problem_free(problem);
         return NULL;
     }
     // No error
 
     return problem;
+}
+
+void free_state(struct state *state)
+{
+    if (state == NULL) {
+        return;
+    }
+
+    if (state->fluents != NULL) {
+        for (size_t i = 0; i < state->numOfFluents; ++i) {
+            // These atoms only point to prediactes and terms which will be
+            // free'd by coresponding managers. The array of pointers to terms
+            // of atom needs to be free'd though.
+            // TODO: Maybe improve that!
+            free(state->fluents[i].term);
+        }
+        free(state->fluents);
+        state->fluents = NULL;
+    }
+}
+
+void libpddl31_problem_free(struct problem *problem)
+{
+    if (problem == NULL) {
+        return;
+    }
+
+    if (problem->name != NULL) {
+        free(problem->name);
+        problem->name = NULL;
+    }
+
+    if (problem->domainName != NULL) {
+        free(problem->domainName);
+        problem->domainName = NULL;
+    }
+
+    if (problem->requirements != NULL) {
+        free(problem->requirements);
+        problem->requirements = NULL;
+    }
+
+    if (problem->init != NULL) {
+        free_state(problem->init);
+        free(problem->init);
+        problem->init = NULL;
+    }
+
+    if (problem->goal != NULL) {
+        free_goal(problem->goal);
+        free(problem->goal);
+        problem->goal = NULL;
+    }
+
+    free(problem);
 }
 
 /*

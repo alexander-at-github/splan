@@ -20,7 +20,7 @@ struct objManag *objManag_add(  struct objManag * objManag,
     }
 
     struct term *tmp = realloc(objManag->objs,
-                               (objManag->numOfObjs + count) *sizeof(*newObjs));
+                               (objManag->numOfObjs + count) * sizeof(*newObjs));
     if (tmp == NULL) {
         return NULL;
     }

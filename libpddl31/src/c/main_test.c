@@ -25,5 +25,6 @@ main (int agrc, char **argv)
     printf("\n");
     */
 
+    libpddl31_problem_free(problem);
     libpddl31_domain_free(domain);
 }

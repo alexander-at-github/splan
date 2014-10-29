@@ -128,7 +128,7 @@ struct atom
 {
     struct predicate *pred;
     // Number of constants is pred_cons->pred->numOfParams
-    struct term *term;
+    struct term **term;
 };
 
 // Semantics: conjunction
