@@ -10,13 +10,13 @@ main (int agrc, char **argv)
                         //"test_instances/blocks_domain_altered.pddl";
     struct domain *domain = libpddl31_domain_parse(domainFilename);
     //libpddl31_domain_print(domain);
-    //libpddl31_problem_free(problem);
 
-    /*
     char *problemFilename =
                         "../test_instances/openstacks-strips/p01.pddl";
                         //"test_instances/probBLOCKS-4-0_altered.pddl";
-    struct problem *problem = libpddl31_problem_parse(problemFilename);
+    struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
+    
+    /*
     libpddl31_problem_print(problem);
 
     printf("\n");
@@ -25,5 +25,5 @@ main (int agrc, char **argv)
     printf("\n");
     */
 
-    //libpddl31_domain_free(domain);
+    libpddl31_domain_free(domain);
 }

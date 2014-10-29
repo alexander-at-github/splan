@@ -217,7 +217,7 @@ libpddl31_domain_free(struct domain *domain)
 }
 
 void
-free_atom(struct atom *atom)
+libpddl31_atom_free(struct atom *atom)
 {
     if (atom == NULL) {
         return;
@@ -244,14 +244,14 @@ free_goal(struct goal *goal)
 
     if (goal->posLiterals != NULL) {
         for (int i = 0; i < goal->numOfPos; ++i) {
-            free_atom(&goal->posLiterals[i]);
+            libpddl31_atom_free(&goal->posLiterals[i]);
         }
         free(goal->posLiterals);
         goal->posLiterals = NULL;
     }
     if (goal->negLiterals != NULL) {
         for (int i = 0; i < goal->numOfNeg; ++i) {
-            free_atom(&goal->negLiterals[i]);
+            libpddl31_atom_free(&goal->negLiterals[i]);
         }
         free(goal->negLiterals);
         goal->negLiterals = NULL;
@@ -296,14 +296,14 @@ void free_when(struct when *when)
 
     if (when->posLiterals != NULL) {
         for (int i = 0; i < when->numOfPos; ++i) {
-            free_atom(&when->posLiterals[i]);
+            libpddl31_atom_free(&when->posLiterals[i]);
         }
         free(when->posLiterals);
         when->posLiterals = NULL;
     }
     if (when->negLiterals != NULL) {
         for (int i = 0; i < when->numOfNeg; ++i) {
-            free_atom(&when->negLiterals[i]);
+            libpddl31_atom_free(&when->negLiterals[i]);
         }
         free(when->negLiterals);
         when->negLiterals = NULL;
@@ -319,7 +319,7 @@ void free_effectElem(struct effectElem *eElem)
     switch(eElem->type) {
     case POS_LITERAL: // drop into next case
     case NEG_LITERAL: {
-        free_atom(eElem->it.literal);
+        libpddl31_atom_free(eElem->it.literal);
         free(eElem->it.literal);
         break;
     }
@@ -387,8 +387,7 @@ void libpddl31_action_free(struct action *action)
     }
 }
 
-/*
-struct problem *libpddl31_problem_parse(char *filename)
+struct problem *libpddl31_problem_parse(struct domain *domain, char *filename)
 {
     // ANTLR3 character input stream
     pANTLR3_INPUT_STREAM input;
@@ -412,7 +411,7 @@ struct problem *libpddl31_problem_parse(char *filename)
     // Attention: psr->pParser->rec->state->errorCount!!
     // not psr->pParser->rec->errorCount (as is stated in the example in the
     // documentation)
-    struct problem *problem = psr->problem(psr);
+    struct problem *problem = psr->problem(psr, domain);
     // We will check for parser errors after freeing all the memory, cause we
     // have to do that in any case.
     int errorCount = psr->pParser->rec->state->errorCount;
@@ -425,7 +424,7 @@ struct problem *libpddl31_problem_parse(char *filename)
                                "aborted.\n",
                                psr->pParser->rec->state->errorCount);
         // free problem itself, it might be allocated incompletely.
-        libpddl31_problem_free(problem);
+        // TODO!!! libpddl31_problem_free(problem);
         return NULL;
     }
     // No error
@@ -433,6 +432,7 @@ struct problem *libpddl31_problem_parse(char *filename)
     return problem;
 }
 
+/*
 void free_struct_constant_aux(struct constant *constant)
 {
     //printf("Debug: free_struct_constant_aux( %p )\n", (void *) constant);

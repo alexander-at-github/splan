@@ -60,8 +60,8 @@ struct problem
     enum requirement *requirements;
 
     int32_t numOfObjects;
-    // objects are constants
-    struct constant *objects; // TODO: struct constant ??? struct term!
+    // objects are constants, which are terms
+    struct term *objects;
     
     struct state *init;
 
@@ -108,13 +108,13 @@ struct predicate
     struct term *params;
 };
 
-// Basically a ground predicate or atom.
-struct fluent
-{
-    struct predicate *pred;
-    // The number of arguments is in fluent->predicate->numOfParams
-    struct constant *args;
-};
+//// Basically a ground predicate or atom.
+//struct fluent
+//{
+//    struct predicate *pred;
+//    // The number of arguments is in fluent->predicate->numOfParams
+//    struct constant *args;
+//};
 
 // Semantics: A state is a conjunction of fluents.
 // Closed world assumption and unique name assumption apply. The state can be
@@ -122,7 +122,7 @@ struct fluent
 struct state
 {
     int32_t numOfFluents;
-    struct fluent *fluents;
+    struct atom *fluents;
 };
 
 /** Goal **/
