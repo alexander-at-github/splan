@@ -180,10 +180,10 @@ atomicFormula_term returns [struct atom *value]
                   "error parsing predicate '\%s'. Wrong number of arguments\n",
                   $predicate.text->chars);
         }
-        $value->term = malloc(sizeof(*$value->term) *
+        $value->terms = malloc(sizeof(*$value->terms) *
                               $value->pred->numOfParams);
         for (size_t i = 0; i < $value->pred->numOfParams; ++i) {
-            $value->term[i] = (struct term *) term_list->get(term_list, i+1);
+            $value->terms[i] = (struct term *) term_list->get(term_list, i+1);
         }
         }
     //|   '(' '=' term term ')' // requires :equality
@@ -217,7 +217,7 @@ atomicFormula_name returns [struct atom *value]
                   "error parsing predicate '\%s'. Wrong number of arguments\n",
                   $predicate.text->chars);
         }
-        $value->term = malloc(sizeof(*$value->term) *
+        $value->terms = malloc(sizeof(*$value->terms) *
                               $value->pred->numOfParams);
         for (size_t i = 0; i < $value->pred->numOfParams; ++i) {
             /*
@@ -226,8 +226,8 @@ atomicFormula_name returns [struct atom *value]
             //$value->term[i].type = global_typeSystem->root;
             */
             char *name = name_list->get(name_list, i+1);
-            $value->term[i] = objManag_getObject(global_objManag, name);
-            if ($value->term[i] == NULL) {
+            $value->terms[i] = objManag_getObject(global_objManag, name);
+            if ($value->terms[i] == NULL) {
                 fprintf(stderr,
                         "error parsing object '\%s'. Unkown object\n",
                         name);

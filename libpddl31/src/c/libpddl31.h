@@ -14,11 +14,7 @@ void libpddl31_domain_print(struct domain *domain);
 struct problem *libpddl31_problem_parse(struct domain *domain, char *filename);
 // Attention: struct problem must be free'd before domain!
 void libpddl31_problem_free(struct problem *problem);
-//void libpddl31_problem_print(struct problem *problem);
-//
-///* Checks if a problem is member of a domain */
-//bool libpddl31_problem_is_member_of_domain( struct problem *problem,
-//                                            struct domain *domain);
+void libpddl31_problem_print(struct problem *problem);
 
 void libpddl31_atom_free(struct atom *atom);
 void libpddl31_term_free(struct term *term);

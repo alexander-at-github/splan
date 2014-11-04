@@ -18,10 +18,11 @@
 // 8.
 #define INPUT_STREAM_ENCODING 7 //8
 
-void free_parser_aux(   ppddl31Parser *psr,
-                        pANTLR3_COMMON_TOKEN_STREAM *tstream,
-                        ppddl31Lexer *lxr,
-                        pANTLR3_INPUT_STREAM *input)
+void
+free_parser_aux(ppddl31Parser *psr,
+                pANTLR3_COMMON_TOKEN_STREAM *tstream,
+                ppddl31Lexer *lxr,
+                pANTLR3_INPUT_STREAM *input)
 {
     // Free pseudo-objects in the reverse order we created them.
     if (*psr != NULL) {
@@ -46,11 +47,12 @@ void free_parser_aux(   ppddl31Parser *psr,
  * values will be lost. The function will set the 'psr' output parameter to
  * NULL on error.
  */
-void parse_pre_aux(char *fName,
-                   pANTLR3_INPUT_STREAM *input,             // output parameter
-                   ppddl31Lexer *lxr,                       // output parameter
-                   pANTLR3_COMMON_TOKEN_STREAM *tstream,    // output parameter
-                   ppddl31Parser *psr)                      // output parameter
+void
+parse_pre_aux(  char *fName,
+                pANTLR3_INPUT_STREAM *input,             // output parameter
+                ppddl31Lexer *lxr,                       // output parameter
+                pANTLR3_COMMON_TOKEN_STREAM *tstream,    // output parameter
+                ppddl31Parser *psr)                      // output parameter
 {
     *input = NULL;
     *lxr = NULL;
@@ -109,7 +111,8 @@ void parse_pre_aux(char *fName,
 
 }
 
-struct domain *libpddl31_domain_parse(char *filename)
+struct domain *
+libpddl31_domain_parse(char *filename)
 {
     // ANTLR3 character input stream
     pANTLR3_INPUT_STREAM input;
@@ -259,8 +262,8 @@ free_goal(struct goal *goal)
 // Forward declaration
 void free_effect(struct effect *e);
 
-
-void free_forall(struct forall *forall)
+void
+free_forall(struct forall *forall)
 {
     if (forall == NULL) {
         return;
@@ -281,7 +284,8 @@ void free_forall(struct forall *forall)
     }
 }
 
-void free_when(struct when *when)
+void
+free_when(struct when *when)
 {
     if (when == NULL) {
         return;
@@ -308,7 +312,8 @@ void free_when(struct when *when)
     }
 }
 
-void free_effectElem(struct effectElem *eElem)
+void
+free_effectElem(struct effectElem *eElem)
 {
     if (eElem == NULL) {
         return;
@@ -338,7 +343,8 @@ void free_effectElem(struct effectElem *eElem)
     }
 }
 
-void free_effect(struct effect *effect)
+void
+free_effect(struct effect *effect)
 {
     if(effect == NULL) {
         return;
@@ -353,7 +359,8 @@ void free_effect(struct effect *effect)
     }
 }
 
-void libpddl31_action_free(struct action *action)
+void
+libpddl31_action_free(struct action *action)
 {
     if (action == NULL) {
         return;
@@ -385,7 +392,8 @@ void libpddl31_action_free(struct action *action)
     }
 }
 
-struct problem *libpddl31_problem_parse(struct domain *domain, char *filename)
+struct problem *
+libpddl31_problem_parse(struct domain *domain, char *filename)
 {
     // ANTLR3 character input stream
     pANTLR3_INPUT_STREAM input;
@@ -430,7 +438,8 @@ struct problem *libpddl31_problem_parse(struct domain *domain, char *filename)
     return problem;
 }
 
-void free_state(struct state *state)
+void
+free_state(struct state *state)
 {
     if (state == NULL) {
         return;
@@ -449,7 +458,8 @@ void free_state(struct state *state)
     }
 }
 
-void libpddl31_problem_free(struct problem *problem)
+void
+libpddl31_problem_free(struct problem *problem)
 {
     if (problem == NULL) {
         return;
@@ -486,7 +496,8 @@ void libpddl31_problem_free(struct problem *problem)
 }
 
 
-void libpddl31_domain_print(struct domain *domain)
+void
+libpddl31_domain_print(struct domain *domain)
 {
     printf("Domain:[");
     printf("Name: %s,", domain->name);
@@ -509,7 +520,8 @@ void libpddl31_domain_print(struct domain *domain)
     printf("]\n");
 }
 
-void libpddl31_term_print(struct term *term)
+void
+libpddl31_term_print(struct term *term)
 {
     printf( "Term:[%s,name:%s,type:%s]",
             term->isVariable ? "variable" : "constant",
@@ -517,7 +529,8 @@ void libpddl31_term_print(struct term *term)
             term->type->name);
 }
 
-void libpddl31_predicate_print(struct predicate *pred)
+void
+libpddl31_predicate_print(struct predicate *pred)
 {
     printf("Predicate:[name:%s,parameter:[", pred->name);
     for (size_t i = 0; i < pred->numOfParams; ++i) {
@@ -529,7 +542,8 @@ void libpddl31_predicate_print(struct predicate *pred)
     printf("]]");
 }
 
-void libpddl31_atom_print(struct atom *atom)
+void
+libpddl31_atom_print(struct atom *atom)
 {
     printf("Atom:[predicate:%s,arguments:[", atom->pred->name);
     for (size_t i = 0; i < atom->pred->numOfParams; ++i) {
@@ -541,17 +555,49 @@ void libpddl31_atom_print(struct atom *atom)
     printf("]");
 }
 
-void libpddl31_forall_print (struct forall *forall)
-{
+// Forward declaration
+void libpddl31_effect_print (struct effect *effect);
 
+void
+libpddl31_forall_print (struct forall *forall)
+{
+    printf("Forall:[[");
+    for (size_t i = 0; i < forall->numOfVars; ++i) {
+        libpddl31_term_print(&forall->vars[i]);
+        if (i < forall->numOfVars - 1) {
+            printf(",");
+        }
+    }
+    printf("] DO ");
+    libpddl31_effect_print(forall->effect);
+    printf("]");
 }
 
-void libpddl31_when_print (struct when *when)
+void
+libpddl31_when_print (struct when *when)
 {
-
+    printf("When:[precondition:");
+    libpddl31_goal_print(when->precond);
+    printf("effect:[");
+    for(size_t i = 0; i < when->numOfPos; ++i) {
+        libpddl31_atom_print(&when->posLiterals[i]);
+        if (i < when->numOfPos - 1 || when->numOfNeg > 1) {
+            printf(",");
+        }
+    }
+    for(size_t i = 0; i < when->numOfNeg; ++i) {
+        printf("[NOT ");
+        libpddl31_atom_print(&when->negLiterals[i]);
+        printf("]");
+        if (i < when->numOfNeg - 1) {
+            printf(",");
+        }
+    }
+    printf("]");
 }
 
-void libpddl31_effectElem_print (struct effectElem *effectElem)
+void
+libpddl31_effectElem_print (struct effectElem *effectElem)
 {
     switch (effectElem->type) {
     case POS_LITERAL: {
@@ -575,7 +621,8 @@ void libpddl31_effectElem_print (struct effectElem *effectElem)
     }
 }
 
-void libpddl31_effect_print (struct effect *effect)
+void
+libpddl31_effect_print (struct effect *effect)
 {
     if (effect == NULL) {
         return;
@@ -593,7 +640,8 @@ void libpddl31_effect_print (struct effect *effect)
     printf("]");
 }
 
-void libpddl31_goal_print (struct goal *goal)
+void
+libpddl31_goal_print (struct goal *goal)
 {
     printf("Goal:[");
     for (size_t i = 0; i < goal->numOfPos; ++i) {
@@ -613,7 +661,8 @@ void libpddl31_goal_print (struct goal *goal)
     printf("]");
 }
 
-void libpddl31_action_print(struct action *action)
+void
+libpddl31_action_print(struct action *action)
 {
     printf( "Action:[name:%s,parameters:[",
             action->name);
@@ -631,3 +680,38 @@ void libpddl31_action_print(struct action *action)
     printf("]");
 }
 
+void
+libpddl31_state_print(struct state *state)
+{
+    printf("State:[");
+    for (size_t i = 0; i < state->numOfFluents; ++i) {
+        libpddl31_atom_print(&state->fluents[i]);
+        if (i < state->numOfFluents - 1) {
+            printf(",");
+        }
+    }
+    printf("]");
+}
+
+void
+libpddl31_problem_print(struct problem *problem)
+{
+    printf( "Problem:[Name:%s, Domain-name:%s, ",
+            problem->name,
+            problem->domainName);
+    printf("Requirements:[");
+    for (size_t i = 0; i < problem->numOfRequirements; ++i) {
+        printf("%d", problem->requirements[i]);
+        if (i < problem->numOfRequirements - 1) {
+            printf(", ");
+        }
+    }
+    printf("], ");
+
+    printf("Init:");
+    libpddl31_state_print(problem->init);
+    printf(", Goal:");
+    libpddl31_goal_print(problem->goal);
+
+    printf("]");
+}
