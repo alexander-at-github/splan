@@ -78,22 +78,6 @@ struct term
     struct type *type;
 };
 
-/*
-struct constant
-{
-    char *name;
-    struct type *type;
-};
-
-// struct variable is the same as struct constant. I want to differentiate that
-// though.
-struct variable
-{
-    char *name;
-    struct type *type;
-};
-*/
-
 // This is a formal predicate. That is, a predicate definition
 struct predicate
 {
@@ -104,14 +88,6 @@ struct predicate
     // This terms are all variables.
     struct term *params;
 };
-
-//// Basically a ground predicate or atom.
-//struct fluent
-//{
-//    struct predicate *pred;
-//    // The number of arguments is in fluent->predicate->numOfParams
-//    struct constant *args;
-//};
 
 // Semantics: A state is a conjunction of fluents.
 // Closed world assumption and unique name assumption apply. The state can be
@@ -155,30 +131,6 @@ struct action
 
     struct effect *effect;
 };
-
-/* precondition is also a goal. PDDL does not make destinction. That is,
- * in any goal or precondition you can have variables and constants.
-
-// Composition of a predicate and variables of an action, for example.
-struct pred_var
-{
-    struct predicate *pred;
-    // Number of variables is pred_var->predicate->numOfParams
-    struct variable *var;
-};
-
-// Semantics: A conjunction of literals (positive or negated atoms)
-struct precond
-{
-    // positive literals in this conjunction
-    int32_t numOfPos;
-    struct pred_var *posLiterals;
-    // negative literals in this conjunction
-    int32_t numOfNeg;
-    struct pred_var *negLiterals;
-};
-*/
-
 
 /** Effects **/
 
@@ -235,49 +187,5 @@ struct when
     struct atom *negLiterals;
 };
 
-/*
-enum formulaType
-{
-    PREDICATE 
-    ,AND
-    ,NOT
-    ,EMPTY  // TODO: do we need that? TODO: delete
-};
-
-struct formula
-{
-    enum formulaType type;
-    union {
-        struct {
-            char *name;
-            int32_t numOfArguments;
-            struct term *arguments; // Arguments are terms
-        } predicate_formula;
-        struct {
-            int32_t numOfParameters;
-            struct formula *p;
-        } and_formula;
-        struct {
-            struct formula *p;
-        } not_formula;
-    } item;
-};
-
-
-enum termType
-{
-    CONSTANT
-    ,VARIABLE
-};
-
-struct term
-{
-    enum termType type;
-    union {
-        struct constant *constArgument;
-        struct variable *varArgument;
-    } item;
-};
-*/
-
 #endif //PDDL31STRUCTS_H
+
