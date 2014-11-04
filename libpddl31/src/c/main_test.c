@@ -9,7 +9,7 @@ main (int agrc, char **argv)
                         "../test_instances/openstacks-strips/p01-domain.pddl";
                         //"test_instances/blocks_domain_altered.pddl";
     struct domain *domain = libpddl31_domain_parse(domainFilename);
-    //libpddl31_domain_print(domain);
+    libpddl31_domain_print(domain);
 
     char *problemFilename =
                         "../test_instances/openstacks-strips/p01.pddl";

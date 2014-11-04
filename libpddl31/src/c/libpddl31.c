@@ -223,13 +223,13 @@ libpddl31_atom_free(struct atom *atom)
     // Ne need to free predicate, it just points to a member of the predicate
     // manager.
 
-    if (atom->term != NULL) {
+    if (atom->terms != NULL) {
         for (int i = 0; i < atom->pred->numOfParams; ++i) {
-            libpddl31_term_free(atom->term[i]);
-            free(atom->term[i]);
+            libpddl31_term_free(atom->terms[i]);
+            free(atom->terms[i]);
         }
-        free(atom->term);
-        atom->term = NULL;
+        free(atom->terms);
+        atom->terms = NULL;
     }   
 }
 
@@ -442,7 +442,7 @@ void free_state(struct state *state)
             // free'd by coresponding managers. The array of pointers to terms
             // of atom needs to be free'd though.
             // TODO: Maybe improve that!
-            free(state->fluents[i].term);
+            free(state->fluents[i].terms);
         }
         free(state->fluents);
         state->fluents = NULL;
@@ -485,507 +485,149 @@ void libpddl31_problem_free(struct problem *problem)
     free(problem);
 }
 
-/*
-void free_struct_constant_aux(struct constant *constant)
-{
-    //printf("Debug: free_struct_constant_aux( %p )\n", (void *) constant);
-    if (constant == NULL) {
-        return;
-    }
-    if (constant->name != NULL) {
-        free(constant->name);
-        constant->name = NULL;
-    }
-    if (constant->isTyped && constant->type != NULL) {
-        if (constant->type->name != NULL) {
-            free(constant->type->name);
-            constant->type->name = NULL;
-        }
-        free(constant->type);
-        constant->type = NULL;
-    }
-}
-
-void free_struct_variable_aux(struct variable *variable)
-{
-    //printf("Debug: free_struct_variable_aux( %p )\n", (void *) variable);
-    if(variable == NULL) {
-        return;
-    }
-    if (variable->name != NULL) {
-        free(variable->name);
-        variable->name = NULL;
-    }
-    if (variable->isTyped && variable->type != NULL) {
-        if (variable->type->name != NULL) {
-            free(variable->type->name);
-            variable->type->name = NULL;
-        }
-        free(variable->type);
-        variable->type = NULL;
-    }
-}
-
-void free_struct_predicate_aux(struct predicate *predicate)
-{
-    if (predicate == NULL) {
-        return;
-    }
-    if (predicate->name != NULL) {
-        free(predicate->name);
-    }
-    // Free parameters
-    if (predicate->parameters != NULL) {
-        for (int i = 0; i < predicate->numOfParameters; ++i) {
-            free_struct_variable_aux(&predicate->parameters[i]);
-        }
-        free(predicate->parameters);
-    }
-}
-
-void free_struct_fluent_aux(struct fluent *fluent)
-{
-    if (fluent == NULL) {
-        return;
-    }
-    if (fluent->name != NULL) {
-        free(fluent->name);
-        fluent->name = NULL;
-    }
-    // Free arguments
-    if (fluent->arguments != NULL) {
-        for (int i = 0; i < fluent->numOfArguments; ++i) {
-            free_struct_constant_aux(&fluent->arguments[i]);
-        }
-        free(fluent->arguments);
-        fluent->arguments = NULL;
-    }
-}
-
-void free_struct_state_aux(struct state *state)
-{
-    if (state == NULL) {
-        return;
-    }
-    if (state->fluents != NULL) {
-        for (int i = 0; i < state->numOfFluents; ++i) {
-            free_struct_fluent_aux(&state->fluents[i]);
-        }
-        free(state->fluents);
-        state->fluents = NULL;
-    }
-}
-
-void libpddl31_term_free(struct term *term)
-{
-    if (term == NULL) {
-        return;
-    }
-    if (term->type == CONSTANT) {
-        free_struct_constant_aux(term->item.constArgument);
-        if (term->item.constArgument != NULL) {
-            free(term->item.constArgument);
-            term->item.constArgument = NULL;
-        }
-    } else if (term->type == VARIABLE) {
-        free_struct_variable_aux(term->item.varArgument);
-        if (term->item.varArgument != NULL) {
-            free(term->item.varArgument);
-            term->item.varArgument = NULL;
-        }
-    } else {
-        assert(false && "unkown term type");
-    }
-}
-
-void libpddl31_formula_free_rec(struct formula *formula)
-{
-    if (formula == NULL) {
-        return;
-    }
-    if (formula->type == PREDICATE) {
-        if (formula->item.predicate_formula.name != NULL) {
-            free(formula->item.predicate_formula.name);
-            formula->item.predicate_formula.name = NULL;
-        }
-        // Free predicate arguments
-        if (formula->item.predicate_formula.arguments != NULL) {
-            for (int i = 0;
-                 i < formula->item.predicate_formula.numOfArguments;
-                 ++i) {
-                libpddl31_term_free(
-                                &formula->item.predicate_formula.arguments[i]);
-            }
-            free(formula->item.predicate_formula.arguments);
-        }
-    } else if (formula->type == AND) {
-        // Free AND-formula
-        if (formula->item.and_formula.p != NULL) {
-            // Recurse on formulas combined by this AND
-            for (int i = 0;
-                 i < formula->item.and_formula.numOfParameters;
-                 ++i) {
-                libpddl31_formula_free_rec(&formula->item.and_formula.p[i]);
-            }
-            free(formula->item.and_formula.p);
-        }
-    } else if (formula->type == NOT) {
-        // Free NOT-formula
-        if (formula->item.not_formula.p != NULL) {
-            libpddl31_formula_free_rec(formula->item.not_formula.p);
-            free(formula->item.not_formula.p);
-        }
-    } else {
-        assert(false && "unkown formula type");
-    }
-    // Do *not* free formula itself, cause it might just be one element of an
-    // array of formulas, which will (must) be freed as an entity.
-}
-
-void free_struct_action_aux(struct action *action)
-{
-    if (action == NULL) {
-        return;
-    }
-    if (action->name != NULL) {
-        free(action->name);
-        action->name = NULL;
-    }
-    if (action->parameters != NULL) {
-        for (int i = 0; i < action->numOfParameters; ++i) {
-            free_struct_variable_aux(&action->parameters[i]);
-        }
-        free(action->parameters);
-        action->parameters = NULL;
-    }
-    libpddl31_formula_free_rec(action->precondition);
-    if (action->precondition != NULL) {
-        free(action->precondition);
-        action->precondition = NULL;
-    }
-    libpddl31_formula_free_rec(action->effect);
-    if (action->effect != NULL) {
-        free(action->effect);
-        action->effect = NULL;
-    }
-}
-
-void libpddl31_domain_free(struct domain *domain)
-{
-    printf("[libpddl31_domain_free]\n");
-
-    if (domain == NULL) {
-        return;
-    }
-
-    // Free name.
-    if (domain->name != NULL) {
-        free(domain->name);
-    }
- 
-    // Free requirements
-    if (domain->requirements != NULL) {
-        free(domain->requirements);
-    }
- 
-    // Free constants
-    if (domain->constants != NULL) {
-        for (int i = 0; i < domain->numOfConstants; ++i) {
-            free_struct_constant_aux(&domain->constants[i]);
-        }
-        free(domain->constants);
-    }
-
-    // Free predicates
-    if (domain->predicates != NULL) {
-        for (int i = 0; i < domain->numOfPredicates; ++i) {
-            free_struct_predicate_aux(&domain->predicates[i]);
-        }
-        free(domain->predicates);
-    }
-    
-    // Free actions
-    if (domain->actions != NULL) {
-        for (int i = 0; i < domain->numOfActions; ++i) {
-            free_struct_action_aux(&domain->actions[i]);
-        }
-        free(domain->actions);
-    }
-
-    // Free domain itself.
-    free(domain);
-}
-
-void libpddl31_problem_free(struct problem *problem)
-{
-    printf("[libpddl31_problem_free]\n");
-
-    if (problem == NULL) {
-        return;
-    }
-
-    // Free names
-    if (problem->name != NULL) {
-        free(problem->name);
-    }
-    if (problem->domainName != NULL) {
-        free(problem->domainName);
-    }
-
-    // Free requirements
-    if (problem->requirements != NULL) {
-        free(problem->requirements);
-    }
-
-    // Free objects
-    if (problem->objects != NULL) {
-        for (int i = 0; i < problem->numOfObjects; ++i) {
-            free_struct_constant_aux(&problem->objects[i]);
-        }
-        free(problem->objects);
-    }
-
-    // Free initial state
-    if (problem->init != NULL) {
-        free_struct_state_aux(problem->init);
-        free(problem->init);
-    }
-
-    // Free goal state
-    if (problem->goal != NULL) {
-        libpddl31_formula_free_rec(problem->goal);
-        free(problem->goal);
-    }
-
-    // Free problem itself.
-    free(problem);
-}
-
-void print_constant_aux(struct constant *constant)
-{
-    if (constant == NULL) {
-        return;
-    }
-    if (constant->name != NULL) {
-        printf("%s", constant->name);
-    }
-    if (constant->isTyped && constant->type != NULL) {
-        printf(" - %s", constant->type->name);
-    }
-}
-
-void print_term_aux(struct term *term)
-{
-    if (term->type == CONSTANT) {
-        print_constant_aux(term->item.constArgument);
-        //printf("%s", term->item.constArgument->name);
-    } else if (term->type == VARIABLE) {
-        printf("%s", term->item.varArgument->name);
-    } else {
-        assert(false && "unknown term type");
-    }
-}
-
-void print_fluent_aux(struct fluent *fluent)
-{
-    if (fluent == NULL) {
-        return;
-    }
-    printf("(");
-    if (fluent->name != NULL) {
-        printf("%s", fluent->name);
-    }
-    if (fluent->arguments != NULL) {
-        for (int i = 0; i < fluent->numOfArguments; ++i) {
-            printf(" ");
-            print_constant_aux(&fluent->arguments[i]);
-        }
-    }
-    printf(")");
-}
-
-void libpddl31_state_print(struct state *state)
-{
-    if (state == NULL) {
-        return;
-    }
-    if (state->fluents != NULL) {
-        for (int i = 0; i < state->numOfFluents; ++i) {
-            print_fluent_aux(&state->fluents[i]);
-            if (i < state->numOfFluents - 1) {
-                // separate fluents by blanks
-                printf(" ");
-            }
-        }
-    }
-}
-
-void libpddl31_formula_print(struct formula *formula)
-{
-    if (formula == NULL) {
-        return;
-    }
-    if (formula->type == PREDICATE) {
-        printf("(%s", formula->item.predicate_formula.name);
-        for (int i = 0;
-             i < formula->item.predicate_formula.numOfArguments; 
-             ++i) {
-            printf(" ");
-            print_term_aux(&formula->item.predicate_formula.arguments[i]);
-        }
-        printf(")");
-    } else if (formula->type == AND) {
-        printf("(and");
-        for (int i = 0; i < formula->item.and_formula.numOfParameters; ++i) {
-            printf(" ");
-            libpddl31_formula_print(&formula->item.and_formula.p[i]);
-        }
-        printf(")");
-    } else if (formula->type == NOT) {
-        printf("(not ");
-        libpddl31_formula_print(formula->item.not_formula.p);
-        printf(")");
-    } else {
-        assert(false && "unkown formula type");
-    }
-}
 
 void libpddl31_domain_print(struct domain *domain)
 {
-    if (domain == NULL) {
+    printf("Domain:[");
+    printf("Name: %s,", domain->name);
+
+    printf("Requirements:[");
+    for (size_t i = 0; i < domain->numOfRequirements; ++i) {
+        printf("%d", domain->requirements[i]);
+        if (i < domain->numOfRequirements - 1) {
+            printf(", ");
+        }
+    }
+    printf("], ");
+
+    objManag_print(domain->objManag);
+    printf(", ");
+    predManag_print(domain->predManag);
+    printf(", ");
+    actionManag_print(domain->actionManag);
+
+    printf("]\n");
+}
+
+void libpddl31_term_print(struct term *term)
+{
+    printf( "Term:[%s,name:%s,type:%s]",
+            term->isVariable ? "variable" : "constant",
+            term->name,
+            term->type->name);
+}
+
+void libpddl31_predicate_print(struct predicate *pred)
+{
+    printf("Predicate:[name:%s,parameter:[", pred->name);
+    for (size_t i = 0; i < pred->numOfParams; ++i) {
+        libpddl31_term_print(&pred->params[i]);
+        if (i < pred->numOfParams - 1) {
+            printf(",");
+        }
+    }
+    printf("]]");
+}
+
+void libpddl31_atom_print(struct atom *atom)
+{
+    printf("Atom:[predicate:%s,arguments:[", atom->pred->name);
+    for (size_t i = 0; i < atom->pred->numOfParams; ++i) {
+        libpddl31_term_print(atom->terms[i]);
+        if (i < atom->pred->numOfParams - 1) {
+            printf(",");
+        }
+    }
+    printf("]");
+}
+
+void libpddl31_forall_print (struct forall *forall)
+{
+
+}
+
+void libpddl31_when_print (struct when *when)
+{
+
+}
+
+void libpddl31_effectElem_print (struct effectElem *effectElem)
+{
+    switch (effectElem->type) {
+    case POS_LITERAL: {
+        libpddl31_atom_print(effectElem->it.literal);
+        break;
+    }
+    case NEG_LITERAL: {
+        printf("[NOT ");
+        libpddl31_atom_print(effectElem->it.literal);
+        printf("]");
+        break;
+    }
+    case FORALL: {
+        libpddl31_forall_print(effectElem->it.forall);
+        break;
+    }
+    case WHEN: {
+        libpddl31_when_print(effectElem->it.when);
+        break;
+    }
+    }
+}
+
+void libpddl31_effect_print (struct effect *effect)
+{
+    if (effect == NULL) {
         return;
     }
-
-    //printf("[libpddl31_domain_print]\n");
-    printf("[libpddl31_domain_print] domain name: %s\n", domain->name);
-    printf("[libpddl31_domain_print]\n");
-
-    // Print requirements.
-    printf("[libpddl31_domain_print] number of requirements: %d\n",
-           domain->numOfRequirements);
-    printf("[libpddl31_domain_print] requirements:");
-    // Print only integer representation of requirements, since printing
-    // text would be overly complicated.
-    for (int i = 0; i < domain->numOfRequirements; ++i) {
-        printf(" %d", domain->requirements[i]);
+    printf("Effect: [");
+    if (effect->numOfElems > 1) {
+        printf("AND ");
     }
-    printf("\n");
-    printf("[libpddl31_domain_print]\n");
-
-    // Print constants
-    printf("[libpddl31_domain_print] number of constants: %d\n",
-           domain->numOfConstants);
-    for (int i = 0; i < domain->numOfConstants; ++i) {
-        struct constant *c = domain->constants;
-        printf("[libpddl31_domain_print] constant: %s", c[i].name);
-        if (c[i].isTyped) {
-            printf(" - %s", c[i].type->name);
+    for (size_t i = 0; i < effect->numOfElems; ++i) {
+        libpddl31_effectElem_print(&effect->elems[i]);
+        if (i < effect->numOfElems - 1) {
+            printf(",");
         }
-        printf("\n");
     }
-    printf("[libpddl31_domain_print]\n");
-
-    // Print predicates
-    printf("[libpddl31_domain_print] number of predicates: %d\n",
-           domain->numOfPredicates);
-    for (int i = 0; i < domain->numOfPredicates; ++i) {
-        struct predicate *p = domain->predicates;
-        printf("[libpddl31_domain_print] predicate: '%s' with parameters:",
-               p[i].name);
-        for (int j = 0; j < p[i].numOfParameters; ++j) {
-            struct variable *par = p[i].parameters;
-            printf(" %s", par[j].name);
-            if (par[j].isTyped) {
-                printf(" - %s", par[j].type->name);
-            }
-        }
-        printf("\n");
-    }
-    printf("[libpddl31_domain_print]\n");
-
-    // Print actions
-    printf("[libpddl31_domain_print] number of actions: %d\n",
-           domain->numOfActions);
-    for (int i = 0; i < domain->numOfActions; ++i) {
-        struct action a = domain->actions[i];
-        printf("[libpddl31_domain_print] action: '%s' with parameters:",
-               a.name);
-        for (int j = 0; j < a.numOfParameters; j++) {
-            struct variable par = a.parameters[j];
-            printf(" %s", par.name);
-            if (par.isTyped) {
-                printf(" - %s", par.type->name);
-            }
-        }
-        printf("\n");
-        printf("[libpddl31_domain_print]\t precondition:\n");
-        printf("[libpddl31_domain_print]\t  ");
-        libpddl31_formula_print(a.precondition);
-        printf("\n");
-        printf("[libpddl31_domain_print]\t effect:\n");
-        printf("[libpddl31_domain_print]\t  ");
-        libpddl31_formula_print(a.effect);
-        printf("\n");
-    }
-    printf("[libpddl31_domain_print]\n");
+    printf("]");
 }
 
-void libpddl31_problem_print(struct problem *problem)
+void libpddl31_goal_print (struct goal *goal)
 {
-    if (problem == NULL) {
-        return;
-    }
-
-    //printf("[libpddl32_problem_print]\n");
-    printf("[libpddl32_problem_print] problem name: %s\n", problem->name);
-    printf("[libpddl32_problem_print] this problem is for domain: %s\n",
-           problem->domainName);
-    printf("[libpddl32_problem_print]\n");
-
-    // Print requirements.
-    printf("[libpddl31_problem_print] number of requirements: %d\n",
-           problem->numOfRequirements);
-    printf("[libpddl31_problem_print] requirements:");
-    // Print only integer representation of requirements, since printing
-    // text would be overly complicated.
-    for (int i = 0; i < problem->numOfRequirements; ++i) {
-        printf(" %d", problem->requirements[i]);
-    }
-    printf("\n");
-    printf("[libpddl31_problem_print]\n");
-
-    // Print objects.
-    printf("[libpddl31_problem_print] number of objects: %d\n",
-           problem->numOfObjects);
-    for (int i = 0; i < problem->numOfObjects; ++i) {
-        struct constant obj = problem->objects[i];
-        printf("[libpddl31_problem_print] object: %s", obj.name);
-        if (obj.isTyped) {
-            printf(" - %s", obj.type->name);
+    printf("Goal:[");
+    for (size_t i = 0; i < goal->numOfPos; ++i) {
+        libpddl31_atom_print(&goal->posLiterals[i]);
+        if (i < goal->numOfPos - 1 || goal->numOfNeg > 0) {
+            printf(",");
         }
-        printf("\n");
     }
-    printf("[libpddl31_problem_print]\n");
-
-    // Print initial state
-    printf("[libpddl31_problem_print] initial state:\n");
-    printf("[libpddl31_problem_print]  ");
-    libpddl31_state_print(problem->init);
-    printf("\n");
-    printf("[libpddl31_problem_print]\n");
-
-    // Print goal state
-    printf("[libpddl31_problem_print] goal state:\n");
-    printf("[libpddl31_problem_print]  ");
-    libpddl31_formula_print(problem->goal);
-    printf("\n");
-    printf("[libpddl31_problem_print]\n");
+    for (size_t i = 0; i < goal->numOfNeg; ++i) {
+        printf("[NOT ");
+        libpddl31_atom_print(&goal->negLiterals[i]);
+        printf("]");
+        if (i < goal->numOfNeg - 1) {
+            printf(",");
+        }
+    }
+    printf("]");
 }
 
-bool libpddl31_problem_is_member_of_domain( struct problem *problem,
-                                            struct domain *domain)
+void libpddl31_action_print(struct action *action)
 {
-    int equals = strcmp(problem->domainName, domain->name);
-    return equals == 0;
+    printf( "Action:[name:%s,parameters:[",
+            action->name);
+    for (size_t i = 0; i < action->numOfParams; ++i) {
+        libpddl31_term_print(&action->params[i]);
+        if (i < action->numOfParams - 1) {
+            printf(",");
+        }
+    }
+    printf("],");
+    printf("precondition:");
+    libpddl31_goal_print(action->precond);
+    printf(",effect:");
+    libpddl31_effect_print(action->effect);
+    printf("]");
 }
-*/
+

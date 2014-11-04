@@ -53,7 +53,7 @@ predManag_free(struct predManag *predManag)
         predManag->preds = NULL;
     }
     free(predManag);
-};
+}
 
 struct predicate *
 predManag_getPred(struct predManag *manager, char *name)
@@ -64,4 +64,17 @@ predManag_getPred(struct predManag *manager, char *name)
         }
     }
     return NULL;
-};
+}
+
+void
+predManag_print(struct predManag *predManag)
+{
+    printf("Predicates:[");
+    for (size_t i = 0; i < predManag->numOfPreds; ++i) {
+        libpddl31_predicate_print(&predManag->preds[i]);
+        if (i < predManag->numOfPreds - 1) {
+            printf(", ");
+        }
+    }
+    printf("]");
+}

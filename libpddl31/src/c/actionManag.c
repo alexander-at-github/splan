@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "actionManag.h"
 #include "libpddl31.h"
 
@@ -40,6 +42,20 @@ void actionManag_free(struct actionManag *actionManag)
 struct action *actionManag_getAction(  struct actionManag *manager,
                                        char *name)
 {
+    assert(false);
     // TODO
     return NULL;
+}
+
+
+void actionManag_print(struct actionManag *actionManag)
+{
+    printf("Actions:[");
+    for (size_t i = 0; i < actionManag->numOfActions; ++i) {
+        libpddl31_action_print(&actionManag->actions[i]);
+        if (i < actionManag->numOfActions - 1) {
+            printf(", ");
+        }
+    }
+    printf("]");
 }

@@ -15,6 +15,7 @@ struct predManag
 struct predManag *predManag_create(pANTLR3_LIST preds);
 void predManag_free(struct predManag *predManag);
 struct predicate *predManag_getPred(struct predManag *manager, char *name);
+void predManag_print(struct predManag *predManag);
 
 
 #endif

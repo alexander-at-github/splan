@@ -15,5 +15,6 @@ struct objManag *objManag_add(  struct objManag *objManag,
 struct term *objManag_getObject(struct objManag *objManag,
                                 char *name);
 void objManag_free(struct objManag *objManag);
+void objManag_print(struct objManag *objManag);
 
 #endif

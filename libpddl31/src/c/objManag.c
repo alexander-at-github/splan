@@ -57,3 +57,15 @@ void objManag_free(struct objManag *objManag)
     free(objManag->objs);
     free(objManag);
 }
+
+void objManag_print(struct objManag *objManag)
+{
+    printf("Objects:[");
+    for (size_t i = 0; i < objManag->numOfObjs; ++i) {
+        libpddl31_term_print(&objManag->objs[i]);
+        if (i < objManag->numOfObjs - 1) {
+            printf(", ");
+        }
+    }
+    printf("]");
+}
