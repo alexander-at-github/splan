@@ -12,6 +12,7 @@ ANTLR3.4_C_RUNTIME=antlr3c 	# linker will search the library path for a file
 BUILD_DIR=build
 BIN_DIR=bin
 SRC_DIR=src
+TEST_DIR=test
 TOOL_DIR=tool
 
 STRUCTS_HEADER_FILE=$(SRC_DIR)/c/pddl31structs.h
@@ -88,10 +89,6 @@ clean:
 build/test_typeSystem: src/c/typeSystem.c test/c/typeSystem.c $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR)/c -o $@ -I$(TOOL_DIR) src/c/typeSystem.c test/c/typeSystem.c 
 
-bin/test: $(SRC_DIR)/c/main_test.c $(SRC_DIR)/c/objManag.c $(SRC_DIR)/c/typeSystem.c $(SRC_DIR)/c/predManag.c $(LIB_FILE) 
-	$(CC) -o $@ -I$(BIN_DIR) -l$(ANTLR3.4_C_RUNTIME) $^
-
-#test-main: src/c/main_test.c $(LIB_FILE)
-#	clang -o $(BIN_DIR) -I$(BUILD_DIR) $< -l$(LIB_FILE) -l/usr/lib/libantlr3c.so
-
+bin/test: $(TEST_DIR)/c/libpddl31.c $(SRC_DIR)/c/objManag.c $(SRC_DIR)/c/typeSystem.c $(SRC_DIR)/c/predManag.c $(LIB_FILE)
+	$(CC) -o $@ -I$(BIN_DIR) -I$(SRC_DIR)/c -l$(ANTLR3.4_C_RUNTIME) $^
 
