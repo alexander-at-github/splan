@@ -72,10 +72,13 @@ $(LIB_OBJ_FILE): $(SRC_DIR)/c/libpddl31.c $(LEXER_HEADER_FILE) $(PARSER_HEADER_F
 $(BUILD_DIR)/%.o: $(SRC_DIR)/c/%.c
 	$(CC) $(CFLAGS) -c -I$(SRC_DIR)/c -o $@ $<
 
-$(LIB_FILE): $(LIB_OBJ_FILE) $(LEXER_OBJ_FILE) $(LEXER_CORE_OBJ_FILE) $(PARSER_OBJ_FILE) $(BUILD_DIR)/predManag.o $(BUILD_DIR)/actionManag.o $(BUILD_DIR)/typeSystem.o 
+$(LIB_FILE): $(LIB_OBJ_FILE) $(LEXER_OBJ_FILE) $(LEXER_CORE_OBJ_FILE) $(PARSER_OBJ_FILE) $(BUILD_DIR)/predManag.o $(BUILD_DIR)/actionManag.o $(BUILD_DIR)/typeSystem.o $(BUILD_DIR)/objManag.o
 	mkdir -p $(BIN_DIR)
 	$(AR) rcs $@ $^
-	cp $(LIB_HEADER_FILE) $(STRUCTS_HEADER_FILE) $(BIN_DIR)
+	cp $(LIB_HEADER_FILE) $(STRUCTS_HEADER_FILE) src/c/typeSystem.h src/c/predManag.h src/c/actionManag.h $(BIN_DIR)
+
+$(BIN_DIR):
+	mkdir -p $@
 
 clean:
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
@@ -86,7 +89,7 @@ clean:
 
 # Testing
 
-build/test_typeSystem: src/c/typeSystem.c test/c/typeSystem.c $(BUILD_DIR)
+bin/test_typeSystem: src/c/typeSystem.c test/c/typeSystem.c $(BIN_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR)/c -o $@ -I$(TOOL_DIR) src/c/typeSystem.c test/c/typeSystem.c 
 
 bin/test: $(TEST_DIR)/c/libpddl31.c $(SRC_DIR)/c/objManag.c $(SRC_DIR)/c/typeSystem.c $(SRC_DIR)/c/predManag.c $(LIB_FILE)

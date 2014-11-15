@@ -82,7 +82,7 @@ test_getType()
     success = strcmp(type->name, "foo") == 0;
     success = success && type->parent == ts->root;
     mu_assert("error retrieving type", success);
-    
+
     struct type *type2 = typeSystem_getType(ts, "bar");
     success = strcmp(type2->name, "bar") == 0;
     success = success && type2->parent == type && success;
@@ -103,12 +103,51 @@ test_getType()
 }
 
 static char *
+test_isa()
+{
+  struct typeSystem *ts = typeSystem_create();
+  bool success;
+
+  // Add some types to work with first
+  success = typeSystem_addType(ts, "foo", NULL);
+  mu_assert("error adding type", success);
+  success = typeSystem_addType(ts, "bar", "foo");
+  mu_assert("error adding type", success);
+
+  struct type *fooT = typeSystem_getType(ts, "foo");
+  struct type *barT = typeSystem_getType(ts, "bar");
+  struct type *rootT = typeSystem_getRoot(ts);
+
+  bool isa = typeSystem_isa(fooT, fooT);
+  mu_assert("error checking isa-relation", isa);
+
+  isa = typeSystem_isa(fooT, rootT);
+  mu_assert("error checking isa-relation", isa);
+
+  isa = typeSystem_isa(rootT, fooT);
+  mu_assert("error checking isa-relation", ! isa);
+
+  isa = typeSystem_isa(barT, fooT);
+  mu_assert("error checking isa-relation", isa);
+
+  isa = typeSystem_isa(barT, rootT);
+  mu_assert("error checking isa-relation", isa);
+
+  isa = typeSystem_isa(fooT, barT);
+  mu_assert("error checking isa-relation", ! isa);
+
+  typeSystem_free(ts);
+  return 0;
+}
+
+static char *
 allTests()
 {
     mu_run_test(test_createTypeSystem);
     mu_run_test(test_addType);
     mu_run_test(test_addTypesInvalid);
     mu_run_test(test_getType);
+    mu_run_test(test_isa);
     return 0;
 }
 

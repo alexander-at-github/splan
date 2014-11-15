@@ -58,6 +58,13 @@ parse_pre_aux(  char *fName,
     *lxr = NULL;
     *tstream = NULL;
     *psr = NULL;
+
+    // Check if file exists
+    if (access( fName, F_OK ) == -1 ) {
+      fprintf(stderr, "Error: Input file '%s' does not exist.\n", fName);
+      return;
+    }
+
     // Set character input stream
     // The second agrument is the encoding. For more informaion see:
     // * file:///home/alexander/uni/bac/antlr3/runtime_c/libantlr3c-3.4/api/

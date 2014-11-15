@@ -180,3 +180,27 @@ typeSystem_print(struct typeSystem *ts)
     }
     printf("]");
 }
+
+struct type *
+typeSystem_getRoot(struct typeSystem *ts)
+{
+  return ts->root;
+}
+
+bool
+typeSystem_isa( struct type *t1,
+                struct type *t2)
+{
+  if (t1 == NULL || t2 == NULL) {
+    assert(false);
+    return false;
+  }
+
+  while (t1 != NULL) {
+    if (t1 == t2) {
+      return true;
+    }
+    t1 = t1->parent;
+  }
+  return false;
+}

@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=#-dNDEBUG # turns off assertions
+CFLAGS=-g #-dNDEBUG # turns off assertions
 
 SRC_DIR=src
 BUILD_DIR=build
@@ -8,7 +8,7 @@ BIN_DIR=bin
 LIB_PDDL31_DIR=libpddl31
 LIB_PDDL31_BIN_DIR=$(LIB_PDDL31_DIR)/bin
 LIB_PDDL31=$(LIB_PDDL31_BIN_DIR)/libpddl31.a
-TOOLS_DIR=tools
+TOOL_DIR=tool
 
 #all: $(LIB_PDDL31)
 ### EXPERIMENTAL-START
@@ -37,3 +37,7 @@ clean:
 	cd $(LIB_PDDL31_DIR) && make clean
 	rm -rf $(BUILD_DIR) $(BIN_DIR)
 
+### Testing ###
+
+bin/test_grounder : test/grounder.c src/grounder.c $(LIB_PDDL31) $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ -I$(SRC_DIR) -I$(TOOL_DIR) -I$(LIB_PDDL31_BIN_DIR) test/grounder.c src/grounder.c $(LIB_PDDL31) -l$(ANTLR3.4_C_RUNTIME)

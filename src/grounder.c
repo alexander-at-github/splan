@@ -1,313 +1,233 @@
+#include <assert.h>
+
 #include "grounder.h"
 
-#include "planner.h"
+#include "libpddl31.h"
 
-struct groundAction
+
+static void
+grounder_freeGrounding(struct grounding *g)
 {
-  struct action *action;
-  struct gTerm *root;  // ground term. The root is actually not a mapping.
-                       // It just has children.
-};
-
-// Ground term. Or grounding for a term. That is just a mapping from a
-// variable to a constant or object (in the sense of the PDDL).
-struct gTerm
-{
-  struct term *var;
-  struct term *constant;
-
-  int32_t numOfChld;
-  struct gTerm **children;
-};
-
-
-void // TODO: add Return value
-grounder_getActions(struct domain *domain,
-                    struct state *state)
-{
-  for each action in domain {
-    struct groundAction *groundA = malloc(sizeof(*groundA));
-    groundA->action = action;
-    groundA->root = malloc(sizeof(groundA->root));
-    groundA->root->var = NULL;
-    groundA->root->constant = NULL;
-    groundA->root->numOfChld = 0;
-    groundA->root->children = NULL;
-    grounder_groundAction(action, state, 0, groundA->root);
-  }
-}
-
-// Precondition: The actions precondition does not have any literals without
-//               free variables.
-// TODO: Make sure it also works for negative literals in the precondition.
-//       Could do that by filtering the invalid groundings out later.
-// TODO: Match types of the grounding.
-// TODO: Use a boolean return value, whether the grounding could be completed or
-//       not.
-//
-// For now this function only considers postive literals of the states
-// precondition.
-//
-// Each call of this function is considered only with one atom of the actions'
-// precondition. It is a recursive function.
-//
-// Builds subtree into 'root' data structure passed as argument.
-void // TODO: Check return value
-grounder_groundAction(struct action *action,
-                      struct state *state,
-                      int32_t idxPrecond,//Index into predicate of precondition.
-                      struct gTerm *gTermRoot)
-{
-  // We are only considering positive literals in the precondition for now.
-  if (idxPrecond > action->precond->numOfPos) {
-    // We could increment an counter here in order to know the number
-    // of groundings for this action.
+  if (g == NULL) {
     return;
   }
-  // Precondtion current positive literal
-  struct atom *pcpl = &action->precond->posLiterals[idxPrecond];
-
-  // Save gTermRoot for later use. Note we are only saveing the pointer.
-  struct gTerm *gTermBack = gTermRoot;
-
-  assert(free_vars(pcpl)); // Is that still necessary?
-  // TODO: What to do if the current positive literal contains free variables
-  // and constants??
-
-  // Iterate over the states fluents.
-  for (size_t idxFluents = 0; idxFluents < state->numOfFluents; ++idxFluents) {
-    struct atom *fluent = state->fluents[idxFluents];
-    // Now 'pcpl' and 'fluent' are the two atoms we will work with.
-
-    // If this fluents' predicate is not the predicate we are concerned with
-    // just continue with the next fluent.
-    if (pcpl->pred != fluent->pred) {
-      continue;
-    }
-
-    // Iterate over the preconditions' literals' arguments.
-    for (size_t idxParam = 0; idxParam < pcpl->pred->numOfParams; idxParam++) {
-      if ( ! pcpl->terms[idxParam]->isVariable) {
-        // This preconditions' literal contains constants. Check if it matches
-        // the states' fluent. If not, we do not have a matching.
-        if (term_equal(pcpl->terms[idxParam], fluent->terms[idxParam])) {
-          continue;
-        } else {
-          // The whole fluent does not match! TODO: We might have to delete
-          // an previous grounding (of individual variables variables).
-          //
-          //return; ??
-          // I don't think so. Probably more like:
-          //continue outer-loop;
-        }
-      }
-
-      // Now we know pcpl-Terms[idxParam] is a variable
-
-      // Check if the types match.
-      if ( ! types_equal( pcpl->terms[idxParam]->type,
-                          fluent->terms[idxParam]->type)) {
-        // TODO: The whole fluent does not match.
-        // continue outer-loop ???
-      }
-
-      int32_t idxChld = gTermRoot->numOfChld;
-      gTermRoot->numOfChld++;
-
-      // Allocate memory to pointer to new child.
-      struct gTerm *tmp = realloc(gTermRoot->children, gTermRoot->numOfChld);
-      if (tmp == NULL) {
-        fprintf(stderr, "Error allocting memory in grounder_groundAction\n");
-        // TODO: What to do? I don't know how to recover from that.
-        exit(EXIT_FAILURE);
-      }
-      gTermRoot->children = tmp;
-
-      // Allocate memory for new child
-      gTermRoot->children[idxChld] =
-                                malloc(sizeof(*gTermRoot->children[idxchld]));
-      struct gTerm *newChild = gTermRoot->children[idxChld];
-      if (newChild == NULL) {
-        fprintf(stderr, "Error allocting memory in grounder_groundAction\n");
-        // TODO: What to do? I don't know how to recover from that.
-        exit(EXIT_FAILURE);
-      }
-
-      // Initialize new child
-      newChild->numOfChld = 0;
-      newChild->children = NULL;
-      // Write the mapping of variable to constant in this child.
-      newChild->var = pcpl->terms[idxParam];
-      assert (newChild->var->isVariable);
-      newChild->constant = fluent->terms[idxParam];
-      assert ( ! newChild->constant->isVariable);
-
-      // Set gTermRoot.
-      gTermRoot = newChild;
-    } // End of loop over preconditions' literals' arguments
-
-    // Recurse for each grounding of a literal
-    grounder_groundAction(action, state, idxPrecond + 1, gTermRoot);
-
-  } // End of loop over the states fluents
+  if (g->terms != NULL) {
+    free(g->terms);
+  }
+  free(g);
 }
 
 static bool
 term_equal(struct term *t1, struct term *t2)
 {
-  return t1->isVariable == t2->isVariable &&
-         (t1->name == t2->name || strcmp(t1->name, t2->name) == 0) &&
-         t1->type == t2->type; // Comparing pointers to types really has to be
+  return // t1->isVariable == t2->isVariable && // Not neccessary.
+         (t1->name == t2->name || strcmp(t1->name, t2->name) == 0);
+         // DO NOT compare types. Not any use of a variable also specifies its
+         // type.
+         //t1->type == t2->type; // Comparing pointers to types really has to be
                                // enough.
 }
 
-// Returns true iff the atom contains at least one variable.
-bool
-free_vars(struct atom *atom)
-{
-  for (size_t i = 0; i < atom->pred->numOfParams; ++i) {
-    if (atom->term[i]->isVariable()) {
-      return true;
-    }
-  }
-  return false;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// OLD:
-
-struct grounder {
-  struct domain *domain;
-};
-
-Grounder
-grounder_create(struct domain *domain)
-{
-  struct grounder *grounder = malloc(sizeof(*grounder));
-  grounder->domain = domain;
-  return grounder;
-}
-
-
-
-
-
-
-struct grounding {
-  struct action *action;
-  // A set of arguments. This is associates values to the parameter of the
-  // action. These terms (! term->isVariable) must hold.
-  struct term **arguments;
-
-  // It is a linked list
-  struct grounding *previous;
-};
-
 static struct grounding *
-grounder_groundAction(struct action *action,
-                      struct state *state,
-                      struct grounding *acc)
+grounder_copyGrounding(struct grounding *src, size_t numOfTerms)
 {
-  // CONTINUE
-  for each positive-literal in action->precond
-    if free_vars?(positive-literal)
-      for each atom in state
-        if pred(positive-literal) == pred(atom)
-          if acc == NULL then allocate memory and set to zero
-          for each param (with index i) in positiv-literal find
-              parameter in struct action (with index n)
-            acc->term[n] = atom.getParam(i)
+  struct grounding *result = malloc(sizeof(*result));
+  if (result == NULL) {
+    fprintf(stderr, "Error allocating memory.\n");
+    exit(EXIT_FAILURE);
+  }
+  result->terms = malloc(sizeof(*result->terms) * numOfTerms);
+  if (result->terms == NULL) {
+    fprintf(stderr, "Error allocating memory.\n");
+    exit(EXIT_FAILURE);
+  }
+  memcpy(result->terms, src->terms, sizeof(result->terms[0]) * numOfTerms);
+  return result;
+}
 
-          // ...
-          // TODO: Does that work?
-          for i in 0..positive-literal.numOfParams
-          acc->term
-          // Do the grounding
-          struct term *var = atom->
-    else
-      // Check if positive-literal is fullfilled by state as usual
-    end
+// TODO: This is only a dummy for now.
+void
+grounder_getActions(struct domain *domain, struct state *state)
+{
+  for (size_t i = 0; i < domain->actionManag->numOfActions; ++i) {
+    struct action *action = &domain->actionManag->actions[i];
 
-  for each negative-literal in action-precond
-    if free_vars?(negative-literal)
-    else
-    end
+    struct groundAction grAct;
+    grAct.action = action;
+    grAct.numOfGrnds = 0;
+    grAct.grnds = NULL;
 
-    bool satisfied = false
-    for each atom in state
-      if positive-literal == atom
-        satisfied = true
-      else if free_vars(positive-literal) &&
-              pred(positive-literal) == pred(atom)
+    struct grounding partialGrndng;
+    partialGrndng.terms = malloc(sizeof(*partialGrndng.terms) *
+                                 action->numOfParams);
+    for (size_t j = 0; j < action->numOfParams; ++j) {
+      partialGrndng.terms[j] = NULL;
+    }
+
+    grounder_groundAction(state, 0, &partialGrndng, &grAct);
+
+    // TODO: Remove groundings, which are inconsistent with negative
+    // preconditions.
+  }
+}
+
+// This function considers only positive preconditions.
+// TODO: Add to the function name 'posLiterals'.
+void
+grounder_groundAction(struct state *state,
+                      int32_t idxPrecond, // Index into precondition
+                      struct grounding *partialG, // A parial grounding
+                      struct groundAction *grAct)
+{
+  struct action *action = grAct->action;
+  struct goal *precond = action->precond;
+
+  // Base case.
+  if (idxPrecond >= precond->numOfPos) {
+
+    // Check if the partial grounding is complete.
+    for (size_t i = 0; i < action->numOfParams; ++i) {
+      struct term *term = partialG->terms[i];
+      if (term == NULL) {
+        // The partial grounding is not complete. We can not use it.
+        return;
+      }
+    }
+    // Grounding is complete. Copy it into the result.
+    grAct->numOfGrnds++;
+    struct grounding **tmp = realloc(grAct->grnds,
+                                     sizeof(*tmp) * grAct->numOfGrnds);
+    if (tmp == NULL) {
+      fprintf(stderr, "Error allocating memory for grounding.\n");
+      exit(EXIT_FAILURE);
+    }
+    grAct->grnds = tmp;
+    grAct->grnds[grAct->numOfGrnds - 1] = grounder_copyGrounding(partialG,
+                                                          action->numOfParams);
+    return;
+  }
+
+  // Precondition current positive literal
+  struct atom *pcpl = &precond->posLiterals[idxPrecond];
+
+  // A working copy of the partial grounding. This is actually only needed
+  // to allocate the memory. The copying must take place later in each iteration
+  // of the loop anyway.
+  struct grounding *partialGTmp = grounder_copyGrounding(partialG,
+                                                          action->numOfParams);
+  for (size_t idxFlnts = 0; idxFlnts < state->numOfFluents; ++idxFlnts) {
+    struct atom *crrFlnt = &state->fluents[idxFlnts];
+
+    if (crrFlnt->pred != pcpl->pred) {
+      // preconditions' current positive literals' predicate does not match
+      // current fluents' predicate. Nothing to do here.
+      continue;
+    }
+
+    // Write working copy of partial grounding.
+    memcpy( partialGTmp->terms,
+            partialG->terms,
+            sizeof(partialGTmp->terms[0]) * action->numOfParams); // TODO: sane?
+
+    bool continueOuter = false;
+    for (size_t idxParam = 0; idxParam < pcpl->pred->numOfParams; ++idxParam) {
+      struct term *pcplTerm = pcpl->terms[idxParam];
+      struct term *flntTerm = crrFlnt->terms[idxParam];
+
+      if ( ! pcplTerm->isVariable) {
+        // This precondition contains constants. Check if the constant matches
+        // the state. If no, there is no matching.
+        if (term_equal(pcplTerm, flntTerm)) {
+          // Two constants match.
+          continue; // Continue with next parameter.
+        } else {
+          // TODO: sane?
+          continueOuter = true;
+          break;
+        }
+      }
+
+      assert(pcplTerm->isVariable);
+
+      // TODO: Compare to type of predicate definition!!!
+      // Check type.
+      if ( ! typeSystem_isa(flntTerm->type, pcplTerm->type)) {
+        // TODO: sane ?
+        continueOuter = true;
+        break;
+      }
+      // Types match
+
+      libpddl31_term_print(pcplTerm); // DEBUG
+      printf("\n"); // DEBUG
+
+      // Find position of parameter in action.
+      size_t idxActParam = 0;
+      for (idxActParam = 0; idxActParam < action->numOfParams; ++idxActParam) {
+        struct term *actParam = &action->params[idxActParam];
+
+        printf("idxActParam:%d ", idxActParam); // DEBUG
+        libpddl31_term_print(actParam); // DEBUG
+        printf("\n"); // DEBUG
+
+        if (term_equal(actParam, pcplTerm)) {
+          // Position found
+          break;
+        }
+      }
+      if (idxActParam >= action->numOfParams) {
+        fprintf(stderr,
+                "Error in action '%s'. Variable '%s' in precondition does"
+                " not match any parameter.",
+                action->name,
+                pcplTerm->name);
+        exit(EXIT_FAILURE);
+      }
+      // idxActParam is set now.
+
+      // Check if there exists a mapping for this parameter already.
+      if (partialGTmp->terms[idxActParam] != NULL) {
+        // Grounding already exists.
+        // Check if it does not conflict
+        if (term_equal(partialGTmp->terms[idxActParam], flntTerm)) {
+          // Grounding already set. Nothing more to be done.
+          break; // TODO: Check this line for correctness.
+        } else {
+          // Conflicting grounding.
+          // TODO: sane?
+          continueOuter = true;
+          break;
+        }
+      }
+
+      // Create mapping from variable to constant in grounding.
+      assert(partialGTmp->terms[idxActParam] == NULL);
+      partialGTmp->terms[idxActParam] = flntTerm;
+
+      /* // Maybe outer loop needs to be factorized to a recursive function. */
+      /* // Or we need to make a backup of the partial grounding before we start */
+      /* // the outer loop? */
+
+    } // End of loop over parameters of term in precondition and state
+    if (continueOuter) {
+      continue;
+    }
+
+    // Precondition and state matched in some way.
+    // Recurse
+    grounder_groundAction(state, idxPrecond + 1, partialGTmp, grAct);
+
+  } // End of loop over fluents in state
+
+  grounder_freeGrounding(partialGTmp);
 
 }
 
-struct grounding *
-grounder_getActions(Grounder grounder,
-                    struct state *state,
-                    int32_t numInAcc,
-                    struct grounding *acc)
+void grounder_print_groundAction(struct groundAction *grA)
 {
-  for each action in grounder->domain->actionManag do
-    grounder_groundAction(action, state, NULL);
+  printf("GroundAction:[action-name:%s,numOfGrnds:%d," /* TODO */,
+         grA->action->name,
+         grA->numOfGrnds);
   
-}
-
-/* struct action ** */
-/* grounder_getActions(Grounder grounder, struct state *state); */
-/* { */
-/*   struct actionManag *am = grounder->domain->actionManag; */
-/*   // Go over all the actions */
-/*   for (size_t i = 0; i < am->numOfActions; ++i) { */
-/*     struct action *action = &am->actions[i]; */
-
-/*     // Check if action is applicable. Action preconditions are struct goal. */
-/*     bool applicable = true; */
-/*     for each positive-literal in action->precond { */
-/*       bool satisfied = false */
-/*       for each atom in state { */
-/*         if positive-literal == atom { */
-/*           satisfied = true */
-/*           break */
-/*         } */
-/*       } */
-/*       if satisfied == false { */
-/*         // TODO: If positive literal has free variables, then bind free */
-/*         // variable to all possible objects from the state. */
-/*         applicable = false; */
-/*       } */
-/*     } */
-/*     for each negative-literal in action->precond { */
-/*       for each atom in state { */
-/*         if negative-literal == atom { */
-/*           applicable = false */
-/*         } */
-/*       } */
-/*     } */
-
-/*     if (action_isApplicable(action, state)) { */
-/*       // TODO: Ground action and save it */
-/*     } */
-/*   } */
-/* } */
-
-static bool
-action_isApplicable(struct action *action, struct state *state)
-{
-  // Should we use a different function here?
-  // Checking for goal in a problem only uses grounded predicates.
-  // Whereas preconditions in actions can contain variables.
-  return planner_goalMet(action->precond, state);
+  printf("]");
 }

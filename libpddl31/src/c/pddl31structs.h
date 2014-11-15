@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "actionManag.h"
 #include "typeSystem.h"
 #include "predManag.h"
 

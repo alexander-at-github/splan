@@ -25,4 +25,6 @@ void libpddl31_predicate_print(struct predicate *pred);
 void libpddl31_action_print(struct action *action);
 void libpddl31_goal_print(struct goal *goal);
 
+void libpddl31_state_print(struct state *state);
+
 #endif // LIBPDDL31_H

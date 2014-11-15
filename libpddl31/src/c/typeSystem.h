@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "pddl31structs.h"
+
 struct type
 {
     char *name;
@@ -22,11 +24,14 @@ struct typeSystem
 
 struct typeSystem *typeSystem_create();
 void typeSystem_free(struct typeSystem *typeSystem);
-bool typeSystem_addType(    struct typeSystem *ts,
-                            char *newTypeName,
-                            char *parentName);
+bool typeSystem_addType(struct typeSystem *ts,
+                        char *newTypeName,
+                        char *parentName);
 struct type *typeSystem_getType(struct typeSystem *ts, char *name);
 void typeSystem_print(struct typeSystem *ts);
+struct type *typeSystem_getRoot(struct typeSystem *ts);
+bool typeSystem_isa(struct type *t1,
+                    struct type *t2);
 
 
 #endif
