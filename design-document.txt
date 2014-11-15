@@ -19,6 +19,8 @@
     and the planner only reuses actions from this pool thereafter.
   * A grounding is a binding from struct variable to struct constant for a
     specific action.
+  * Make sure the grounder checks also types, which where specified in the 
+    predicates definition.
 
 
 *** Types:
