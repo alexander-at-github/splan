@@ -158,17 +158,17 @@ grounder_groundAction(struct state *state,
       }
       // Types match
 
-      libpddl31_term_print(pcplTerm); // DEBUG
-      printf("\n"); // DEBUG
+      // libpddl31_term_print(pcplTerm); // DEBUG
+      // printf("\n"); // DEBUG
 
       // Find position of parameter in action.
       size_t idxActParam = 0;
       for (idxActParam = 0; idxActParam < action->numOfParams; ++idxActParam) {
         struct term *actParam = &action->params[idxActParam];
 
-        printf("idxActParam:%d ", idxActParam); // DEBUG
-        libpddl31_term_print(actParam); // DEBUG
-        printf("\n"); // DEBUG
+        //printf("idxActParam:%d ", idxActParam); // DEBUG
+        //libpddl31_term_print(actParam); // DEBUG
+        //printf("\n"); // DEBUG
 
         if (term_equal(actParam, pcplTerm)) {
           // Position found
@@ -223,11 +223,31 @@ grounder_groundAction(struct state *state,
 
 }
 
-void grounder_print_groundAction(struct groundAction *grA)
+void
+grounder_print_grounding(struct grounding *gr, int32_t numOfTerms)
+{
+  printf("Grounding:[");
+  for (size_t i = 0; i < numOfTerms; ++i) {
+    printf("%s", gr->terms[i]->name);
+    if (i < numOfTerms - 1) {
+      printf(",");
+    }
+  }
+  printf("]");
+}
+
+void
+grounder_print_groundAction(struct groundAction *grA)
 {
   printf("GroundAction:[action-name:%s,numOfGrnds:%d," /* TODO */,
          grA->action->name,
          grA->numOfGrnds);
-  
+
+  for (size_t i = 0; i < grA->numOfGrnds; ++i) {
+    grounder_print_grounding(grA->grnds[i], grA->action->numOfParams);
+    if (i < grA->numOfGrnds - 1) {
+      printf(",");
+    }
+  }
   printf("]");
 }

@@ -9,9 +9,19 @@
                (p2 ?a)
                (p3 ?a ?b ?c))
 
-  (:action a1
+  ;;; Simple example for grounding
+  (:action a0
     :parameters (?a - t1
                  ?b - t3
                  ?c)
     :precondition (and (p1 ?a ?b) (p2 ?c))
+    :effect ())
+
+  ;;; Example for grounding with multiple occurences of parameter in
+  ;;; precondition.
+  (:action a1
+    :parameters (?a - t1
+                 ?b - t3)
+    :precondition (and (p1 ?a ?b) (p2 ?a))
     :effect ()))
+

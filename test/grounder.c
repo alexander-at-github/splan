@@ -11,27 +11,61 @@ static char *
 test_groundAction1()
 {
   char *domainFilename = "test/grounder-domain.pddl";
-  char *problemFilename = "test/grounder-problem.pddl";
+  char *problemFilename = NULL;
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   struct groundAction grA;
-  grA.action = &domain->actionManag->actions[0];
+  struct grounding partialG;
+
+
+  /* First test */
+  problemFilename = "test/grounder-problem0.pddl";
+  struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
+
+  grA.action = actionManag_getAction(domain->actionManag, "a0");
   grA.numOfGrnds = 0;
   grA.grnds = NULL;
 
-  struct grounding partialG;
   partialG.terms = malloc(sizeof(*partialG.terms) * grA.action->numOfParams);
   for (size_t i = 0; i < grA.action->numOfParams; ++i) {
     partialG.terms[i] = NULL;
   }
 
-  // Everything set up.
-
+  // TODO: Don't print. Check programmatically.
   libpddl31_state_print(problem->init);
   printf("\n");
   grounder_groundAction(problem->init, 0, &partialG, &grA);
   grounder_print_groundAction(&grA);
+  printf("\n");
+
+  // Clean up first test.
+  libpddl31_problem_free(problem);
+  free(partialG.terms);
+
+
+  /* Second Test */
+  problemFilename = "test/grounder-problem1.pddl";
+  problem = libpddl31_problem_parse(domain, problemFilename);
+
+  grA.action = actionManag_getAction(domain->actionManag, "a1");
+  grA.numOfGrnds = 0;
+  grA.grnds = NULL;
+
+  partialG.terms = malloc(sizeof(*partialG.terms) * grA.action->numOfParams);
+  for (size_t i = 0; i < grA.action->numOfParams; ++i) {
+    partialG.terms[i] = NULL;
+  }
+
+  // TODO: Don't print. Check programmatically.
+  libpddl31_state_print(problem->init);
+  printf("\n");
+  grounder_groundAction(problem->init, 0, &partialG, &grA);
+  grounder_print_groundAction(&grA);
+  printf("\n");
+
+  // Clean up second test.
+  libpddl31_problem_free(problem);
+  free(partialG.terms);
 
   return 0;
 }

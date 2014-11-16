@@ -39,12 +39,18 @@ void actionManag_free(struct actionManag *actionManag)
     free(actionManag);
 }
 
-struct action *actionManag_getAction(  struct actionManag *manager,
-                                       char *name)
+struct action *
+actionManag_getAction(  struct actionManag *manager, char *name)
 {
-    assert(false);
-    // TODO
+  if (manager == NULL) {
     return NULL;
+  }
+  for (size_t i = 0; i < manager->numOfActions; ++i) {
+    if (strcmp(manager->actions[i].name, name) == 0) {
+      return &manager->actions[i];
+    }
+  }
+  return NULL;
 }
 
 

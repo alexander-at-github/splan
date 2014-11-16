@@ -188,8 +188,8 @@ typeSystem_getRoot(struct typeSystem *ts)
 }
 
 bool
-typeSystem_isa( struct type *t1,
-                struct type *t2)
+typeSystem_isa(struct type *t1,
+               struct type *t2)
 {
   if (t1 == NULL || t2 == NULL) {
     assert(false);
