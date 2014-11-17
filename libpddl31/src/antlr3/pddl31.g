@@ -77,19 +77,19 @@ functionType
 /* Rules for terms */
 term returns [struct term *value]
 @init {
-    $value = malloc(sizeof(*$value));
+    /* $value = malloc(sizeof(*$value)); */
 }
     : NAME
         {
-        $value->isVariable = false;
-        $value->name = string_malloc_copy($NAME.text);
-        $value->type = global_typeSystem->root;
+        /* $value->isVariable = false; */
+        /* $value->name = string_malloc_copy($NAME.text); */
+        /* $value->type = global_typeSystem->root; */
         }
     | variable
         {
-        $value->isVariable = true;
-        $value->name = string_malloc_copy($variable.text);
-        $value->type = global_typeSystem->root;
+        /* $value->isVariable = true; */
+        /* $value->name = string_malloc_copy($variable.text); */
+        /* $value->type = global_typeSystem->root; */
         }
     ;
 
@@ -104,13 +104,14 @@ predicate
 
 /* Rules for literals */
 // A literal is positive or negated atom
-literal_term returns [bool value_pos, struct atom *value]
-    : atomicFormula_term
+literal_term[struct objManag *oManag] returns [bool value_pos,
+                                               struct atom *value]
+    : atomicFormula_term[$oManag]
         {
         $value_pos = true;
         $value = $atomicFormula_term.value;
         }
-    | '(' 'not' atomicFormula_term ')'
+    | '(' 'not' atomicFormula_term[$oManag] ')'
         {
         $value_pos = false;
         $value = $atomicFormula_term.value;
@@ -153,7 +154,10 @@ atomicFormulaSkeleton returns [struct predicate *value]
     }
     ;
 
-atomicFormula_term returns [struct atom *value]
+// TODO: Use context (that is an object-manager which gives you pointer to
+//       the allready allocated terms!!!
+// =======================================================================
+atomicFormula_term[struct objManag *oManag] returns [struct atom *value]
 @init {
     pANTLR3_LIST term_list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -161,15 +165,19 @@ atomicFormula_term returns [struct atom *value]
     term_list->free(term_list);
 }
     :   '(' predicate (term {
+                            // TODO: Free term somewhere?
+                            /* free($term.value); */
+                            // TODO: Or maybe not allocate in term-rule at all.
                             term_list->add(term_list,
-                                           $term.value,
-                                           NULL); // TODO changed 29.10 22:00
+                                           (char *)$term.text->chars,
+                                           NULL);
                             }
                       )* ')'
         {
         $value = malloc(sizeof(*$value));
+        char *pred_name = (char *) $predicate.text->chars;
         $value->pred = predManag_getPred(global_predManag,
-                                         (char *) $predicate.text->chars);
+                                         pred_name);
         if ($value->pred == NULL) {
             fprintf(stderr,
                     "error parsing predicate '\%s'\n",
@@ -183,7 +191,16 @@ atomicFormula_term returns [struct atom *value]
         $value->terms = malloc(sizeof(*$value->terms) *
                               $value->pred->numOfParams);
         for (size_t i = 0; i < $value->pred->numOfParams; ++i) {
-            $value->terms[i] = (struct term *) term_list->get(term_list, i+1);
+            char *term_name = term_list->get(term_list, i+1);
+            struct term *term = objManag_getObject($oManag, term_name);
+            if (term == NULL) {
+              fprintf(stderr,
+                      "Error parsing term '\%s' in predicate '\%s'. I do not"
+                      " recognize this term.\n",
+                      term_name,
+                      pred_name);
+            }
+            $value->terms[i] = term;
         }
         }
     //|   '(' '=' term term ')' // requires :equality
@@ -299,8 +316,8 @@ typedList_name[pANTLR3_LIST list]
               item->isVariable = false;
               item->name = string_malloc_copy($NAME.text);
               item->type = global_typeSystem->root;
-              // Do free structs. They must be COPIED into an array later.
-              $list->add($list, item, &free);
+              // Don't free.
+              $list->add($list, item, NULL);
               }
         )*
     |   (NAME {
@@ -310,7 +327,6 @@ typedList_name[pANTLR3_LIST list]
               // Type will be assigned later.
               item->type = NULL;
               // Save these names in a local list first.
-              // Don't free. 'list' will do that.
               local_list->add(local_list, item, NULL);
               }
         )+ '-' type {
@@ -328,9 +344,8 @@ typedList_name[pANTLR3_LIST list]
                                     $type.text->chars);
                         }
                         // Add names to input-output list
-                        // Do free structs. They must be COPIED into an array
-                        // later.
-                        $list->add($list, item, &free);
+                        // Don't free
+                        $list->add($list, item, NULL);
                     }
                     }
         typedList_name[$list] // requires :typing
@@ -375,7 +390,7 @@ domain returns [struct domain *value]
         )?
         (predicatesDef  {
                         global_predManag = $predicatesDef.value;
-                        $value->predManag = global_predManag;        
+                        $value->predManag = global_predManag;
                         }
         )?
         // Special arrangement to parse action-costs only (and no other
@@ -532,7 +547,7 @@ requireKey returns [enum requirement *value]
 /* Types definitions */
 
 /* Constants definitions */
-constantsDef returns [int32_t value_num, struct term *value]
+constantsDef returns [int32_t value_num, struct term **value]
 @init {
     pANTLR3_LIST list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -545,7 +560,7 @@ constantsDef returns [int32_t value_num, struct term *value]
         $value = malloc(sizeof(*$value) * $value_num);
         for (int i = 0; i < $value_num; ++i) {
             // antlr3 lists start at 1
-            $value[i] = *(struct term *) list->get(list, i+1);
+            $value[i] = (struct term *) list->get(list, i+1);
         }
         }
     ;
@@ -579,13 +594,14 @@ structureDef returns [struct action *value]
 actionDef returns [struct action *value]
 @init {
     pANTLR3_LIST var_list = antlr3ListNew(LIST_SIZE_INIT);
+    struct objManag *oManag = objManag_clone(global_objManag);
 }
 @after {
     var_list->free(var_list);
+    objManag_freeWthtTerms(oManag);
 }
     :   '(' ':action' actionSymbol
         ':parameters' '(' typedList_variable[var_list] ')' 
-        actionDefBody ')'
         {
         $value = malloc(sizeof(*$value));
         $value->name = string_malloc_copy($actionSymbol.text);
@@ -596,6 +612,10 @@ actionDef returns [struct action *value]
             // antlr3 list indizes are based on 1
             $value->params[i] = *(struct term*)var_list->get(var_list, i+1);
         }
+        oManag = objManag_add_v2(oManag, $value->numOfParams, $value->params);
+        }
+        actionDefBody[oManag] ')'
+        {
         $value->precond = $actionDefBody.value_precondition;
         $value->effect = $actionDefBody.value_effect;
         }
@@ -605,41 +625,43 @@ actionSymbol
     :   NAME
     ;
 
-actionDefBody returns [struct goal *value_precondition,
-                       struct effect *value_effect]
+actionDefBody[struct objManag *oManag]
+            returns [struct goal *value_precondition,
+                     struct effect *value_effect]
 @init {
     $value_precondition = NULL;
     $value_effect = NULL;
 }
-    :   (':precondition' precond=emptyOr_preconditionGoalDescription
+    :   (':precondition' precond=emptyOr_preconditionGoalDescription[$oManag]
         {
         $value_precondition = $precond.value;
         }
         )?
-        (':effect' emptyOr_effect
+        (':effect' emptyOr_effect[$oManag]
         {
         $value_effect = $emptyOr_effect.value;
         }
         )?
     ;
 
-emptyOr_preconditionGoalDescription returns [struct goal *value]
+emptyOr_preconditionGoalDescription[struct objManag *oManag]
+                                  returns [struct goal *value]
     :   '(' ')'
         {
         $value = NULL;
         }
-    |   preconditionGoalDescription
+    |   preconditionGoalDescription[$oManag]
         {
         $value = $preconditionGoalDescription.value;
         }
     ;
 
-emptyOr_effect returns [struct effect *value]
+emptyOr_effect[struct objManag *oManag] returns [struct effect *value]
     :   '(' ')'
         {
         $value = NULL;
         }
-    |   effect
+    |   effect[oManag]
         {
         $value = $effect.value;
         }
@@ -664,8 +686,9 @@ emptyOr_effect returns [struct effect *value]
 //    : '(' 'forall' '(' typedList_variable ')' preconditionGoalDescription ')'
 //    ;
 /* cause we don't support :preferences */
-preconditionGoalDescription returns [struct goal *value]
-    : goalDescription
+preconditionGoalDescription[struct objManag *oManag]
+                          returns [struct goal *value]
+    : goalDescription[$oManag]
         {
         $value = $goalDescription.value;
         }
@@ -680,7 +703,7 @@ preconditionGoalDescription returns [struct goal *value]
 //    :   NAME
 //    ;
 
-goalDescription returns [struct goal *value]
+goalDescription[struct objManag *oManag] returns [struct goal *value]
 @init {
     pANTLR3_LIST and_list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -693,7 +716,7 @@ goalDescription returns [struct goal *value]
     */
     //: atomicFormula_term
     // The following line includes atomicFormula_term
-    : literal_term // requires :negative-preconditions
+    : literal_term[$oManag] // requires :negative-preconditions
         {
         $value = malloc(sizeof(*$value));
 
@@ -703,12 +726,12 @@ goalDescription returns [struct goal *value]
         $value->posLiterals = pos ? $literal_term.value : NULL;
         $value->negLiterals = pos ? NULL : $literal_term.value;
         }
-    | '(' 'and' (gd=goalDescription {
-                                    and_list->add(and_list,
-                                                  $gd.value,
-                                                  &free);
-                                    }
-    
+    | '(' 'and' (gd=goalDescription[$oManag] {
+                                             and_list->add(and_list,
+                                                           $gd.value,
+                                                           &free);
+                                             }
+
                 )* ')'
         {
         $value = malloc(sizeof(*$value));
@@ -754,14 +777,14 @@ goalDescription returns [struct goal *value]
     //| fComp // requires :atomic-fluents
     ;
 
-effect returns [struct effect *value]
+effect[struct objManag *oManag] returns [struct effect *value]
 @init {
         pANTLR3_LIST and_list = antlr3ListNew(LIST_SIZE_INIT);
 }
 @after {
         and_list->free(and_list);
 }
-    : '(' 'and' (cEffect {
+    : '(' 'and' (cEffect[$oManag] {
                          if ($cEffect.value != NULL) {
                              and_list->add(and_list, $cEffect.value, &free);
                          }
@@ -777,7 +800,7 @@ effect returns [struct effect *value]
                                             and_list->get(and_list, i+1);
         }
         }
-    | cEffect
+    | cEffect[$oManag]
         {
         $value = malloc(sizeof(*$value));
         $value->numOfElems = 1;
@@ -786,14 +809,15 @@ effect returns [struct effect *value]
     ;
 
 // Attention: May return NULL.
-cEffect returns [struct effectElem *value]
+cEffect[struct objManag *oManag] returns [struct effectElem *value]
 @init {
     pANTLR3_LIST var_list = antlr3ListNew(LIST_SIZE_INIT);
+    struct objManag *oManagUpdated = NULL;
 }
 @after {
     var_list->free(var_list);
 }
-    : '(' 'forall' '(' typedList_variable[var_list] ')' effect ')'
+    : '(' 'forall' '(' typedList_variable[var_list]
         {
         $value = malloc(sizeof(*$value));
         $value->type = FORALL;
@@ -805,13 +829,32 @@ cEffect returns [struct effectElem *value]
             $value->it.forall->vars[i] = *(struct term *)
                                                 var_list->get(var_list, i+1);
         }
+        // Prepare updated object manager.
+        oManagUpdated = objManag_clone($oManag);
+        // TODO: Change to objManag_add_v2().
+        struct term **newObjs = malloc(sizeof(*newObjs) *
+                                       $value->it.forall->numOfVars);
+        for (size_t i = 0; i < $value->it.forall->numOfVars; ++i) {
+            newObjs[i] = &$value->it.forall->vars[i];
+        }
+        oManagUpdated = objManag_add(oManagUpdated,
+                                     $value->it.forall->numOfVars,
+                                     newObjs);
+        free(newObjs);
+        }
+
+                   ')' effect[oManagUpdated] ')'
+        {
+        // Free temporal object manager
+        objManag_freeWthtTerms(oManagUpdated);
+
         $value->it.forall->effect = $effect.value;
         }
-    | condEffectPre
+    | condEffectPre[$oManag]
         {
         $value = $condEffectPre.value;
         }
-    | pEffect
+    | pEffect[$oManag]
         {
         if ($pEffect.value == NULL) {
             $value = NULL;
@@ -824,7 +867,7 @@ cEffect returns [struct effectElem *value]
     ;
 
 // May return NULL
-condEffectPre returns [struct effectElem *value]
+condEffectPre[struct objManag *oManag] returns [struct effectElem *value]
 @init {
     pANTLR3_LIST posAtoms = antlr3ListNew(LIST_SIZE_INIT);
     pANTLR3_LIST negAtoms = antlr3ListNew(LIST_SIZE_INIT);
@@ -833,7 +876,9 @@ condEffectPre returns [struct effectElem *value]
     posAtoms->free(posAtoms);
     negAtoms->free(negAtoms);
 }
-    : '(' 'when' goalDescription condEffect[posAtoms, negAtoms] ')'
+    : '(' 'when' goalDescription[$oManag] condEffect[posAtoms,
+                                                     negAtoms,
+                                                     $oManag] ')'
         {
         if (posAtoms->size(posAtoms) == 0 && negAtoms->size(negAtoms) == 0) {
             $value = NULL;
@@ -861,8 +906,10 @@ condEffectPre returns [struct effectElem *value]
     ;
 
 // This rule fills the lists passed as arguments.
-condEffect[pANTLR3_LIST posAtoms, pANTLR3_LIST negAtoms]
-    : '(' 'and' (pEffect
+condEffect[pANTLR3_LIST posAtoms,
+           pANTLR3_LIST negAtoms,
+           struct objManag *oManag]
+    : '(' 'and' (pEffect[$oManag]
                         {
                         if ($pEffect.value == NULL) {
                             // Do not do anything
@@ -881,9 +928,9 @@ condEffect[pANTLR3_LIST posAtoms, pANTLR3_LIST negAtoms]
                             }
                         }
                         }
-        
+
                         )* ')'
-    | pEffect
+    | pEffect[$oManag]
         {
         if ($pEffect.value == NULL) {
             // Do not do anything
@@ -905,13 +952,13 @@ condEffect[pANTLR3_LIST posAtoms, pANTLR3_LIST negAtoms]
     ;
 
 // Attention: May return NULL.
-pEffect returns [bool value_pos, struct atom *value]
-    : '(' 'not' atomicFormula_term ')'
+pEffect[struct objManag *oManag] returns [bool value_pos, struct atom *value]
+    : '(' 'not' atomicFormula_term[$oManag] ')'
         {
         $value_pos = false;
         $value = $atomicFormula_term.value;
         }
-    | atomicFormula_term
+    | atomicFormula_term[$oManag]
         {
         $value_pos = true;
         $value = $atomicFormula_term.value;
@@ -987,7 +1034,7 @@ problem[struct domain *domain] returns [struct problem *value]
       }
     ;
 
-objectDeclaration returns [int32_t value_num, struct term *value]
+objectDeclaration returns [int32_t value_num, struct term **value]
 @init {
     pANTLR3_LIST obj_list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -1003,7 +1050,7 @@ objectDeclaration returns [int32_t value_num, struct term *value]
           $value = malloc (sizeof(*$value) * $value_num);
           for (int i = 0; i < $value_num; ++i) {
               // antlr3 list index starts from 1
-              $value[i] = *(struct term *) obj_list->get(obj_list, i+1);
+              $value[i] = (struct term *) obj_list->get(obj_list, i+1);
           }
       }
       }
@@ -1072,7 +1119,7 @@ initEl returns [struct atom *value]
     ;
 
 goal returns [struct goal *value]
-    : '(' ':goal' preconditionGoalDescription ')'
+    : '(' ':goal' preconditionGoalDescription[global_objManag] ')'
       {
       $value = $preconditionGoalDescription.value;
       }

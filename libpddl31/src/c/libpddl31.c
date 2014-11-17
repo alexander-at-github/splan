@@ -235,8 +235,8 @@ libpddl31_atom_free(struct atom *atom)
 
     if (atom->terms != NULL) {
         for (int i = 0; i < atom->pred->numOfParams; ++i) {
-            libpddl31_term_free(atom->terms[i]);
-            free(atom->terms[i]);
+            //libpddl31_term_free(atom->terms[i]);
+            //free(atom->terms[i]);
         }
         free(atom->terms);
         atom->terms = NULL;

@@ -4,6 +4,14 @@
 
 #include "libpddl31.h"
 
+struct groundAction *grounder_create_groundAction(struct action *act)
+{
+  struct groundAction *grA = malloc(sizeof(*grA));
+  grA->action = act;
+  grA->numOfGrnds = 0;
+  grA->grnds = NULL;
+  return grA;
+}
 
 static void
 grounder_freeGrounding(struct grounding *g)
@@ -21,7 +29,13 @@ static bool
 term_equal(struct term *t1, struct term *t2)
 {
   return // t1->isVariable == t2->isVariable && // Not neccessary.
+
+         // Comparing the pointer should actually always be enough. Just to
+         // make sure I also consider the case that names are allocated
+         // multiple times.
+         // TODO: Maybe remove that.
          (t1->name == t2->name || strcmp(t1->name, t2->name) == 0);
+
          // DO NOT compare types. Not any use of a variable also specifies its
          // type.
          //t1->type == t2->type; // Comparing pointers to types really has to be
@@ -52,6 +66,7 @@ grounder_getActions(struct domain *domain, struct state *state)
   for (size_t i = 0; i < domain->actionManag->numOfActions; ++i) {
     struct action *action = &domain->actionManag->actions[i];
 
+    // TODO: change to grounder_create_groundAction().
     struct groundAction grAct;
     grAct.action = action;
     grAct.numOfGrnds = 0;
@@ -141,7 +156,6 @@ grounder_groundAction(struct state *state,
           // Two constants match.
           continue; // Continue with next parameter.
         } else {
-          // TODO: sane?
           continueOuter = true;
           break;
         }
@@ -152,37 +166,41 @@ grounder_groundAction(struct state *state,
       // TODO: Compare to type of predicate definition!!!
       // Check type.
       if ( ! typeSystem_isa(flntTerm->type, pcplTerm->type)) {
-        // TODO: sane ?
         continueOuter = true;
         break;
       }
       // Types match
 
-      // libpddl31_term_print(pcplTerm); // DEBUG
-      // printf("\n"); // DEBUG
+      //libpddl31_term_print(pcplTerm); // DEBUG
+      //printf("\n"); // DEBUG
 
       // Find position of parameter in action.
-      size_t idxActParam = 0;
-      for (idxActParam = 0; idxActParam < action->numOfParams; ++idxActParam) {
-        struct term *actParam = &action->params[idxActParam];
+      // pcplTerm is pointer into the array action->params.
+      int32_t idxActParam = pcplTerm - action->params; // Pointer aritmetic
+      assert (0 <= idxActParam && idxActParam < action->numOfParams);
 
-        //printf("idxActParam:%d ", idxActParam); // DEBUG
-        //libpddl31_term_print(actParam); // DEBUG
-        //printf("\n"); // DEBUG
+      // Find position of parameter in action.
+      /* size_t idxActParam = 0; */
+      /* for (idxActParam = 0; idxActParam < action->numOfParams; ++idxActParam) { */
+      /*   struct term *actParam = &action->params[idxActParam]; */
 
-        if (term_equal(actParam, pcplTerm)) {
-          // Position found
-          break;
-        }
-      }
-      if (idxActParam >= action->numOfParams) {
-        fprintf(stderr,
-                "Error in action '%s'. Variable '%s' in precondition does"
-                " not match any parameter.",
-                action->name,
-                pcplTerm->name);
-        exit(EXIT_FAILURE);
-      }
+      /*   printf("idxActParam:%d ", idxActParam); // DEBUG */
+      /*   libpddl31_term_print(actParam); // DEBUG */
+      /*   printf("\n"); // DEBUG */
+
+      /*   if (term_equal(actParam, pcplTerm)) { */
+      /*     // Position found */
+      /*     break; */
+      /*   } */
+      /* } */
+      /* if (idxActParam >= action->numOfParams) { */
+      /*   fprintf(stderr, */
+      /*           "Error in action '%s'. Variable '%s' in precondition does" */
+      /*           " not match any parameter.", */
+      /*           action->name, */
+      /*           pcplTerm->name); */
+      /*   exit(EXIT_FAILURE); */
+      /* } */
       // idxActParam is set now.
 
       // Check if there exists a mapping for this parameter already.
@@ -250,4 +268,18 @@ grounder_print_groundAction(struct groundAction *grA)
     }
   }
   printf("]");
+}
+
+void grounder_free_groundAction(struct groundAction *grA)
+{
+  if (grA == NULL) {
+    return;
+  }
+  if (grA->grnds != NULL) {
+    for (int32_t i = 0; i < grA->numOfGrnds; ++i) {
+      grounder_freeGrounding(grA->grnds[i]);
+    }
+    free(grA->grnds);
+  }
+  free(grA);
 }

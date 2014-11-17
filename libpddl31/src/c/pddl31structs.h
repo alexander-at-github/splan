@@ -101,7 +101,7 @@ struct state
 
 /** Goal **/
 // Composition of a predicate and terms as arguments.
-struct atom 
+struct atom
 {
     struct predicate *pred;
     // Number of constants is pred_cons->pred->numOfParams

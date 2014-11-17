@@ -14,7 +14,6 @@ test_groundAction1()
   char *problemFilename = NULL;
   struct domain *domain = libpddl31_domain_parse(domainFilename);
 
-  struct groundAction grA;
   struct grounding partialG;
 
 
@@ -22,23 +21,23 @@ test_groundAction1()
   problemFilename = "test/grounder-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
-  grA.action = actionManag_getAction(domain->actionManag, "a0");
-  grA.numOfGrnds = 0;
-  grA.grnds = NULL;
+  struct action *act = actionManag_getAction(domain->actionManag, "a0");
+  struct groundAction *grA = grounder_create_groundAction(act);
 
-  partialG.terms = malloc(sizeof(*partialG.terms) * grA.action->numOfParams);
-  for (size_t i = 0; i < grA.action->numOfParams; ++i) {
+  partialG.terms = malloc(sizeof(*partialG.terms) * grA->action->numOfParams);
+  for (size_t i = 0; i < grA->action->numOfParams; ++i) {
     partialG.terms[i] = NULL;
   }
 
   // TODO: Don't print. Check programmatically.
   libpddl31_state_print(problem->init);
   printf("\n");
-  grounder_groundAction(problem->init, 0, &partialG, &grA);
-  grounder_print_groundAction(&grA);
+  grounder_groundAction(problem->init, 0, &partialG, grA);
+  grounder_print_groundAction(grA);
   printf("\n");
 
   // Clean up first test.
+  grounder_free_groundAction(grA);
   libpddl31_problem_free(problem);
   free(partialG.terms);
 
@@ -47,26 +46,28 @@ test_groundAction1()
   problemFilename = "test/grounder-problem1.pddl";
   problem = libpddl31_problem_parse(domain, problemFilename);
 
-  grA.action = actionManag_getAction(domain->actionManag, "a1");
-  grA.numOfGrnds = 0;
-  grA.grnds = NULL;
+  act = actionManag_getAction(domain->actionManag, "a0");
+  grA = grounder_create_groundAction(act);
 
-  partialG.terms = malloc(sizeof(*partialG.terms) * grA.action->numOfParams);
-  for (size_t i = 0; i < grA.action->numOfParams; ++i) {
+  partialG.terms = malloc(sizeof(*partialG.terms) * grA->action->numOfParams);
+  for (size_t i = 0; i < grA->action->numOfParams; ++i) {
     partialG.terms[i] = NULL;
   }
 
   // TODO: Don't print. Check programmatically.
   libpddl31_state_print(problem->init);
   printf("\n");
-  grounder_groundAction(problem->init, 0, &partialG, &grA);
-  grounder_print_groundAction(&grA);
+  grounder_groundAction(problem->init, 0, &partialG, grA);
+  grounder_print_groundAction(grA);
   printf("\n");
 
   // Clean up second test.
+  grounder_free_groundAction(grA);
   libpddl31_problem_free(problem);
   free(partialG.terms);
 
+  // Clean up rest.
+  libpddl31_domain_free(domain);
   return 0;
 }
 

@@ -20,12 +20,14 @@ struct groundAction
 };
 
 
+struct groundAction *grounder_create_groundAction(struct action *act);
 //struct groundAction *
 void grounder_groundAction( struct state *state,
                             int32_t idxPrecond,
                             struct grounding *partialG,
                             struct groundAction *grAct);
 void grounder_print_groundAction(struct groundAction *grA);
+void grounder_free_groundAction(struct groundAction *grA);
 
 /* struct action **grounder_getActions(Grounder grounder, */
 /*                                     struct state *state); */
