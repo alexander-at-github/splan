@@ -446,7 +446,7 @@ libpddl31_problem_parse(struct domain *domain, char *filename)
 }
 
 void
-free_state(struct state *state)
+libpddl31_free_state(struct state *state)
 {
     if (state == NULL) {
         return;
@@ -488,7 +488,7 @@ libpddl31_problem_free(struct problem *problem)
     }
 
     if (problem->init != NULL) {
-        free_state(problem->init);
+        libpddl31_free_state(problem->init);
         free(problem->init);
         problem->init = NULL;
     }
