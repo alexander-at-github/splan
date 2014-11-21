@@ -109,6 +109,7 @@ struct atom
 };
 
 // Semantics: conjunction
+// A goal could be called a 'partial state'.
 struct goal
 {
     // positive literals in this conjunction
