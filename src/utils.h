@@ -3,6 +3,15 @@
 
 #include "libpddl31.h"
 
+// A gap is a literal combined with a position in a sequence of actions.
+// For details see Theorem 5 of Paper 'Parameterized Complexity of Optimal
+// Planning'.
+struct gap {
+  struct literal *literal;
+  // The position of the gap in the sequence of actions.
+  int32_t position;
+};
+
 struct literal
 {
   // For a negated literal 'isPos' will be false. Otherwise 'isPos' will be

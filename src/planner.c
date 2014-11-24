@@ -5,15 +5,6 @@
 #include "libpddl31.h"
 #include "utils.h"
 
-// A gap is a literal combined with a position in a sequence of actions.
-// For details see Theorem 5 of Paper 'Parameterized Complexity of Optimal
-// Planning'.
-struct gap {
-  struct literal *literal;
-  // The position of the gap in the sequence of actions.
-  int32_t position;
-};
-
 struct actionList *
 planner_solveProblem(struct problem *problem, depthLimit)
 {
@@ -25,6 +16,27 @@ planner_getActsToFixGap(struct problem *problem, struct gap *gap)
 {
   // TODO
   assert(false);
+
+  struct actionManag *actManag = problem->domain->actionManag;
+
+  // I will use the struct actionList again. The ordering does not matter
+  // here though. I just want to collect a set here.
+  struct actionList *result = NULL;
+
+
+  for (int23_t idxActManag = 0;
+       idxActManag < actManag->numOfActions;
+       ++idxActManag) {
+
+    struct action *action = &actManag->actions[idxActManag];
+
+    struct atom *fix = utils_actionFixesGap(action, gap);
+    if (fix == NULL) {
+      continue;
+    }
+    // TODO: Complete grounding of that action and add all of them to the
+    // result.
+  }
 
   //Pseudocode:
   //result = set of ground actions
@@ -81,7 +93,7 @@ planner_solveProblem_aux( struct problem *problem,
 }
 
 // Returns NULL iff the state satisfies the goal.
-// Returns the literal which is not satisfied otherwise.
+// Returns the first literal which is not satisfied otherwise.
 struct literal *
 planner_satisfies(struct state *state, struct goal *goal)
 {
