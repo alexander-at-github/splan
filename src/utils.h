@@ -42,6 +42,12 @@ struct actionList
 
 void utils_free_literal(struct literal *literal);
 struct state *utils_copyState(struct state *state);
+void utils_free_actionList(struct actionList *list);
 void utils_freeStateShallow(struct state *state);
+struct actionList *utils_actionFixesGap(struct action *action,
+                                        struct gap *gap);
+void utils_print_actionList(struct actionList *list);
+// For debug pusposes only.
+int32_t utils_actionList_length(struct actionList *list);
 
 #endif

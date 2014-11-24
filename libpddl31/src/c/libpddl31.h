@@ -20,6 +20,7 @@ void libpddl31_atom_free(struct atom *atom);
 void libpddl31_term_free(struct term *term);
 void libpddl31_action_free(struct action *action);
 
+void libpddl31_atom_print(struct atom *atom);
 void libpddl31_term_print(struct term *term);
 void libpddl31_predicate_print(struct predicate *pred);
 void libpddl31_action_print(struct action *action);
