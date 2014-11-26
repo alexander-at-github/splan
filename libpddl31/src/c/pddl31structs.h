@@ -56,6 +56,9 @@ struct problem
 
     char *domainName;
 
+    // A reference to the coresponding domain.
+    struct domain *domain;
+
     int32_t numOfRequirements;
     enum requirement *requirements;
 

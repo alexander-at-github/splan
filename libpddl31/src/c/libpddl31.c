@@ -482,6 +482,10 @@ libpddl31_problem_free(struct problem *problem)
         problem->domainName = NULL;
     }
 
+    // We do not free the domain this problem refers to, because the user might
+    // want to use the domain again with another problem. So the user has to
+    // free the domain seperately after freeing the problem.
+
     if (problem->requirements != NULL) {
         free(problem->requirements);
         problem->requirements = NULL;

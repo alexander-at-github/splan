@@ -980,6 +980,9 @@ problem[struct domain *domain] returns [struct problem *value]
 @init {
     $value = malloc(sizeof(*value));
 
+    // Save reference to domain.
+    $value->domain = domain;
+
     bool hasRequirements = false;
     bool hasObjects = false;
 
