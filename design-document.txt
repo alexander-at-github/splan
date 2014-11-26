@@ -50,6 +50,10 @@
                           |-literal
 
 
+OPEN QUESTIONS
+* action list is a very primitive single linked list. Concatenation takes
+  O(n) where n is the length of the first list. Should we imporve the list
+  implementation?
 
 TODO:
 * Turn off assertions for time measurments.
