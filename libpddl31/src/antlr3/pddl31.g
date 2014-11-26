@@ -885,6 +885,7 @@ condEffectPre[struct objManag *oManag] returns [struct effectElem *value]
         } else {
             $value = malloc(sizeof(*$value));
             $value->type = WHEN;
+            $value->it.when = malloc(sizeof(*$value->it.when));
             struct when *when = $value->it.when;
             when->precond = $goalDescription.value;
             when->numOfPos = posAtoms->size(posAtoms);
