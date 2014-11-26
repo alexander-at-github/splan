@@ -441,10 +441,10 @@ test_actionFixesGap_advanced_forall()
   // Get partial groundings for action, which fix the gap.
   result = utils_actionFixesGap(action, gap);
   resultHead = result;
-  printf("utils_actionList_length(result): %d\n", // DEBUG
-         utils_actionList_length(result)); // DEBUG
-  utils_print_actionList(result); // DEBUG
-  printf("\n"); // DEBUG
+  //printf("utils_actionList_length(result): %d\n", // DEBUG
+  //       utils_actionList_length(result)); // DEBUG
+  //utils_print_actionList(result); // DEBUG
+  //printf("\n"); // DEBUG
 
   mu_assert("Error utils_actionFixesGap(): wrong number of results.\n",
             utils_actionList_length(result) == 2);
@@ -484,6 +484,7 @@ allTests()
   mu_run_test(test_actionFixesGap_advanced_negative);
   mu_run_test(test_actionFixesGap_advanced_when);
   mu_run_test(test_actionFixesGap_advanced_forall);
+  // TODO: mu_run_test(test_actionFixesGap_advanced_typed());
   return 0;
 }
 
