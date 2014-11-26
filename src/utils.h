@@ -51,6 +51,7 @@ void utils_print_actionList(struct actionList *list);
 // For debug pusposes only.
 int32_t utils_actionList_length(struct actionList *list);
 
+// Completes the grounding of a list of parital grounded actions.
 struct actionList *utils_groundActions(struct problem *problem,
                                        struct actionList *partialGrounded);
 

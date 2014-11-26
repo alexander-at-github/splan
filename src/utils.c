@@ -330,9 +330,52 @@ int32_t utils_actionList_length(struct actionList *list)
 }
 
 struct actionList *
-utils_groundActions(struct problem *problem,
-                    struct actionList *partialGrounded)
+utils_groundAction_aux(struct problem *problem,
+                       struct groundAction *parGrAct,
+                       int32_t idxActArg)
 {
-  // TODO: FIXME!!!
-  return partialGrounded;
+  struct action *action = parGrAct->action;
+
+  if (idxActArg > action->numOfParams) {
+    // Return single element list of full grounding.
+  }
+
+  if (parGrAct->terms[idxActArg] != NULL) {
+    // A mapping for this parameter already exists. Simply procede with next
+    // parameter
+    return utils_groundAction_aux(problem, parGrAct, idxAxtArg + 1);
+  }
+  // TODO: continue here.
+
+  struct actionList *result = NULL;
+
+  struct objManag *objManag = problem->domain->objManag;
+
+  // for each object in object manager:
+  //  add mapping parGrAct->terms[idxActArg] to object
+  //  localresult = utils_groundAction_aux(problem, parGrAct, idxActArg + 1)
+  //  // I think I don't have to remove here. Just overwrite in next iteration.
+  //  result = utils_concatActionLists(localResult, result);
+
+  return result;
+}
+
+struct actionList *
+utils_groundActions(struct problem *problem,
+                    struct actionList *partialGroundedList)
+{
+  struct actionList *result = NULL;
+
+  // Iterate over the partial grounded actions
+  for (struct actionList *parGrActE = partialGroundedList;
+       parGrActE != NULL;
+       parGrActE = parGrAct->next) {
+
+    struct actionList *fullyGrActs = utils_groundAction_aux(problem,
+                                                            parGrAct,
+                                                            0);
+    result = utils_concatActionLists(fullyGrActs, result);
+  }
+
+  return result;
 }
