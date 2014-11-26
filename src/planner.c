@@ -30,19 +30,18 @@ planner_getActsToFixGap(struct problem *problem, struct gap *gap)
 
     struct action *action = &actManag->actions[idxActManag];
 
-    struct atom *fix = utils_actionFixesGap(action, gap);
+    struct actionList *fix = utils_actionFixesGap(action, gap);
     if (fix == NULL) {
+      // This action can not fix the gap.
       continue;
     }
-    // TODO: Complete grounding of that action and add all of them to the
-    // result.
-  }
 
-  //Pseudocode:
-  //result = set of ground actions
-  //for each action in problem->domain->actions
-  //  if action->effect contains gap
-  //    ground action and store in result
+    // Complete grounding of that action and add all of them to the
+    // result.
+    struct actionList *newActs = utils_groundActions(problem, fix);
+    result = utils_concatActionLists(newActs, result);
+  }
+  return result;
 }
 
 // Returns a solution to the planning instance or NULL, if no solution was

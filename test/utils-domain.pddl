@@ -5,7 +5,8 @@
           t2 - t1
           t3 - object)
 
-  (:constants const1 - t1)
+  (:constants const0 - object
+              const1 - t2)
 
   (:predicates (p1 ?a)
                (p2 ?a ?b)
@@ -36,5 +37,37 @@
     :parameters (?a ?b ?c ?d)
     :precondition ()
     :effect (not (p2 ?a ?c)))
+
+  (:action a5
+    :parameters (?a ?b ?c ?d)
+    :precondition ()
+    :effect (and (p1 ?a)
+                 (p1 const0)
+                 (not (p2 ?b ?c))
+                 (not (p2 ?c ?d))
+                 ;;; TODO: (not (p2 ?a ?a))
+                 (not (p2 const0 ?a))))
+
+  (:action a6
+    :parameters (?a ?b ?c ?d)
+    :precondition ()
+    :effect (when (p1 ?a) (p1 ?b)))
+
+  (:action a7
+    :parameters (?a ?b ?c ?d)
+    :precondition ()
+    :effect (and (not (p2 ?a ?b))
+                 ;;; (not (p2 ?b ?c)) (not (p2 ?c ?d))))
+                   (when (p1 ?a) (and (not (p2 ?b ?c)) (not (p2 ?c ?d))))))
+
+  (:action a8
+    :parameters (?a ?b ?c ?d)
+    :precondition ()
+    :effect (forall (?e) (p1 ?e)))
+
+  (:action a9
+    :parameters (?a ?b ?c ?d)
+    :precondition ()
+    :effect (and (forall (?e) (and (p1 ?e) (p2 ?a ?e))) (p2 ?c ?d)))
 )
 

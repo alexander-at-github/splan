@@ -47,7 +47,11 @@ void utils_freeStateShallow(struct state *state);
 struct actionList *utils_actionFixesGap(struct action *action,
                                         struct gap *gap);
 void utils_print_actionList(struct actionList *list);
+
 // For debug pusposes only.
 int32_t utils_actionList_length(struct actionList *list);
+
+struct actionList *utils_groundActions(struct problem *problem,
+                                       struct actionList *partialGrounded);
 
 #endif

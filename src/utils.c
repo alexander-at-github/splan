@@ -101,8 +101,10 @@ term_equal(struct term *t1, struct term *t2)
          // Comparing the pointer should actually always be enough. Just to
          // make sure I also consider the case that names are allocated
          // multiple times.
+
          // TODO: Maybe remove that.
          (t1->name == t2->name || strcmp(t1->name, t2->name) == 0);
+         //t1->name == t2->name;
 
          // DO NOT compare types. Not any use of a variable also specifies its
          // type.
@@ -254,7 +256,8 @@ utils_actionFixesGap_aux( struct action *action,
 
       struct actionList *faList = utils_actionFixesGap_aux(action, effect, gap);
 
-      result = utils_concatActionLists(result, faList);
+      // Adding forall-results to the front of the list.
+      result = utils_concatActionLists(faList, result);
       break;
     }
     case WHEN: {
@@ -263,7 +266,8 @@ utils_actionFixesGap_aux( struct action *action,
 
       struct actionList *whenList = utils_whenFixesGap(action, when, gap);
 
-      result = utils_concatActionLists(result, whenList);
+      // Adding forall-results to the front of the list.
+      result = utils_concatActionLists(whenList, result);
       break;
     }
     default: {
@@ -323,4 +327,12 @@ int32_t utils_actionList_length(struct actionList *list)
     length++;
   }
   return length;
+}
+
+struct actionList *
+utils_groundActions(struct problem *problem,
+                    struct actionList *partialGrounded)
+{
+  // TODO: FIXME!!!
+  return partialGrounded;
 }
