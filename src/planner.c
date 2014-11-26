@@ -14,8 +14,7 @@ planner_solveProblem(struct problem *problem, depthLimit)
 struct actionList *
 planner_getActsToFixGap(struct problem *problem, struct gap *gap)
 {
-  // TODO
-  assert(false);
+  // TODO: Check for correctness.
 
   struct actionManag *actManag = problem->domain->actionManag;
 
