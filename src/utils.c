@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "utils.h"
+#include "libpddl31.h"
 
 void utils_free_literal(struct literal *literal)
 {
@@ -329,6 +330,17 @@ int32_t utils_actionList_length(struct actionList *list)
   return length;
 }
 
+struct groundAction *
+utils_copyGroundAction(struct groundAction *src)
+{
+  struct groundAction *dest = malloc(sizeof(*dest));
+  dest->action = src->action;
+  int32_t size = sizeof(*dest->terms) * dest->action->numOfParams;
+  dest->terms = malloc(size);
+  memcpy(dest->terms, src->terms, size);
+  return dest;
+}
+
 struct actionList *
 utils_groundAction_aux(struct problem *problem,
                        struct groundAction *parGrAct,
@@ -336,26 +348,51 @@ utils_groundAction_aux(struct problem *problem,
 {
   struct action *action = parGrAct->action;
 
-  if (idxActArg > action->numOfParams) {
+  // Compare greater or equal, because indices start from zero.
+  if (idxActArg >= action->numOfParams) {
     // Return single element list of full grounding.
+    struct actionList *singleton = malloc(sizeof(*singleton));
+    singleton->act = utils_copyGroundAction(parGrAct);
+    singleton->next = NULL;
+    return singleton;
   }
 
   if (parGrAct->terms[idxActArg] != NULL) {
-    // A mapping for this parameter already exists. Simply procede with next
+    // A mapping for this parameter already exists. Simply proceed with next
     // parameter
-    return utils_groundAction_aux(problem, parGrAct, idxAxtArg + 1);
+    return utils_groundAction_aux(problem, parGrAct, idxActArg + 1);
   }
-  // TODO: continue here.
 
   struct actionList *result = NULL;
 
-  struct objManag *objManag = problem->domain->objManag;
+  struct objManag *objManag = problem->objManag;
 
   // for each object in object manager:
   //  add mapping parGrAct->terms[idxActArg] to object
   //  localresult = utils_groundAction_aux(problem, parGrAct, idxActArg + 1)
-  //  // I think I don't have to remove here. Just overwrite in next iteration.
   //  result = utils_concatActionLists(localResult, result);
+  for (int32_t idxObj = 0; idxObj < objManag->numOfObjs; ++idxObj) {
+    struct term *consObj = objManag->objs[idxObj];
+
+    // Check type.
+    if ( ! typeSystem_isa(consObj->type, action->params[idxActArg].type)) {
+      // Types do not match. Do not map from parameter to this constant. Just
+      // continue with next object.
+      continue;
+    }
+
+    parGrAct->terms[idxActArg] = consObj;
+    struct actionList *subResult = utils_groundAction_aux(problem,
+                                                          parGrAct,
+                                                          idxActArg + 1);
+    // I think we don't have to remove here. We could jJust overwrite in next
+    // iteration. I still do it for now, in order to not change the input
+    // arguments.
+    parGrAct->terms[idxActArg] = NULL;
+
+    // Collect the results
+    result = utils_concatActionLists(subResult, result);
+  }
 
   return result;
 }
@@ -369,10 +406,11 @@ utils_groundActions(struct problem *problem,
   // Iterate over the partial grounded actions
   for (struct actionList *parGrActE = partialGroundedList;
        parGrActE != NULL;
-       parGrActE = parGrAct->next) {
+       parGrActE = parGrActE->next) {
 
+    struct groundAction *parGrAction = parGrActE->act;
     struct actionList *fullyGrActs = utils_groundAction_aux(problem,
-                                                            parGrAct,
+                                                            parGrAction,
                                                             0);
     result = utils_concatActionLists(fullyGrActs, result);
   }

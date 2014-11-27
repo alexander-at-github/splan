@@ -12,7 +12,9 @@
                (p2 ?a ?b)
                (p3 ?a ?b ?c))
 
-  ;;; Simple example
+
+  ;;; Actions for testing the search for gaps.
+
   (:action a0
     :parameters (?a)
     :precondition ()
@@ -69,5 +71,17 @@
     :parameters (?a ?b ?c ?d)
     :precondition ()
     :effect (and (forall (?e) (and (p1 ?e) (p2 ?a ?e))) (p2 ?c ?d)))
+
+  ;;; Actions for testing the grounding based on gaps
+
+  (:action a10
+    :parameters (?a - object)
+    :precondition ()
+    :effect (p1 ?a))
+
+  (:action a11
+    :parameters (?a - t1)
+    :precondition ()
+    :effect (p1 ?a))
 )
 

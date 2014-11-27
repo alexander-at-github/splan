@@ -51,8 +51,13 @@ void utils_print_actionList(struct actionList *list);
 // For debug pusposes only.
 int32_t utils_actionList_length(struct actionList *list);
 
+// Creates (allocates) a ground action with all the groundings set to NULL.
+struct groundAction *utils_create_groundAction(struct action *action);
+
 // Completes the grounding of a list of parital grounded actions.
 struct actionList *utils_groundActions(struct problem *problem,
                                        struct actionList *partialGrounded);
+
+void utils_free_groundAction(struct groundAction *grAct);
 
 #endif
