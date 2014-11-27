@@ -11,6 +11,8 @@ struct domain *libpddl31_domain_parse(char *filename);
 void libpddl31_domain_free(struct domain *domain);
 void libpddl31_domain_print(struct domain *domain);
 
+// TODO: Does this call actually alter the domains' object manager?
+// It should not.
 struct problem *libpddl31_problem_parse(struct domain *domain, char *filename);
 // Attention: struct problem must be free'd before domain!
 void libpddl31_problem_free(struct problem *problem);
@@ -28,5 +30,7 @@ void libpddl31_goal_print(struct goal *goal);
 
 void libpddl31_state_print(struct state *state);
 void libpddl31_free_state(struct state *state);
+
+struct term *libpddl31_term_clone(struct term *src);
 
 #endif // LIBPDDL31_H

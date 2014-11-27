@@ -23,6 +23,8 @@ void objManag_free(struct objManag *objManag);
 void objManag_freeWthtTerms(struct objManag *objManag);
 void objManag_print(struct objManag *objManag);
 // Does not alter the source object manager.
+// Clone shallow, means without copying the actual terms it refers to.
+struct objManag *objManag_cloneShallow(struct objManag *src);
 struct objManag *objManag_clone(struct objManag *src);
 
 #endif

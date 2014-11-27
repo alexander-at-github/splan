@@ -7,6 +7,7 @@
 #include "actionManag.h"
 #include "typeSystem.h"
 #include "predManag.h"
+#include "objManag.h"
 
 enum requirement
 {
@@ -58,6 +59,12 @@ struct problem
 
     // A reference to the coresponding domain.
     struct domain *domain;
+
+    // A problem will have its' own object manager. Here it will add the
+    // constants which are defined in the problems' definition. We do not
+    // want to alter the domain, since it is semantically independent of the
+    // problem.
+    struct objManag *objManag;
 
     int32_t numOfRequirements;
     enum requirement *requirements;

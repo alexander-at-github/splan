@@ -1,4 +1,5 @@
-﻿#include <stdlib.h>
+﻿#include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "libpddl31.h"
@@ -11,6 +12,7 @@ struct objManag *objManag_create()
     result->objs = NULL;
     return result;
 }
+
 struct objManag *objManag_add(  struct objManag * objManag,
                                 int32_t count,
                                 struct term **newObjs)
@@ -104,10 +106,21 @@ void objManag_freeWthtTerms(struct objManag *objManag)
 }
 
 struct objManag *
-objManag_clone(struct objManag *src)
+objManag_cloneShallow(struct objManag *src)
 {
   struct objManag *result = objManag_create();
   return objManag_add(result, src->numOfObjs, src->objs);
+}
+
+struct objManag *
+objManag_clone(struct objManag *src)
+{
+  struct objManag *result = objManag_cloneShallow(src);
+  // Clone the objects (terms) itself and update references.
+  for (int32_t idxObj = 0; idxObj < result->numOfObjs; ++idxObj) {
+    result->objs[idxObj] = libpddl31_term_clone(result->objs[idxObj]);
+  }
+  return result;
 }
 
 void objManag_print(struct objManag *objManag)

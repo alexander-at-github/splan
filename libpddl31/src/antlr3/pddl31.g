@@ -594,7 +594,7 @@ structureDef returns [struct action *value]
 actionDef returns [struct action *value]
 @init {
     pANTLR3_LIST var_list = antlr3ListNew(LIST_SIZE_INIT);
-    struct objManag *oManag = objManag_clone(global_objManag);
+    struct objManag *oManag = objManag_cloneShallow(global_objManag);
 }
 @after {
     var_list->free(var_list);
@@ -830,7 +830,7 @@ cEffect[struct objManag *oManag] returns [struct effectElem *value]
                                                 var_list->get(var_list, i+1);
         }
         // Prepare updated object manager.
-        oManagUpdated = objManag_clone($oManag);
+        oManagUpdated = objManag_cloneShallow($oManag);
         // TODO: Change to objManag_add_v2().
         struct term **newObjs = malloc(sizeof(*newObjs) *
                                        $value->it.forall->numOfVars);
@@ -982,11 +982,14 @@ problem[struct domain *domain] returns [struct problem *value]
 
     // Save reference to domain.
     $value->domain = domain;
+    // Set the problems own object manager.
+    $value->objManag = objManag_clone($domain->objManag);
 
     bool hasRequirements = false;
     bool hasObjects = false;
 
-    global_objManag = $domain->objManag;
+    // Set the global object manager to the problems' object manager!
+    global_objManag = $value->objManag;
     // Set global pointer to type system
     global_typeSystem = $domain->typeSystem;
     // Set default for global predicate manager.
@@ -998,7 +1001,7 @@ problem[struct domain *domain] returns [struct problem *value]
             (od=objectDeclaration  {
                                 // Adding the objects to the domains
                                 // object manager
-                                objManag_add(   $domain->objManag,
+                                objManag_add(   global_objManag,
                                                 $od.value_num,
                                                 $od.value);
                                 free($od.value);

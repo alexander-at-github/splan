@@ -75,7 +75,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/c/%.c
 $(LIB_FILE): $(LIB_OBJ_FILE) $(LEXER_OBJ_FILE) $(LEXER_CORE_OBJ_FILE) $(PARSER_OBJ_FILE) $(BUILD_DIR)/predManag.o $(BUILD_DIR)/actionManag.o $(BUILD_DIR)/typeSystem.o $(BUILD_DIR)/objManag.o
 	mkdir -p $(BIN_DIR)
 	$(AR) rcs $@ $^
-	cp $(LIB_HEADER_FILE) $(STRUCTS_HEADER_FILE) src/c/typeSystem.h src/c/predManag.h src/c/actionManag.h $(BIN_DIR)
+	cp $(LIB_HEADER_FILE) $(STRUCTS_HEADER_FILE) src/c/typeSystem.h src/c/predManag.h src/c/actionManag.h src/c/objManag.h $(BIN_DIR)
 
 $(BIN_DIR):
 	mkdir -p $@

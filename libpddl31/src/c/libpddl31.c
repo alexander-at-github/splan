@@ -164,6 +164,27 @@ libpddl31_domain_parse(char *filename)
     return domain;
 }
 
+static char *
+libpddl31_string_clone(char *src)
+{
+    char *dest = malloc(sizeof(*dest) * (strlen(src) + 1));  // +1 for '\0'
+    strcpy(dest, src);
+    return dest;
+}
+
+struct term *
+libpddl31_term_clone(struct term *src)
+{
+    if (src == NULL) {
+        return NULL;
+    }
+    struct term *dest = malloc(sizeof(*dest));
+    dest->isVariable = src->isVariable;
+    dest->name = libpddl31_string_clone(src->name);
+    dest->type = src->type;
+    return dest;
+}
+
 void
 libpddl31_term_free(struct term *term)
 {
@@ -489,6 +510,11 @@ libpddl31_problem_free(struct problem *problem)
     if (problem->requirements != NULL) {
         free(problem->requirements);
         problem->requirements = NULL;
+    }
+
+    if (problem->objManag != NULL) {
+        objManag_free(problem->objManag);
+        problem->objManag = NULL;
     }
 
     if (problem->init != NULL) {
