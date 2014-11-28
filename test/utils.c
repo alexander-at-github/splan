@@ -552,36 +552,187 @@ test_groundActions_basic()
   struct action *action = NULL;
   struct actionList *result = NULL;
   struct actionList *resultHead = NULL;
+  struct groundAction *grAct = NULL;
 
-  // TODO
-  action = actionManag_getAction(domain->actionManag, "a10");
-  struct groundAction *grAct = utils_create_groundAction(action);
+  action = actionManag_getAction(domain->actionManag, "a11");
+  grAct = utils_create_groundAction(action); // empty ground action.
+
+  /*** Action 'a11' got two unground variables. ***/
+
+  struct actionList singletonL;
+  singletonL.act = grAct;
+  singletonL.next = NULL;
+
+  result = utils_groundActions(problem, &singletonL);
+  resultHead = result;
+  //printf("utils_actionList_length(result): %d\n", // DEBUG
+  //       utils_actionList_length(result)); // DEBUG
+  //utils_print_actionList(result); // DEBUG
+  //printf("\n"); // DEBUG
+
+  int32_t count = problem->objManag->numOfObjs * problem->objManag->numOfObjs;
+  mu_assert("Error grounding two variable action",
+            utils_actionList_length(result) == count);
+  utils_free_actionList(resultHead);
 
 
-  // TODO
-  /*** Try with empty grounding ***/
 
-  /* struct actionList singletonL; */
-  /* singletonL.act = grAct; */
-  /* singletonL.next = NULL; */
+  /*** One variable out of two is set before grounding. ***/
 
-  /* result = utils_groundActions(problem, &singletonL); */
-  /* resultHead = result; */
-  /* //printf("utils_actionList_length(result): %d\n", // DEBUG */
-  /* //       utils_actionList_length(result)); // DEBUG */
-  /* //utils_print_actionList(result); // DEBUG */
-  /* //printf("\n"); // DEBUG */
+  grAct->terms[1] = objManag_getObject(problem->objManag, "obj1");
 
-  /* // We are working with an action with a single (by types) unconstained */ 
-  /* // argument. The number of ground actions should be the number of objects */
-  /* // in the problem. */
-  /* mu_assert("Error grounding empty partial grounding and unconstrained (by" */
-  /*           " types) action", */
-  /*           utils_actionList_length(result) == problem->objManag->numOfObjs); */
-  /* utils_free_actionList(resultHead); */
+  result = utils_groundActions(problem, &singletonL);
+  resultHead = result;
+  //printf("utils_actionList_length(result): %d\n", // DEBUG
+  //       utils_actionList_length(result)); // DEBUG
+  //utils_print_actionList(result); // DEBUG
+  //printf("\n"); // DEBUG
+
+  // Exactly one out of two variables to ground will produce a grounding for
+  // each object in the problems object manager.
+  mu_assert("Error grounding partial grounding and unconstrained (by types)"
+            " action",
+            utils_actionList_length(result) == problem->objManag->numOfObjs);
+  utils_free_actionList(resultHead);
+
 
 
   utils_free_groundAction(grAct);
+
+  libpddl31_problem_free(problem);
+  libpddl31_domain_free(domain);
+  return 0;
+}
+
+static char *
+test_groundActions_typeChecks()
+{
+  char *domainFilename = "test/utils-domain.pddl";
+  struct domain *domain = libpddl31_domain_parse(domainFilename);
+  char *problemFilename = "test/utils-problem0.pddl";
+  struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
+
+  struct action *action = NULL;
+  struct actionList *result = NULL;
+  struct actionList *resultHead = NULL;
+  struct groundAction *grAct = NULL;
+
+  action = actionManag_getAction(domain->actionManag, "a12");
+  grAct = utils_create_groundAction(action); // empty ground action.
+
+  /*** Action 'a11' got two unground variables. ***/
+
+  struct actionList singletonL;
+  singletonL.act = grAct;
+  singletonL.next = NULL;
+
+  result = utils_groundActions(problem, &singletonL);
+  resultHead = result;
+  //printf("utils_actionList_length(result): %d\n", // DEBUG
+  //       utils_actionList_length(result)); // DEBUG
+  //utils_print_actionList(result); // DEBUG
+  //printf("\n"); // DEBUG
+
+  mu_assert("Error grounding two variable action with types",
+            utils_actionList_length(result) == 3);
+
+  mu_assert("Error utils_actionFixesGap(), wrong partial grounding.\n",
+            strcmp(result->act->terms[0]->name, "obj3") == 0);
+  mu_assert("Error utils_actionFixesGap(): partial grounding too restrictive",
+            strcmp(result->act->terms[1]->name, "obj3") == 0);
+  result = result->next;
+  mu_assert("Error utils_actionFixesGap(), wrong partial grounding.\n",
+            strcmp(result->act->terms[0]->name, "obj2") == 0);
+  mu_assert("Error utils_actionFixesGap(): partial grounding too restrictive",
+            strcmp(result->act->terms[1]->name, "obj3") == 0);
+  result = result->next;
+  mu_assert("Error utils_actionFixesGap(), wrong partial grounding.\n",
+            strcmp(result->act->terms[0]->name, "const1") == 0);
+  mu_assert("Error utils_actionFixesGap(): partial grounding too restrictive",
+            strcmp(result->act->terms[1]->name, "obj3") == 0);
+
+  utils_free_actionList(resultHead);
+  utils_free_groundAction(grAct);
+
+
+
+  action = actionManag_getAction(domain->actionManag, "a13");
+  grAct = utils_create_groundAction(action); // empty ground action.
+  singletonL.act = grAct;
+
+  result = utils_groundActions(problem, &singletonL);
+  resultHead = result;
+  //printf("utils_actionList_length(result): %d\n", // DEBUG
+  //       utils_actionList_length(result)); // DEBUG
+  //utils_print_actionList(result); // DEBUG
+  //printf("\n"); // DEBUG
+
+  mu_assert("Error grounding two variable action with types",
+            utils_actionList_length(result) == 1);
+  utils_free_actionList(resultHead);
+
+
+
+  utils_free_groundAction(grAct);
+
+  libpddl31_problem_free(problem);
+  libpddl31_domain_free(domain);
+  return 0;
+}
+
+static char *
+test_groundActions_multipleActions()
+{
+  char *domainFilename = "test/utils-domain.pddl";
+  struct domain *domain = libpddl31_domain_parse(domainFilename);
+  char *problemFilename = "test/utils-problem0.pddl";
+  struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
+
+  struct action *action = NULL;
+  struct actionList *result = NULL;
+  struct actionList *resultHead = NULL;
+  struct groundAction *grAct = NULL;
+
+  struct actionList listE1;
+  struct actionList listE2;
+  action = actionManag_getAction(domain->actionManag, "a14");
+  listE1.act = utils_create_groundAction(action);
+  listE1.next = &listE2;
+  action = actionManag_getAction(domain->actionManag, "a15");
+  listE2.act = utils_create_groundAction(action);
+  listE2.next = NULL;
+
+  result = utils_groundActions(problem, &listE1);
+  resultHead = result;
+  printf("utils_actionList_length(result): %d\n", // DEBUG
+         utils_actionList_length(result)); // DEBUG
+  utils_print_actionList(result); // DEBUG
+  printf("\n"); // DEBUG
+
+  // TODO: Continue
+  // TODO: Write email to Martin.
+  mu_assert("Error grounding two variable action with types",
+            utils_actionList_length(result) == 4);
+
+  //mu_assert("Error utils_actionFixesGap(), wrong partial grounding.\n",
+  //          strcmp(result->act->terms[0]->name, "obj3") == 0);
+  //mu_assert("Error utils_actionFixesGap(): partial grounding too restrictive",
+  //          strcmp(result->act->terms[1]->name, "obj3") == 0);
+  //result = result->next;
+  //mu_assert("Error utils_actionFixesGap(), wrong partial grounding.\n",
+  //          strcmp(result->act->terms[0]->name, "obj2") == 0);
+  //mu_assert("Error utils_actionFixesGap(): partial grounding too restrictive",
+  //          strcmp(result->act->terms[1]->name, "obj3") == 0);
+  //result = result->next;
+  //mu_assert("Error utils_actionFixesGap(), wrong partial grounding.\n",
+  //          strcmp(result->act->terms[0]->name, "const1") == 0);
+  //mu_assert("Error utils_actionFixesGap(): partial grounding too restrictive",
+  //          strcmp(result->act->terms[1]->name, "obj3") == 0);
+
+  utils_free_groundAction(listE1.act);
+  utils_free_groundAction(listE2.act);
+
+  utils_free_actionList(resultHead);
 
 
   libpddl31_problem_free(problem);
@@ -603,6 +754,8 @@ allTests()
   // Tests for grounding a partially grounded set of actions.
   mu_run_test(test_groundActions_simple);
   mu_run_test(test_groundActions_basic);
+  mu_run_test(test_groundActions_typeChecks);
+  mu_run_test(test_groundActions_multipleActions);
   return 0;
 }
 

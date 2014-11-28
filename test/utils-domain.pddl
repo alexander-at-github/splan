@@ -6,7 +6,7 @@
           t3 - object)
 
   (:constants const0 - object
-              const1 - t2)
+              const1 - t1)
 
   (:predicates (p1 ?a)
                (p2 ?a ?b)
@@ -80,8 +80,30 @@
     :effect (p1 ?a))
 
   (:action a11
+    :parameters (?a ?b)
+    :precondition ()
+    :effect (p2 ?a ?b))
+
+  ;;; Type hierarchie is like that: 't2' extends 't1' extends 'object'
+  (:action a12
+    :parameters (?a - t1 ?b - t2)
+    :precondition ()
+    :effect (p2 ?a ?b))
+
+  ;;; Type hierarchie is like that: 't2' extends 't1' extends 'object'
+  (:action a13
+    :parameters (?a ?b - t2)
+    :precondition ()
+    :effect (p2 ?a ?b))
+
+  (:action a14
     :parameters (?a - t1)
     :precondition ()
     :effect (p1 ?a))
+
+  (:action a15
+    :parameters (?a ?b - t2)
+    :precondition ()
+    :effect (p2 ?a ?b))
 )
 
