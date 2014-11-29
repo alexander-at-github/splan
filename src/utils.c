@@ -142,7 +142,14 @@ utils_tryToFixGap(struct action *action,
           newGrAct = NULL;
           break;
         }
-        // Do mapping
+        // Check Type.
+        if ( ! typeSystem_isa(gapTerm->type, effTerm->type)) {
+          // Types do not match. The whole predicate does not fix the gap.
+          utils_free_groundAction(newGrAct);
+          newGrAct = NULL;
+          break;
+        }
+        // Everything is okay. Do the mapping.
         newGrAct->terms[idxActParam] = gapTerm; // Actually set mapping.
       } else {
         // Variable refers to a forall-variable. Do not map. Just continue.

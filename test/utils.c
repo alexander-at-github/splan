@@ -476,6 +476,70 @@ test_actionFixesGap_advanced_forall()
 }
 
 static char *
+test_actionFixesGap_advanced_typed()
+{
+  char *domainFilename = "test/utils-domain.pddl";
+  struct domain *domain = libpddl31_domain_parse(domainFilename);
+  char *problemFilename = "test/utils-problem0.pddl";
+  struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
+
+  // Prepare gap.
+  struct gap *gap = malloc(sizeof(*gap));
+  gap->literal = malloc(sizeof(*gap->literal));
+  gap->position = 0;
+  gap->literal->isPos = true;
+  // Just take positive literal from goal.
+  gap->literal->atom = &problem->goal->posLiterals[2];
+  //libpddl31_atom_print(gap->literal->atom); // DEBUG
+  //printf("\n"); // DEBUG
+
+  struct action *action = NULL;
+  struct actionList *result = NULL;
+  struct actionList *resultHead = NULL;
+
+
+  // Prepare action.
+  action = actionManag_getAction(domain->actionManag, "a16");
+
+
+  // Get partial groundings for action, which fix the gap.
+  result = utils_actionFixesGap(action, gap);
+  resultHead = result;
+  //printf("utils_actionList_length(result): %d\n", // DEBUG
+  //       utils_actionList_length(result)); // DEBUG
+  //utils_print_actionList(result); // DEBUG
+  //printf("\n"); // DEBUG
+  mu_assert("Error utils_actionFixesGap(): results with typed action\n",
+            utils_actionList_length(result) == 2);
+  mu_assert("Error utils_actionFixesGap(): results with typed action\n",
+            result->act->terms[0] == NULL);
+  mu_assert("Error utils_actionFixesGap(): results with typed action\n",
+            strcmp(result->act->terms[1]->name, "obj3") == 0);
+  mu_assert("Error utils_actionFixesGap(): results with typed action\n",
+            result->act->terms[2] == NULL);
+  mu_assert("Error utils_actionFixesGap(): results with typed action\n",
+            strcmp(result->act->terms[3]->name, "obj2") == 0);
+  result = result->next;
+  mu_assert("Error utils_actionFixesGap(): results with typed action\n",
+            strcmp(result->act->terms[0]->name, "obj2") == 0);
+  mu_assert("Error utils_actionFixesGap(): results with typed action\n",
+            strcmp(result->act->terms[1]->name, "obj3") == 0);
+  mu_assert("Error utils_actionFixesGap(): results with typed action\n",
+            result->act->terms[2] == NULL);
+  mu_assert("Error utils_actionFixesGap(): results with typed action\n",
+            result->act->terms[3] == NULL);
+
+  utils_free_actionList(resultHead);
+
+
+  free(gap->literal);
+  free(gap);
+  libpddl31_problem_free(problem);
+  libpddl31_domain_free(domain);
+  return 0;
+}
+
+static char *
 test_groundActions_simple()
 {
   char *domainFilename = "test/utils-domain.pddl";
@@ -754,13 +818,14 @@ allTests()
   mu_run_test(test_actionFixesGap_advanced_negative);
   mu_run_test(test_actionFixesGap_advanced_when);
   mu_run_test(test_actionFixesGap_advanced_forall);
-  // TODO: mu_run_test(test_actionFixesGap_advanced_typed());
+  mu_run_test(test_actionFixesGap_advanced_typed);
 
   // Tests for grounding a partially grounded set of actions.
   mu_run_test(test_groundActions_simple);
   mu_run_test(test_groundActions_basic);
   mu_run_test(test_groundActions_typeChecks);
   mu_run_test(test_groundActions_multipleActions);
+
   return 0;
 }
 

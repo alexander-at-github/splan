@@ -3,7 +3,7 @@
 
   (:types t1 - object
           t2 - t1
-          t3 - object)
+          t3 - t2)
 
   (:constants const0 - object
               const1 - t1)
@@ -105,5 +105,23 @@
     :parameters (?a ?b - t2)
     :precondition ()
     :effect (p2 ?a ?b))
+
+  (:action a16
+    :parameters (?a - t1
+                 ?b - t2
+                 ?c - t3
+                 ?d - object)
+    :precondition ()
+    :effect (and (p1 ?a)
+                 ;;; should match in test_actionFixesGap_advanced_typed()
+                 (p2 ?a ?b)
+                 ;;; should match in test_actionFixesGap_advanced_typed()
+                 (p2 ?d ?b)
+                 ;;; should not match in test_actionFixesGap_advanced_typed()
+                 (p2 ?b ?a)
+                 ;;; should not match in test_actionFixesGap_advanced_typed()
+                 (p2 ?a ?c)
+            )
+  )
 )
 
