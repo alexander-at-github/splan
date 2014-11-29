@@ -704,30 +704,35 @@ test_groundActions_multipleActions()
 
   result = utils_groundActions(problem, &listE1);
   resultHead = result;
-  printf("utils_actionList_length(result): %d\n", // DEBUG
-         utils_actionList_length(result)); // DEBUG
-  utils_print_actionList(result); // DEBUG
-  printf("\n"); // DEBUG
+  //printf("utils_actionList_length(result): %d\n", // DEBUG
+  //       utils_actionList_length(result)); // DEBUG
+  //utils_print_actionList(result); // DEBUG
+  //printf("\n"); // DEBUG
 
-  // TODO: Continue
-  // TODO: Write email to Martin.
   mu_assert("Error grounding two variable action with types",
             utils_actionList_length(result) == 4);
 
-  //mu_assert("Error utils_actionFixesGap(), wrong partial grounding.\n",
-  //          strcmp(result->act->terms[0]->name, "obj3") == 0);
-  //mu_assert("Error utils_actionFixesGap(): partial grounding too restrictive",
-  //          strcmp(result->act->terms[1]->name, "obj3") == 0);
-  //result = result->next;
-  //mu_assert("Error utils_actionFixesGap(), wrong partial grounding.\n",
-  //          strcmp(result->act->terms[0]->name, "obj2") == 0);
-  //mu_assert("Error utils_actionFixesGap(): partial grounding too restrictive",
-  //          strcmp(result->act->terms[1]->name, "obj3") == 0);
-  //result = result->next;
-  //mu_assert("Error utils_actionFixesGap(), wrong partial grounding.\n",
-  //          strcmp(result->act->terms[0]->name, "const1") == 0);
-  //mu_assert("Error utils_actionFixesGap(): partial grounding too restrictive",
-  //          strcmp(result->act->terms[1]->name, "obj3") == 0);
+  mu_assert("Error wrong grounding of list of partially grounded actions.\n",
+            result->act->action->numOfParams == 2);
+  mu_assert("Error wrong grounding of list of partially grounded actions.\n",
+            strcmp(result->act->terms[0]->name, "obj3") == 0);
+  mu_assert("Error wrong grounding of list of partially grounded actions.\n",
+            strcmp(result->act->terms[1]->name, "obj3") == 0);
+  result = result->next;
+  mu_assert("Error wrong grounding of list of partially grounded actions.\n",
+            result->act->action->numOfParams == 1);
+  mu_assert("Error wrong grounding of list of partially grounded actions.\n",
+            strcmp(result->act->terms[0]->name, "obj3") == 0);
+  result = result->next;
+  mu_assert("Error wrong grounding of list of partially grounded actions.\n",
+            result->act->action->numOfParams == 1);
+  mu_assert("Error wrong grounding of list of partially grounded actions.\n",
+            strcmp(result->act->terms[0]->name, "obj2") == 0);
+  result = result->next;
+  mu_assert("Error wrong grounding of list of partially grounded actions.\n",
+            result->act->action->numOfParams == 1);
+  mu_assert("Error wrong grounding of list of partially grounded actions.\n",
+            strcmp(result->act->terms[0]->name, "const1") == 0);
 
   utils_free_groundAction(listE1.act);
   utils_free_groundAction(listE2.act);
