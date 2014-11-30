@@ -63,6 +63,42 @@ utils_free_actionList(struct actionList *list)
   }
 }
 
+// May return NULL on error.
+// With position set to 0 it will insert in the front of the list.
+// With position set to 1 it will insert after the first element.
+struct actionList *
+utils_addActionToListAtPosition(struct actionList *head,
+                                struct groundAction *grAct,
+                                int32_t position)
+{
+  if (grAct == NULL) {
+    return head;
+  }
+  struct actionList *curr = NULL;
+  struct actionList *afterCurr = head;
+
+  int32_t idxAct = 0;
+  while (idxAct < position && afterCurr != NULL) {
+    curr = afterCurr;
+    afterCurr = afterCurr->next;
+    idxAct++;
+  }
+  if (idxAct != position) {
+    // Error.
+    return NULL;
+  }
+
+  struct actionList *newElem = malloc(sizeof(*newElem));
+  newElem->act = grAct;
+  newElem->next = afterCurr;
+  if (curr == NULL) {
+    // We got a new head of the list.
+    return newElem;
+  }
+  curr->next = newElem;
+  return head;
+}
+
 struct actionList *
 utils_addActionToList(struct actionList *head, struct groundAction *grAct)
 {
@@ -94,8 +130,8 @@ utils_concatActionLists(struct actionList *l1, struct actionList *l2)
   return l1;
 }
 
-static bool
-term_equal(struct term *t1, struct term *t2)
+bool
+utils_term_equal(struct term *t1, struct term *t2)
 {
   return // t1->isVariable == t2->isVariable && // Not neccessary.
 
@@ -157,7 +193,7 @@ utils_tryToFixGap(struct action *action,
       }
     } else {
       // A constant in the actions effect. Deal with it.
-      if (term_equal(effTerm, gapTerm)) {
+      if (utils_term_equal(effTerm, gapTerm)) {
         // Okay. Continue with next argument.
         continue;
       } else {

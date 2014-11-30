@@ -8,7 +8,8 @@
 // Planning'.
 struct gap {
   struct literal *literal;
-  // The position of the gap in the sequence of actions.
+  // The position of the gap in the sequence of actions. The gap is said to be
+  // before 'position'. Thus 'position' >= 1.
   int32_t position;
 };
 
@@ -59,5 +60,10 @@ struct actionList *utils_groundActions(struct problem *problem,
                                        struct actionList *partialGrounded);
 
 void utils_free_groundAction(struct groundAction *grAct);
+
+struct actionList *utils_concatActionLists(struct actionList *l1,
+                                           struct actionList *l2);
+
+bool utils_term_equal(struct term *t1, struct term *t2);
 
 #endif
