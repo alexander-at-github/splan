@@ -44,3 +44,6 @@ bin/test_grounder : test/grounder.c src/grounder.c $(LIB_PDDL31) $(BIN_DIR)
 
 bin/test_utils : test/utils.c src/utils.c $(LIB_PDDL31) $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ -I$(SRC_DIR) -I$(TOOL_DIR) -I$(LIB_PDDL31_BIN_DIR) test/utils.c src/utils.c $(LIB_PDDL31) -l$(ANTLR3.4_C_RUNTIME)
+
+bin/test_planner: test/planner.c src/planner.c src/utils.c $(LIB_PDDL31) $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ -I$(SRC_DIR) -I$(TOOL_DIR) -I$(LIB_PDDL31_BIN_DIR) test/planner.c src/planner.c src/utils.c $(LIB_PDDL31) -l$(ANTLR3.4_C_RUNTIME)
