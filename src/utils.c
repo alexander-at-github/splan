@@ -460,3 +460,90 @@ utils_groundActions(struct problem *problem,
 
   return result;
 }
+
+bool
+utils_atom_equal(struct atom *a1, struct atom *a2)
+{
+  if (a1 == NULL && a2 == NULL) {
+    return true;
+  }
+  if (a1 == NULL || a2 == NULL) {
+    return false;
+  }
+
+  if (a1->pred != a2->pred) {
+    return false;
+  }
+
+  for (int32_t idxArgs = 0; idxArgs < a1->pred->numOfParams; ++idxArgs) {
+    if ( ! utils_term_equal(a1->terms[idxArgs], a2->terms[idxArgs])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Atom 'a2' has to be affiliated with the ground action 'grAct'.
+bool
+utils_atom_equalWithGrounding(struct atom *a1,
+                              struct atom *a2,
+                              struct groundAction *grAct)
+{
+  if (a1 == NULL && a2 == NULL) {
+    return true;
+  }
+  if (a1 == NULL || a2 == NULL) {
+    return false;
+  }
+
+  if (a1->pred != a2->pred) {
+    return false;
+  }
+
+  for (int32_t idxArgs = 0; idxArgs < a1->pred->numOfParams; ++idxArgs) {
+    // Pointer arithmetic.
+    int32_t idxGrounding = a2->terms[idxArgs] - grAct->action->params;
+    if ( ! utils_term_equal(a1->terms[idxArgs], grAct->terms[idxGrounding])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void
+utils_print_gap(struct gap *gap)
+{
+  printf("Gap:[position:%d,", gap->position);
+  utils_print_literal(gap->literal);
+  printf("]");
+}
+
+void
+utils_print_literal(struct literal *literal)
+{
+  if ( ! literal->isPos) {
+    printf("NOT ");
+  }
+  libpddl31_atom_print(literal->atom);
+}
+
+// 'atom' needs to be an atom of the ground action.
+struct atom *
+utils_atom_cloneWithGrounding(struct atom *atom,
+                              struct groundAction *grAct)
+{
+  struct atom *result = malloc(sizeof(*result));
+  result->pred = atom->pred;
+  int32_t size = sizeof(*result->terms) * result->pred->numOfParams;
+  result->terms = malloc(size);
+  // Copy ground terms into atom.
+  for (int32_t idxArgs = 0; idxArgs < atom->pred->numOfParams; ++idxArgs) {
+    // Pointer arithmetic
+    int32_t idxGrounding = atom->terms[idxArgs] - grAct->action->params;
+    assert (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams);
+    result->terms[idxArgs] = grAct->terms[idxArgs];
+  }
+  return result;
+}
