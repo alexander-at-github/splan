@@ -35,6 +35,10 @@ test_planner_hasGap()
   //printf("\n"); // DEBUG
 
   // TODO: Free gap
+  utils_free_gap(gap);
+  gap = NULL;
+
+
 
   gap = planner_hasGap(problem->init, problem->goal, actL);
   //utils_print_gap(gap); // DEBUG
@@ -46,13 +50,22 @@ test_planner_hasGap()
             strcmp(gap->literal->atom->terms[0]->name, "p2") == 0);
 
 
+
   struct actionList *actL2 = utils_actionFixesGap(action, gap);
-  utils_print_actionList(actL2); // DEBUG
-  printf("\n"); // DEBUG
+  //utils_print_actionList(actL2); // DEBUG
+  //printf("\n"); // DEBUG
   actL2->act->terms[0] = objManag_getObject(problem->objManag, "p1");
-  utils_print_actionList(actL2); // DEBUG
-  printf("\n"); // DEBUG
+  //utils_print_actionList(actL2); // DEBUG
+  //printf("\n"); // DEBUG
   actL2->next = actL;
+  //utils_print_actionList(actL2); // DEBUG
+  //printf("\n"); // DEBUG
+
+
+  utils_free_gap(gap);
+  gap = NULL;
+
+
 
   // If the action list is a solution, then there is no gap anymore.
   // planner_hasGap() should return NULL.
@@ -68,21 +81,26 @@ test_planner_hasGap()
 static char *
 test_planner_solveProblem()
 {
-  char *domainFilename = "test/planner-domain0.pddl";
+  char *domainFilename = "test_instances/openstacks-strips/p01-domain.pddl";
+                          //"test/planner-domain0.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/planner-problem0.pddl";
+  char *problemFilename = "test_instances/openstacks-strips/p01.pddl";
+                          //"test/planner-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   // FIXME: A random depth limit.
-  struct actionList *result = planner_solveProblem(problem, 2);
+  struct actionList *result = planner_solveProblem(problem, 3);
+  
 
+  libpddl31_problem_free(problem);
+  libpddl31_domain_free(domain);
   return 0;
 }
 
 static char *
 allTests()
 {
-  mu_run_test(test_planner_hasGap);
+  //mu_run_test(test_planner_hasGap);
   mu_run_test(test_planner_solveProblem);
 
   return 0;

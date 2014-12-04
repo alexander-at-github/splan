@@ -16,9 +16,31 @@ struct state *utils_copyState(struct state *state)
   size_t size = sizeof(*result->fluents) * result->numOfFluents;
 
   result->fluents = malloc(size);
-  memcpy(result->fluents, state->fluents, size);
+
+  for (int32_t idxFluent = 0; idxFluent < result->numOfFluents; ++idxFluent) {
+    result->fluents[idxFluent].pred  = state->fluents[idxFluent].pred;
+    int32_t sizeTerms = sizeof(struct term *) *
+                                  result->fluents[idxFluent].pred->numOfParams;
+
+    result->fluents[idxFluent].terms = malloc(sizeTerms);
+    memcpy( result->fluents[idxFluent].terms,
+            state->fluents[idxFluent].terms,
+            sizeTerms);
+  }
 
   return result;
+}
+
+void utils_freeState(struct state *state)
+{
+  if (state->fluents != NULL) {
+    // TODO for all fluents do free
+    for (int32_t i = 0; i < state->numOfFluents; ++i) {
+      libpddl31_atom_free(&state->fluents[i]);
+    }
+    free(state->fluents);
+  }
+  free(state);
 }
 
 void utils_freeStateShallow(struct state *state)
@@ -500,12 +522,22 @@ utils_atom_equalWithGrounding(struct atom *a1,
   if (a1->pred != a2->pred) {
     return false;
   }
+  //printf("\n\npred-name: %s\n", a2->pred->name);
 
   for (int32_t idxArgs = 0; idxArgs < a1->pred->numOfParams; ++idxArgs) {
     // Pointer arithmetic.
     int32_t idxGrounding = a2->terms[idxArgs] - grAct->action->params;
-    if ( ! utils_term_equal(a1->terms[idxArgs], grAct->terms[idxGrounding])) {
-      return false;
+
+    if (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams) {
+      if ( ! utils_term_equal(a1->terms[idxArgs], grAct->terms[idxGrounding])) {
+        return false;
+      }
+    } else {
+      // This is a constant. Just compare it.
+      assert ( ! a2->terms[idxArgs]->isVariable);
+      if ( ! utils_term_equal(a1->terms[idxArgs], a2->terms[idxArgs])) {
+        return false;
+      }
     }
   }
 
@@ -529,6 +561,16 @@ utils_print_literal(struct literal *literal)
   libpddl31_atom_print(literal->atom);
 }
 
+struct atom *utils_atom_clone(struct atom *atom)
+{
+  struct atom *result = malloc(sizeof(*result));
+  result->pred = atom->pred;
+  int32_t size = sizeof(*result->terms) * result->pred->numOfParams;
+  result->terms = malloc(size);
+  memcpy(result->terms, atom->terms, size);
+  return result;
+}
+
 // 'atom' needs to be an atom of the ground action.
 struct atom *
 utils_atom_cloneWithGrounding(struct atom *atom,
@@ -542,8 +584,29 @@ utils_atom_cloneWithGrounding(struct atom *atom,
   for (int32_t idxArgs = 0; idxArgs < atom->pred->numOfParams; ++idxArgs) {
     // Pointer arithmetic
     int32_t idxGrounding = atom->terms[idxArgs] - grAct->action->params;
-    assert (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams);
-    result->terms[idxArgs] = grAct->terms[idxArgs];
+
+    //libpddl31_term_print(atom->terms[idxArgs]); // DEBUG
+    //printf("\n"); // DEBUG
+
+    if (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams) {
+      result->terms[idxArgs] = grAct->terms[idxGrounding];
+    } else {
+      // If this term is a constant, the index will be out of the actions'
+      // parameter array. Then we just use the pointer to the constant
+      // itself.
+      result->terms[idxArgs] = atom->terms[idxArgs];
+    }
   }
   return result;
+}
+
+void
+utils_free_gap(struct gap *gap)
+{
+  if (gap != NULL) {
+    free(gap->literal->atom->terms);
+    free(gap->literal->atom);
+    free(gap->literal);
+    free(gap);
+  }
 }

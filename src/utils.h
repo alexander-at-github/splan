@@ -45,6 +45,7 @@ void utils_free_literal(struct literal *literal);
 struct state *utils_copyState(struct state *state);
 void utils_free_actionList(struct actionList *list);
 void utils_freeStateShallow(struct state *state);
+void utils_freeState(struct state *state);
 struct actionList *utils_actionFixesGap(struct action *action,
                                         struct gap *gap);
 void utils_print_actionList(struct actionList *list);
@@ -72,7 +73,9 @@ bool utils_atom_equal(struct atom *a1, struct atom *a2);
 bool utils_atom_equalWithGrounding( struct atom *a1,
                                     struct atom *a2,
                                     struct groundAction *grAct);
+struct atom *utils_atom_clone(struct atom *atom);
 struct atom *utils_atom_cloneWithGrounding(struct atom *atom,
                                            struct groundAction *grAct);
+void utils_free_gap(struct gap *gap);
 
 #endif

@@ -32,6 +32,10 @@ planner_getActsToFixGap(struct problem *problem, struct gap *gap)
     // Complete grounding of that action and add all of them to the
     // result.
     struct actionList *newActs = utils_groundActions(problem, fix);
+
+    // Clean up.
+    utils_free_actionList(fix);
+
     result = utils_concatActionLists(newActs, result);
   }
   return result;
@@ -171,6 +175,7 @@ planner_satisfies(struct state *state, struct goal *goal)
     // An empty goal is always satisfied.
     return NULL;
   }
+  //printf("planner_satisfies():\n");
   //libpddl31_goal_print(goal); // DEBUG
   //printf("\n\n"); //DEBUG
 
@@ -178,7 +183,7 @@ planner_satisfies(struct state *state, struct goal *goal)
     struct atom *atom = &goal->posLiterals[i];
     if ( ! planner_contains(state, atom)) {
       struct literal *returnVal = malloc(sizeof(*returnVal));
-      returnVal->atom = atom;
+      returnVal->atom = utils_atom_clone(atom);
       returnVal->isPos = true;
       return returnVal;
     }
@@ -187,7 +192,7 @@ planner_satisfies(struct state *state, struct goal *goal)
     struct atom *atom = &goal->negLiterals[i];
     if (planner_contains(state, atom)) {
       struct literal *returnVal = malloc(sizeof(*returnVal));
-      returnVal->atom = atom;
+      returnVal->atom = utils_atom_clone(atom);
       returnVal->isPos = false;
       return returnVal;
     }
@@ -226,9 +231,15 @@ planner_stateAddAtom( struct state *state,
   for (int32_t idxArgs = 0; idxArgs < atom->pred->numOfParams; ++idxArgs) {
     // Pointer arithmetic.
     int32_t idxGrounding = atom->terms[idxArgs] - grAct->action->params;
-    assert (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams);
-    state->fluents[state->numOfFluents - 1].terms[idxArgs] =
+    if (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams) {
+      // We are dealing with a grounding.
+      state->fluents[state->numOfFluents - 1].terms[idxArgs] =
                                                     grAct->terms[idxGrounding];
+    } else {
+      // We are dealing with a constant.
+      state->fluents[state->numOfFluents - 1].terms[idxArgs] =
+                                                          atom->terms[idxArgs];
+    }
   }
 }
 
@@ -244,7 +255,7 @@ planner_stateRemoveAtom(struct state *state,
   for (int32_t idx = 0; idx < state->numOfFluents; ++idx) {
     struct atom *fluent = &state->fluents[idx];
     if (utils_atom_equalWithGrounding(fluent, atom, grAct)) {
-      printf("REMOVING ATOM FROM STATE\n");
+      //printf("REMOVING ATOM FROM STATE\n"); // DEBUG
       // Remove atom.
       --state->numOfFluents;
       struct atom *tmp = malloc(sizeof(*tmp) * (state->numOfFluents));
@@ -254,7 +265,12 @@ planner_stateRemoveAtom(struct state *state,
       memcpy( &tmp[idx],
               &state->fluents[idx + 1],
               sizeof(*tmp) * (state->numOfFluents - idx));
+
+      // Clean up removed fluent
+      libpddl31_atom_free(&state->fluents[idx]);
+      // And old array
       free(state->fluents);
+
       state->fluents = tmp;
       // Do not return here. I want to remove all of them.
     }
@@ -326,13 +342,13 @@ planner_hasGap( struct state *initState,
                 struct goal *goal,
                 struct actionList *actions)
 {
-  printf("\n\nplanner_hasGap():\n"); // DEBUG
-  libpddl31_state_print(initState); // DEBUG
-  printf("\n"); // DEBUG
-  libpddl31_goal_print(goal); // DEBUG
-  printf("\n\t"); // DEBUG
-  utils_print_actionList(actions); // DEBUG
-  printf("\n\n"); // DEBUG
+  //printf("\n\nplanner_hasGap():\n"); // DEBUG
+  //libpddl31_state_print(initState); // DEBUG
+  //printf("\n"); // DEBUG
+  //libpddl31_goal_print(goal); // DEBUG
+  //printf("\n\t"); // DEBUG
+  //utils_print_actionList(actions); // DEBUG
+  //printf("\n\n"); // DEBUG
 
   struct gap *result = NULL;
   // Copy the state, so we can modify it freely.
@@ -359,13 +375,13 @@ planner_hasGap( struct state *initState,
       result->literal = gapLiteral;
       result->position = idxAct;
       // Clean up.
-      utils_freeStateShallow(lState);
+      utils_freeState(lState);
       return result;
     }
     // Precondition is met. Apply the action.
     planner_apply(lState, grAct);
-    libpddl31_state_print(lState); // DEBUG
-    printf("\n"); // DEBUG
+    //libpddl31_state_print(lState); // DEBUG
+    //printf("\n"); // DEBUG
   }
 
   /* Check if the goal is met after applying all the acitons. */
@@ -378,7 +394,7 @@ planner_hasGap( struct state *initState,
   }
 
   /* Clean up */
-  utils_freeStateShallow(lState);
+  utils_freeState(lState);
   return result; // Returns NULL when neccessary.
 }
 
@@ -391,6 +407,10 @@ planner_solveProblem_aux( struct problem *problem,
                           int32_t depthLimit,
                           int32_t depth)
 {
+  //printf("\n>>>new iteration\n");
+  //utils_print_actionList(actAcc); // DEBUG
+  //printf("\n");
+
   struct actionList *actAccBack = actAcc;
 
   struct state *initState = problem->init;
@@ -401,10 +421,16 @@ planner_solveProblem_aux( struct problem *problem,
     printf("\n\nSOLUTION FOUND\n\n\n"); // DEBUG
     return actAcc;
   }
+
+  //utils_print_gap(gap); // DEBUG
+  //printf("\n"); // DEBUG
+
   if (depth >= depthLimit) { // TODO '<' or '<=' ?
     // Search depth limit.
+    utils_free_gap(gap);
     return NULL;
   }
+
   struct actionList *actsToFixGap = planner_getActsToFixGap(problem, gap);
   //printf("actsToFixGap.length: %d\n", utils_actionList_length(actsToFixGap)); //DEBUG
   // TODO: Free actsToFixGap somewhere.
@@ -431,7 +457,7 @@ planner_solveProblem_aux( struct problem *problem,
       struct actionList tmpActL;
       tmpActL.act = pActL->act;
 
-      // TODO: Add action to action accumlator.
+      // Add action to action accumlator.
       // I will incorporate the mechanics to add and remove grounded actions
       // to the potential solution here, cause it can be more efficient than
       // using an external function (which would have to iterate over the
@@ -448,6 +474,7 @@ planner_solveProblem_aux( struct problem *problem,
       result = planner_solveProblem_aux(problem, actAcc, depthLimit, depth+1);
       // Return the first result
       if (result != NULL) {
+        printf("RETURN RESULT");
         return result;
       }
 
@@ -474,6 +501,10 @@ planner_solveProblem_aux( struct problem *problem,
 
   }
   // No solution within this depth-limit found.
+  // Clean up
+  //printf("Cleanup in planner_solveProblem_aux()\n\n");
+  utils_free_gap(gap);
+  utils_free_actionList(actsToFixGap);
   return NULL;
 }
 
