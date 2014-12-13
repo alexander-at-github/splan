@@ -61,3 +61,8 @@ TODO:
 * Put return value and function name on separate lines.
 * Refactor struct state such that it consists of an array of pointers to
   fluents.
+
+NOTES:
+* Testrun for test_instances/openstacks-strips/p01.pddl with searchdepth 4 took
+  5.8 secs, with searchdepth 5 took 284 secs, and with searchdepth 6 took
+  13808 secs.

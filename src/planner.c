@@ -425,7 +425,7 @@ planner_solveProblem_aux( struct problem *problem,
   //utils_print_gap(gap); // DEBUG
   //printf("\n"); // DEBUG
 
-  if (depth >= depthLimit) { // TODO '<' or '<=' ?
+  if (depth >= depthLimit) {
     // Search depth limit.
     utils_free_gap(gap);
     return NULL;

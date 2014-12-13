@@ -4,8 +4,12 @@
 #include "utils.h"
 #include "libpddl31.h"
 
+// This is a deep free as you will need it after planner_satisfies() or
+// utils_atom_clone().
 void utils_free_literal(struct literal *literal)
 {
+  free(literal->atom->terms);
+  free(literal->atom);
   free(literal);
 }
 

@@ -7,7 +7,14 @@
 struct gap *planner_hasGap( struct state *initState,
                             struct goal *goal,
                             struct actionList *actions);
+struct actionList *planner_getActsToFixGap( struct problem *problem,
+                                            struct gap *gap);
 struct actionList *planner_solveProblem(struct problem *problem,
                                         int32_t depthLimit);
+
+struct literal *planner_satisfies(struct state *state, struct goal *goal);
+void planner_stateRemoveAtom(struct state *state,
+                             struct groundAction *grAct,
+                             struct atom *atom);
 
 #endif // PLANNER_H
