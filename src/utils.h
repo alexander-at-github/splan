@@ -77,5 +77,6 @@ struct atom *utils_atom_clone(struct atom *atom);
 struct atom *utils_atom_cloneWithGrounding(struct atom *atom,
                                            struct groundAction *grAct);
 void utils_free_gap(struct gap *gap);
+struct actionList *utils_cloneActionList(struct actionList *actL);
 
 #endif

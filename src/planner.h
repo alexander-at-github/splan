@@ -19,5 +19,6 @@ void planner_stateRemoveAtom(struct state *state,
 void planner_stateAddAtom(struct state *state,
                           struct groundAction *grAct,
                           struct atom *atom);
+struct actionList *planner_iterativeDeepeningSearch(struct problem *problem);
 
 #endif // PLANNER_H

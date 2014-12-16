@@ -55,6 +55,7 @@ OPEN QUESTIONS
   O(n) where n is the length of the first list. Should we imporve the list
   implementation?
 * Where to implement the type checks for types of predicate parameters?
+  src/utils.c:455
 
 TODO:
 * Turn off assertions for time measurments.

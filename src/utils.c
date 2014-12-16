@@ -176,7 +176,6 @@ utils_term_equal(struct term *t1, struct term *t2)
 }
 
 // Use, when there is chance to fix the gap.
-// TODO: Check types!
 struct groundAction *
 utils_tryToFixGap(struct action *action,
                   struct atom *atomToFix, // Atom which might fix the gap
@@ -204,8 +203,10 @@ utils_tryToFixGap(struct action *action,
           newGrAct = NULL;
           break;
         }
-        // Check Type.
-        if ( ! typeSystem_isa(gapTerm->type, effTerm->type)) {
+        // Check Type of action parameter and predicate parameter.
+        struct type *predArgType = atomToFix->pred->params[idxArgs].type;
+        if ( ! typeSystem_isa(gapTerm->type, effTerm->type) ||
+             ! typeSystem_isa(gapTerm->type, predArgType)) {
           // Types do not match. The whole predicate does not fix the gap.
           utils_free_groundAction(newGrAct);
           newGrAct = NULL;
@@ -247,28 +248,30 @@ utils_whenFixesGap( struct action *action,
   struct literal *gapLiteral = gap->literal;
   struct atom *gapAtom = gapLiteral->atom;
 
-  for (int32_t idxWhen = 0; idxWhen < when->numOfPos; ++idxWhen) {
-    struct atom *posAtom = &when->posLiterals[idxWhen];
-    if (gapLiteral->isPos &&
-        posAtom->pred == gapAtom->pred) {
+  if (gapLiteral->isPos) {
+    for (int32_t idxWhen = 0; idxWhen < when->numOfPos; ++idxWhen) {
+      struct atom *posAtom = &when->posLiterals[idxWhen];
+      if (posAtom->pred == gapAtom->pred) {
 
-      // Chance to fix gap.
-      struct groundAction *newGrAct = utils_tryToFixGap(action,
-                                                        posAtom,
-                                                        gapAtom);
-      result = utils_addActionToList(result, newGrAct);
+        // Chance to fix gap.
+        struct groundAction *newGrAct = utils_tryToFixGap(action,
+                                                          posAtom,
+                                                          gapAtom);
+        result = utils_addActionToList(result, newGrAct);
+      }
     }
-  }
-  for (int32_t idxWhen = 0; idxWhen < when->numOfNeg; ++idxWhen) {
-    struct atom *negAtom = &when->negLiterals[idxWhen];
-    if ( ! gapLiteral->isPos &&
-        negAtom->pred == gapAtom->pred) {
+  } else {
+    assert ( ! gapLiteral->isPos);
+    for (int32_t idxWhen = 0; idxWhen < when->numOfNeg; ++idxWhen) {
+      struct atom *negAtom = &when->negLiterals[idxWhen];
+      if (negAtom->pred == gapAtom->pred) {
 
-      // Chance to fix gap.
-      struct groundAction *newGrAct = utils_tryToFixGap(action,
-                                                        negAtom,
-                                                        gapAtom);
-      result = utils_addActionToList(result, newGrAct);
+        // Chance to fix gap.
+        struct groundAction *newGrAct = utils_tryToFixGap(action,
+                                                          negAtom,
+                                                          gapAtom);
+        result = utils_addActionToList(result, newGrAct);
+      }
     }
   }
 
@@ -400,7 +403,7 @@ int32_t utils_actionList_length(struct actionList *list)
 }
 
 struct groundAction *
-utils_copyGroundAction(struct groundAction *src)
+utils_cloneGroundAction(struct groundAction *src)
 {
   struct groundAction *dest = malloc(sizeof(*dest));
   dest->action = src->action;
@@ -421,7 +424,7 @@ utils_groundAction_aux(struct problem *problem,
   if (idxActArg >= action->numOfParams) {
     // Return single element list of full grounding.
     struct actionList *singleton = malloc(sizeof(*singleton));
-    singleton->act = utils_copyGroundAction(parGrAct);
+    singleton->act = utils_cloneGroundAction(parGrAct);
     singleton->next = NULL;
     return singleton;
   }
@@ -443,7 +446,13 @@ utils_groundAction_aux(struct problem *problem,
   for (int32_t idxObj = 0; idxObj < objManag->numOfObjs; ++idxObj) {
     struct term *consObj = objManag->objs[idxObj];
 
-    // Check type.
+    // Check type of action parameter.
+    // TODO: Check: I do not think that it makes sense, that we check the
+    // type of the predicate parameters, cause we would have to iterate over
+    // the whole actions precondition and effects, to find all the predicates
+    // where this action-parameter is used.
+    // TODO: Or maybe, yes, it makes sense.
+    // Maybe do something when parsing the input.
     if ( ! typeSystem_isa(consObj->type, action->params[idxActArg].type)) {
       // Types do not match. Do not map from parameter to this constant. Just
       // continue with next object.
@@ -613,4 +622,37 @@ utils_free_gap(struct gap *gap)
     free(gap->literal);
     free(gap);
   }
+}
+
+struct actionList *
+utils_cloneActionList(struct actionList *actL)
+{
+  struct actionList *actLBack = actL;
+
+  struct actionList *head = NULL;
+  struct actionList *curr = NULL;
+  struct actionList *prev = NULL;
+  for (/* empty */; actL != NULL; actL = actL->next) {
+    prev = curr;
+    curr = malloc(sizeof(*curr));
+    if (prev == NULL) {
+      // First element of the list. Save pointer to the head.
+      head = curr;
+    } else {
+      // Set the next-pointer of the previous element.
+      prev->next = curr;
+    }
+    // Clone and set the ground action.
+    curr->act = utils_cloneGroundAction(actL->act);
+  }
+
+  // Set next->pointer on last element to NULL
+  if (curr != NULL) {
+    curr->next = NULL;
+  } else {
+    // Note: The list to clone is empty.
+    assert (utils_actionList_length(actLBack) == 0);
+  }
+
+  return head;
 }

@@ -333,10 +333,35 @@ test_planner_solveProblem()
                           //"test/planner-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
-  // FIXME: A random depth limit.
-  struct actionList *result = planner_solveProblem(problem, 5);
-  //utils_print_actionList(result);
-  //utils_free_actionList(result);
+  // The problem instance tsp-neg-prec/p3.pddl shortest solution is of length
+  // four.
+  struct actionList *result = planner_solveProblem(problem, 4);
+  mu_assert("Error planner_solveProblem()", result != NULL);
+  utils_print_actionList(result);
+  utils_free_actionList(result);
+
+
+  libpddl31_problem_free(problem);
+  libpddl31_domain_free(domain);
+  return 0;
+}
+
+static char *
+test_planner_iterativeDeepeningSearch()
+{
+  char *domainFilename = "test_instances/tsp-neg-prec/domain.pddl";
+                        //"test_instances/openstacks-strips/p01-domain.pddl";
+                          //"test/planner-domain0.pddl";
+  struct domain *domain = libpddl31_domain_parse(domainFilename);
+  char *problemFilename = "test_instances/tsp-neg-prec/p6.pddl";
+                          //"test_instances/openstacks-strips/p01.pddl";
+                          //"test/planner-problem0.pddl";
+  struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
+
+  struct actionList *result = planner_iterativeDeepeningSearch(problem);
+  mu_assert("Error planner_iterativeDeepeningSearch()", result != NULL);
+  utils_print_actionList(result);
+  utils_free_actionList(result);
 
 
   libpddl31_problem_free(problem);
@@ -352,6 +377,7 @@ allTests()
   mu_run_test(test_planner_satisfies);
   mu_run_test(test_planner_stateAddRemoveAtom);
   mu_run_test(test_planner_solveProblem);
+  mu_run_test(test_planner_iterativeDeepeningSearch);
 
   return 0;
 }

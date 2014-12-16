@@ -98,32 +98,6 @@ planner_containsPrecondAtom(struct state *state,
       return true;
     }
 
-    /* if (fluent->pred != atom->pred) { */
-    /*   continue; */
-    /* } */
-
-    /* bool breakOuter = false; */
-    /* for ( int32_t idxArgs = 0; */
-    /*       idxArgs < atom->pred->numOfParams; */
-    /*       ++idxArgs) { */
-
-    /*   struct term *fluentTerm = fluent->terms[idxArgs]; */
-    /*   // Pointer arithmetic. */
-    /*   int32_t idxPrecondTerm = atom->terms[idxArgs] - grAct->action->params; */
-    /*   assert (0 <= idxPrecondTerm && */
-    /*           idxPrecondTerm < grAct->action->numOfParams); */
-    /*   struct term *precondTerm = grAct->terms[idxPrecondTerm]; */
-
-    /*   if ( ! utils_term_equal(fluentTerm, precondTerm)) { */
-    /*     breakOuter = true; */
-    /*     break; */
-    /*   } */
-    /* } */
-    /* if (breakOuter) { */
-    /*   break; */
-    /* } */
-
-    /* return true; */
   }
   return false;
 }
@@ -214,6 +188,7 @@ planner_stateAddAtom( struct state *state,
       return;
     }
   }
+
   // Add the atom.
   ++state->numOfFluents;
   state->fluents = realloc(state->fluents,
@@ -416,10 +391,11 @@ planner_solveProblem_aux( struct problem *problem,
   struct gap *gap = planner_hasGap(initState, goal, actAcc);
   if (gap == NULL) {
     // Solution found.
-    printf("\n\nSOLUTION FOUND\n\n\n"); // DEBUG
-    // TODO: The solution points to elements of the stack. These addresses will
-    // be invalid when problem is solved.
-    return actAcc;
+    //printf("\n\nSOLUTION FOUND\n\n\n"); // DEBUG
+    // The parameter 'actAcc' points to elements of the stack. These addresses
+    // will be invalid when problem is solved. Thus, we will clone it.
+    struct actionList *solution = utils_cloneActionList(actAcc);
+    return solution;
   }
 
   //utils_print_gap(gap); // DEBUG
@@ -475,6 +451,10 @@ planner_solveProblem_aux( struct problem *problem,
       // Return the first result
       if (result != NULL) {
         //printf("RETURN RESULT"); // DEBUG
+
+        // Clean up before return.
+        utils_free_gap(gap);
+        utils_free_actionList(actsToFixGap);
         return result;
       }
 
@@ -511,4 +491,16 @@ struct actionList *
 planner_solveProblem(struct problem *problem, int32_t depthLimit)
 {
   return planner_solveProblem_aux(problem, NULL, depthLimit, 0);
+}
+
+struct actionList *
+planner_iterativeDeepeningSearch(struct problem *problem)
+{
+  for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
+    struct actionList *solution = planner_solveProblem(problem, depth);
+    if (solution != NULL) {
+      return solution;
+    }
+  }
+  return NULL;
 }
