@@ -188,6 +188,30 @@ planner_stateAddAtom( struct state *state,
       return;
     }
   }
+  // Check if the types od the predicates parameter allow the atom to be
+  // added.
+  // TODO: If we would know that all types (action parameter types and 
+  // predicate parameter types) match after grounding, we would no need that.
+  for (int32_t idxArgs = 0; idxArgs < atom->pred->numOfParams; ++idxArgs) {
+    struct type *predParamType = atom->pred->params[idxArgs].type;
+    // Pointer arithmetic.
+    int32_t idxGrounding = atom->terms[idxArgs] - grAct->action->params;
+    if (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams) {
+      // We are dealing with a grounding. Check type.
+      if ( ! typeSystem_isa(grAct->terms[idxGrounding]->type, predParamType)) {
+        // Can not apply atom. Type missmatch.
+        return;
+      }
+    } else {
+      // We are dealing with a constant.
+      if ( ! typeSystem_isa(atom->terms[idxArgs]->type, predParamType)) {
+        // Can not apply atom.
+        // That should never happen, since it's a constant.
+        assert (false);
+        return;
+      }
+    }
+  }
 
   // Add the atom.
   ++state->numOfFluents;

@@ -56,6 +56,12 @@ OPEN QUESTIONS
   implementation?
 * Where to implement the type checks for types of predicate parameters?
   src/utils.c:455
+* I am not sure how to deal with types of parameters of predicates. A type of a
+  parameter of a predicate could be more restrictive than the type of the
+  action's parameter. How to handle that? Should the type of the predicate's
+  parameter restrict the types of the whole action? Or should this particular
+  predicate simply not be applied?
+  I chose second option for now.
 
 TODO:
 * Turn off assertions for time measurments.
