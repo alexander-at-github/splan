@@ -16,5 +16,8 @@ struct literal *planner_satisfies(struct state *state, struct goal *goal);
 void planner_stateRemoveAtom(struct state *state,
                              struct groundAction *grAct,
                              struct atom *atom);
+void planner_stateAddAtom(struct state *state,
+                          struct groundAction *grAct,
+                          struct atom *atom);
 
 #endif // PLANNER_H

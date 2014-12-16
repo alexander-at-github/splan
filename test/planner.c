@@ -217,6 +217,7 @@ test_planner_satisfies()
             strcmp(lit->atom->terms[0]->name, "p2") == 0
             );
 
+  utils_free_literal(lit);
 
   // Clean up this mess.
   free(state->fluents[0].terms);
@@ -226,7 +227,6 @@ test_planner_satisfies()
   free(goal->negLiterals);
   free(goal->posLiterals->terms);
   free(goal->posLiterals);
-
 
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
@@ -263,9 +263,57 @@ test_planner_stateAddRemoveAtom()
             state->numOfFluents == 0 &&
             state->fluents == NULL);
 
-  // TODO: continue here
+  // Adding an atom.
+  planner_stateAddAtom(state,
+                       grAct,
+                       grAct->action->effect->elems[0].it.literal);
+
+  mu_assert("Error planner_stateRemoveAtom()",
+            state->numOfFluents == 1 &&
+            strcmp(state->fluents[0].pred->name, "at") == 0 &&
+            strcmp(state->fluents[0].terms[0]->name, "p2") == 0);
+
+  // Removing a non-existing atom does not do anything.
+  planner_stateRemoveAtom(state,
+                          grAct,
+                          grAct->action->effect->elems[2].it.literal);
+
+  // Still the same.
+  mu_assert("Error planner_stateRemoveAtom()",
+            state->numOfFluents == 1 &&
+            strcmp(state->fluents[0].pred->name, "at") == 0 &&
+            strcmp(state->fluents[0].terms[0]->name, "p2") == 0);
+
+  // Adding another atom.
+  planner_stateAddAtom(state,
+                       grAct,
+                       grAct->action->effect->elems[1].it.literal);
+
+  mu_assert("Error planner_stateRemoveAtom()",
+            state->numOfFluents == 2 &&
+            strcmp(state->fluents[0].pred->name, "at") == 0 &&
+            strcmp(state->fluents[0].terms[0]->name, "p2") == 0 &&
+
+            strcmp(state->fluents[1].pred->name, "visited") == 0 &&
+            strcmp(state->fluents[1].terms[0]->name, "p2") == 0
+            );
+
+  // Changing the move-action.
+  grAct->terms[0] = objManag_getObject(problem->objManag, "p2");
+  grAct->terms[1] = objManag_getObject(problem->objManag, "p1");
+  // Removing an atom.
+  planner_stateRemoveAtom(state,
+                          grAct,
+                          grAct->action->effect->elems[2].it.literal);
+  mu_assert("Error planner_stateRemoveAtom()",
+            state->numOfFluents == 1 &&
+            strcmp(state->fluents[0].pred->name, "visited") == 0 &&
+            strcmp(state->fluents[0].terms[0]->name, "p2") == 0);
 
 
+  // Clean up.
+  libpddl31_free_state(state);
+  free(grAct->terms);
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
   return 0;
@@ -280,13 +328,15 @@ test_planner_solveProblem()
                         //"test_instances/openstacks-strips/p01-domain.pddl";
                           //"test/planner-domain0.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test_instances/tsp-neg-prec/p5.pddl";
+  char *problemFilename = "test_instances/tsp-neg-prec/p3.pddl";
                           //"test_instances/openstacks-strips/p01.pddl";
                           //"test/planner-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   // FIXME: A random depth limit.
   struct actionList *result = planner_solveProblem(problem, 5);
+  //utils_print_actionList(result);
+  //utils_free_actionList(result);
 
 
   libpddl31_problem_free(problem);
@@ -301,7 +351,7 @@ allTests()
   mu_run_test(test_planner_getActsToFixGap);
   mu_run_test(test_planner_satisfies);
   mu_run_test(test_planner_stateAddRemoveAtom);
-  //mu_run_test(test_planner_solveProblem);
+  mu_run_test(test_planner_solveProblem);
 
   return 0;
 }

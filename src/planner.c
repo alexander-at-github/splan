@@ -8,8 +8,6 @@
 struct actionList *
 planner_getActsToFixGap(struct problem *problem, struct gap *gap)
 {
-  // TODO: Check for correctness.
-
   struct actionManag *actManag = problem->domain->actionManag;
 
   // We will use the struct actionList again. The ordering does not matter
@@ -390,7 +388,7 @@ planner_hasGap( struct state *initState,
   if (gapLiteral != NULL) {
     result = malloc(sizeof(*result));
     result->literal = gapLiteral;
-    result->position = idxAct; // TODO: Is that correct?
+    result->position = idxAct;
   }
 
   /* Clean up */
@@ -419,6 +417,8 @@ planner_solveProblem_aux( struct problem *problem,
   if (gap == NULL) {
     // Solution found.
     printf("\n\nSOLUTION FOUND\n\n\n"); // DEBUG
+    // TODO: The solution points to elements of the stack. These addresses will
+    // be invalid when problem is solved.
     return actAcc;
   }
 
@@ -432,70 +432,69 @@ planner_solveProblem_aux( struct problem *problem,
   }
 
   struct actionList *actsToFixGap = planner_getActsToFixGap(problem, gap);
-  //printf("actsToFixGap.length: %d\n", utils_actionList_length(actsToFixGap)); //DEBUG
-  // TODO: Free actsToFixGap somewhere.
+  //printf("actsToFixGap.length: %d\n",
+  //       utils_actionList_length(actsToFixGap)); //DEBUG
 
   // The order of the following loops can be changed freely. I just choose
   // a abritrarily for now.
 
-  // Iterate over positions. TODO: Is bound of iteration correct? I.e.,
-  // gap->pos! I think so.
+  // Iterate over positions.
   // Note: gap->pos >= 1.
   int32_t idxPos = 0;
   struct actionList *curr = NULL;
   struct actionList *afterCurr = actAcc;
   while (idxPos < gap->position) {
-  //for ( int32_t idxPos = 0;
-  //      idxPos < gap->pos;
-  //      idxPos++) {
+
+    // Action list element.
+    // Note: The action itself (tmpActL->act) will be set later (in the inner
+    // loop).
+    struct actionList tmpActL;
+
+    // Add action to action accumlator.
+    // I will incorporate the mechanics to add and remove grounded actions
+    // to the potential solution here, cause it can be more efficient than
+    // using an external function (which would have to iterate over the
+    // list of ground actions every time we want to add or remove elements.
+    tmpActL.next = afterCurr;
+    if (curr == NULL) {
+      actAcc = &tmpActL;
+    } else {
+      curr->next = &tmpActL;
+    }
 
     // Iterate over actions
     for (struct actionList *pActL = actsToFixGap;
          pActL != NULL;
          pActL = pActL->next) {
 
-      struct actionList tmpActL;
       tmpActL.act = pActL->act;
-
-      // Add action to action accumlator.
-      // I will incorporate the mechanics to add and remove grounded actions
-      // to the potential solution here, cause it can be more efficient than
-      // using an external function (which would have to iterate over the
-      // list of ground actions every time we want to add or remove elements.
-      tmpActL.next = afterCurr;
-      if (curr == NULL) {
-        actAcc = &tmpActL;
-      } else {
-        curr->next = &tmpActL;
-      }
 
       // Recurse with new parital solution.
       struct actionList *result;
       result = planner_solveProblem_aux(problem, actAcc, depthLimit, depth+1);
       // Return the first result
       if (result != NULL) {
-        printf("RETURN RESULT");
+        //printf("RETURN RESULT"); // DEBUG
         return result;
       }
 
-      // TODO: Remove action from action accumulator for net iteration of
-      // loop.
-      if (curr == NULL) {
-        actAcc = actAccBack;
-      } else {
-        curr->next = afterCurr;
-      }
-      //tmpActL.next = NULL;
     }
+
+    // Remove action from action accumulator for net iteration of loop.
+    if (curr == NULL) {
+      actAcc = actAccBack;
+    } else {
+      curr->next = afterCurr;
+    }
+
 
     // Increment loop variables.
     idxPos++;
-    // TODO: Check that.
     if (afterCurr != NULL) {
       curr = afterCurr;
       afterCurr = afterCurr->next;
     } else {
-      // This case could only happen in a last iteration.
+      // This case could only happen in the last iteration.
       assert (idxPos == gap->position);
     }
 
