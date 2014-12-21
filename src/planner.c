@@ -377,6 +377,11 @@ planner_hasGap( struct state *initState,
     }
     // Precondition is met. Apply the action.
     planner_apply(lState, grAct);
+    printf("action applied:   "); // DEBUG
+    utils_print_groundAction(grAct); // DEBUG
+    printf("\n"); // DEBUG
+    libpddl31_state_print(lState); // DEBUG
+    printf("\n"); // DEBUG
     //libpddl31_state_print(lState); // DEBUG
     //printf("\n"); // DEBUG
   }
@@ -408,6 +413,9 @@ planner_solveProblem_aux( struct problem *problem,
   //utils_print_actionList(actAcc); // DEBUG
   //printf("\n");
 
+  utils_print_actionListCompact(actAcc); // DEBUG
+  printf("\n"); // DEBUG
+
   struct actionList *actAccBack = actAcc;
 
   struct state *initState = problem->init;
@@ -422,18 +430,22 @@ planner_solveProblem_aux( struct problem *problem,
     return solution;
   }
 
-  //utils_print_gap(gap); // DEBUG
-  //printf("\n"); // DEBUG
-
   if (depth >= depthLimit) {
-    // Search depth limit.
+    // Depth limit.
+    printf("dl*");
     utils_free_gap(gap);
     return NULL;
   }
 
+  printf("gap:   "); // DEBUG
+  utils_print_gap(gap); // DEBUG
+  printf("\n"); // DEBUG
+
   struct actionList *actsToFixGap = planner_getActsToFixGap(problem, gap);
-  //printf("actsToFixGap.length: %d\n",
-  //       utils_actionList_length(actsToFixGap)); //DEBUG
+  printf("actsToFixGap.length: %d\n",
+         utils_actionList_length(actsToFixGap)); //DEBUG
+  //utils_print_actionList(actsToFixGap); // DEBUG
+  //printf("\n"); // DEBUG
 
   // The order of the following loops can be changed freely. I just choose
   // a abritrarily for now.
@@ -521,10 +533,114 @@ struct actionList *
 planner_iterativeDeepeningSearch(struct problem *problem)
 {
   for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
+    printf("\n### depth search with depth %d\n\n", depth); // DEBUG
     struct actionList *solution = planner_solveProblem(problem, depth);
     if (solution != NULL) {
       return solution;
     }
   }
   return NULL;
+}
+
+// This function will edit the weights of the list in place.
+// It produces weights between INT32_MIN and 0.
+// If an actions' precondition is fulfilled by the state, then its weight will
+// be zero. For every atom of the precondition, which is not fulfilled, its
+// weight will be reduced by one.
+void planner_actionList_calculateWeights(struct actionList *actL,
+                                         struct state *state)
+{
+  // Iterate over actions.
+  for (/* empty */; actL != NULL; actL = actL->next) {
+    int32_t weight = 0;
+
+    struct groundAction grAct = actL->act;
+    struct action *action = grAct->action;
+    struct goal *precond = action->precond;
+
+    // Iterate over precondition atoms.
+    for (int32_t idxPrecond = 0; idxPrecond < precond->numOfPos; ++idxPrecond) {
+      struct atom *atom = &precond->posLiterals[idxPrecond];
+      if ( ! planner_containsPrecondAtom(state, grAct, atom)) {
+        // Actually decreasing the weight, when a precondition is not met.
+        weight--;
+      }
+    }
+    for (int32_t idxPrecond = 0; idxPrecond < precond->numOfNeg; ++idxPrecond) {
+      struct atom *atom = &precond->negLiterals[idxPrecond];
+      if (planner_containsPrecondAtom(state, grAct, atom)) {
+        // Actually decreasing the weight, when a precondition is not met.
+        weight--;
+      }
+    }
+
+    // Write weight to actual action-list-element.
+    actL->weight = weight;
+  }
+}
+
+// This quicksort is stable.
+struct actionList *
+planner_quicksort(struct actionList *actL)
+{
+  /* Base case */
+  if (actL == NULL || actL->next == NULL) { // That is, length <= 1
+    return actL;
+  }
+  // List is at least two elements long.
+
+  /* Recursive case */
+
+  // Just take the first element as pivot element.
+  struct actionList *pivot = actL;
+  // Recal: List is at least two elements long.
+  // Remove pivot element from the input list.
+  actL = actL->next;
+  pivot->next = NULL;
+
+  // List for elements before pivot. New elements will be inserted in the
+  // front. So I will add the pivot element already here.
+  struct actionList *before = pivot;
+  struct actionList *after = NULL; // List for elements after the pivot.
+
+  // Iterator over the input list.
+  while(actL != NULL) {
+    // Note: Including the current element in the result and iterating to the
+    // next element of the input list needs careful processing.
+    struct actionList *actLNext = actL->next;
+    if (actL->weight < pivot->weight) {
+      struct actionList *beforeOld = before;
+      before = actL;
+      before->next = beforeOld;
+    } else {
+      assert(actL->weight >= pivot->weight);
+      struct actionList *afterOld = after;
+      after = actL;
+      after->next = afterOld;
+    }
+    actL = actLNext;
+  }
+
+  // Recursion.
+  before = planner_quicksort(before);
+  after = planner_quicksort(after);
+
+  // The pivot element must still be the last element of the before-list,
+  // because the before list only holds elements with smaller weight than the
+  // pivot element.
+  assert(pivot->next == NULL);
+
+  // Put lists together.
+  pivot->next = after;
+  struct actionList *result = before;
+
+  return result;
+}
+
+struct actionList *
+planner_sortActsAccToState(struct actionList *actL, struct state *state)
+{
+  // Calculate weights for sorting.
+  planner_actionList_calculateWeights(actL, state);
+  return planner_quicksort(actL);
 }
