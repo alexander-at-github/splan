@@ -39,6 +39,9 @@ struct actionList
   struct groundAction *act;
 
   struct actionList *next;
+
+  // A weight for sorting action lists. Often this is not used.
+  int32_t weight;
 };
 
 void utils_free_literal(struct literal *literal);
@@ -78,5 +81,7 @@ struct atom *utils_atom_cloneWithGrounding(struct atom *atom,
                                            struct groundAction *grAct);
 void utils_free_gap(struct gap *gap);
 struct actionList *utils_cloneActionList(struct actionList *actL);
+void utils_print_groundAction(struct groundAction *grAct);
+void utils_print_actionListCompact(struct actionList *list);
 
 #endif

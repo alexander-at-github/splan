@@ -378,6 +378,31 @@ void utils_print_groundAction(struct groundAction *grAct)
   printf("]");
 }
 
+void
+utils_print_groundActionCompact(struct groundAction *grAct)
+{
+  printf("grAct:(%s", grAct->action->name);
+  for (int32_t i = 0; i < grAct->action->numOfParams; ++i) {
+    char *termName = grAct->terms[i] == NULL ? "NULL" : grAct->terms[i]->name;
+    printf(" %s", termName);
+  }
+  printf(")");
+}
+
+void
+utils_print_actionListCompact(struct actionList *list)
+{
+  printf("ActionList:(");
+  while (list != NULL) {
+    utils_print_groundActionCompact(list->act);
+    if (list->next != NULL) {
+      printf(" ");
+    }
+    list = list->next;
+  }
+  printf(")");
+}
+
 void utils_print_actionList(struct actionList *list)
 {
   printf("ActionList:[");
