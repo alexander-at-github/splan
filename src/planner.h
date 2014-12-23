@@ -11,6 +11,8 @@ struct actionList *planner_getActsToFixGap( struct problem *problem,
                                             struct gap *gap);
 struct actionList *planner_solveProblem(struct problem *problem,
                                         int32_t depthLimit);
+struct actionList *planner_solveProblem_v2( struct problem *problem,
+                                            int32_t depthLimit);
 
 struct literal *planner_satisfies(struct state *state, struct goal *goal);
 void planner_stateRemoveAtom(struct state *state,
@@ -20,5 +22,6 @@ void planner_stateAddAtom(struct state *state,
                           struct groundAction *grAct,
                           struct atom *atom);
 struct actionList *planner_iterativeDeepeningSearch(struct problem *problem);
+struct actionList *planner_iterativeDeepeningSearch_v2(struct problem *problem);
 
 #endif // PLANNER_H

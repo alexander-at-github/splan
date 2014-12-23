@@ -395,6 +395,7 @@ utils_print_actionListCompact(struct actionList *list)
   printf("ActionList:(");
   while (list != NULL) {
     utils_print_groundActionCompact(list->act);
+    printf("w%d", list->weight);
     if (list->next != NULL) {
       printf(" ");
     }

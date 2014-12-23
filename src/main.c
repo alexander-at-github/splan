@@ -40,7 +40,7 @@ int main(int argc, char **argv)
   struct domain *domain = libpddl31_domain_parse(domainFilename);
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
-  struct actionList *result = planner_iterativeDeepeningSearch(problem);
+  struct actionList *result = planner_iterativeDeepeningSearch_v2(problem);
   utils_print_actionList(result);
   printf("\n");
 

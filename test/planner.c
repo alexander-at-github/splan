@@ -335,7 +335,7 @@ test_planner_solveProblem()
 
   // The problem instance tsp-neg-prec/p3.pddl shortest solution is of length
   // four.
-  struct actionList *result = planner_solveProblem(problem, 4);
+  struct actionList *result = planner_solveProblem_v2(problem, 4);
   mu_assert("Error planner_solveProblem()", result != NULL);
   utils_print_actionList(result);
   utils_free_actionList(result);
@@ -358,7 +358,7 @@ test_planner_iterativeDeepeningSearch()
                           //"test/planner-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
-  struct actionList *result = planner_iterativeDeepeningSearch(problem);
+  struct actionList *result = planner_iterativeDeepeningSearch_v2(problem);
   mu_assert("Error planner_iterativeDeepeningSearch()", result != NULL);
   utils_print_actionList(result);
   utils_free_actionList(result);
