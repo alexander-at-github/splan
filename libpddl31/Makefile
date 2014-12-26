@@ -1,7 +1,7 @@
-CC=clang
+CC=gcc #clang
 AR=ar
 
-CFLAGS=-g #-dNDEBUG #-g # for debug symbols
+CFLAGS=-D_DEFAULT_SOURCE -std=c11 -g -pg #-O3 -DNDEBUG #-g # turns off assertions
 
 # path to the ANTLR3 runtime.
 # Both versions do work

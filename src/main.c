@@ -34,13 +34,16 @@ int main(int argc, char **argv)
   }
   if (domainFilename == NULL || problemFilename == NULL) {
     print_usage(argv);
-    exit(EXIT_FAILURE);
+    return EXIT_FAILURE;
   }
 
   struct domain *domain = libpddl31_domain_parse(domainFilename);
+  if (domain == NULL) {
+    return EXIT_FAILURE;
+  }
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
-  struct actionList *result = planner_iterativeDeepeningSearch_v2(problem);
+  struct actionList *result = planner_iterativeDeepeningSearch(problem);
   utils_print_actionList(result);
   printf("\n");
 

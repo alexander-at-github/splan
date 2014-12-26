@@ -165,8 +165,12 @@ utils_term_equal(struct term *t1, struct term *t2)
          // make sure I also consider the case that names are allocated
          // multiple times.
 
-         // TODO: Maybe remove that.
+         //t1->name == t2->name;
+         // This version seems to be faster than the one one line above.
          (t1->name == t2->name || strcmp(t1->name, t2->name) == 0);
+
+
+
          //t1->name == t2->name;
 
          // DO NOT compare types. Not any use of a variable also specifies its

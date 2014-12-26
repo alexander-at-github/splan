@@ -432,7 +432,7 @@ planner_solveProblem_aux( struct problem *problem,
 
   if (depth >= depthLimit) {
     // Depth limit.
-    printf("dl*");
+    //printf("dl*");
     utils_free_gap(gap);
     return NULL;
   }
@@ -694,7 +694,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
                             int32_t depthLimit,
                             int32_t depth)
 {
-  //printf("\n>>>new iteration\n");
+  //printf("\n>>>planner_solveProblem_aux_v2()   ");
   //utils_print_actionList(actAcc); // DEBUG
   //printf("\n");
 
@@ -748,7 +748,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
   struct actionList *curr = NULL;
   struct actionList *afterCurr = actAcc;
   // TODO: I think it will be better to iterate from back to front, i.e., from
-  // a high to low index.
+  // a high to low index. CAUTION: That does not work with updating the state.
   while (idxPos < gap->position) {
 
     // Action list element.
@@ -770,8 +770,12 @@ planner_solveProblem_aux_v2(struct problem *problem,
 
     // Sort actions according to local state.
     //printf("SORTING actsToFixGap\n"); // DEBUG
-    // FIXME: That call seems to not do anything.
     actsToFixGap = planner_sortActsAccToState(actsToFixGap, lState);
+    //printf("actsToFixGap.length: %d\n",
+    //       utils_actionList_length(actsToFixGap)); //DEBUG
+    //utils_print_actionListCompact(actsToFixGap);
+    //printf("\n"); // DEBUG
+    //exit(EXIT_FAILURE);
 
     // Iterate over actions
     for (struct actionList *pActL = actsToFixGap;

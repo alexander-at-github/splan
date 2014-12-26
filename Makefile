@@ -1,5 +1,6 @@
-CC=clang
-CFLAGS=-g #-dNDEBUG # turns off assertions
+CC=gcc #clang
+
+CFLAGS=-D_DEFAULT_SOURCE -std=c11 -g -pg #-O3 -DNDEBUG #-g # turns off assertions
 
 SRC_DIR=src
 BUILD_DIR=build
@@ -28,7 +29,7 @@ bin/splan: src/main.c build/planner.o build/utils.o $(BIN_DIR)
 #	$(CC) $(CFLAGS) -c -I$(LIB_PDDL31_BIN_DIR) -o $@ $<
 
 build/%.o: src/%.c $(BUILD_DIR) $(LIB_PDDL31)
-	$(CC) $(CLFAGS) -c -I$(LIB_PDDL31_BIN_DIR) -o $@ $<
+	$(CC) $(CFLAGS) -c -I$(LIB_PDDL31_BIN_DIR) -o $@ $<
 
 
 ### EXPERIMENTAL-END
