@@ -100,6 +100,7 @@ struct predicate
     struct term *params;
 };
 
+/** DEPRECATED **/
 // Semantics: A state is a conjunction of fluents.
 // Closed world assumption and unique name assumption apply. The state can be
 // treated as a set of fluents.
