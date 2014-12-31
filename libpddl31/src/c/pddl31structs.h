@@ -8,6 +8,7 @@
 #include "typeSystem.h"
 #include "predManag.h"
 #include "objManag.h"
+//#include "state.h"
 
 enum requirement
 {
@@ -70,7 +71,8 @@ struct problem
     enum requirement *requirements;
 
     // Objects will be saved in the domains object manager
-    
+
+    // TODO: state_t *init;
     struct state *init;
 
     struct goal *goal;
@@ -143,6 +145,18 @@ struct action
     struct goal *precond;
 
     struct effect *effect;
+};
+
+struct groundAction
+{
+  struct action *action;
+  // action->numOfParams
+
+  // The grounding
+  // An array of pointers to constants.
+  // It maps the parameter action->params[i] to terms[i] for i in
+  // 0..(action->numOfParams - 1).
+  struct term **terms;
 };
 
 /** Effects **/

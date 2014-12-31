@@ -93,5 +93,5 @@ bin/test_typeSystem: src/c/typeSystem.c test/c/typeSystem.c $(BIN_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR)/c -o $@ -I$(TOOL_DIR) src/c/typeSystem.c test/c/typeSystem.c 
 
 bin/test: $(TEST_DIR)/c/libpddl31.c $(SRC_DIR)/c/objManag.c $(SRC_DIR)/c/typeSystem.c $(SRC_DIR)/c/predManag.c $(LIB_FILE)
-	$(CC) -o $@ -I$(BIN_DIR) -I$(SRC_DIR)/c -l$(ANTLR3.4_C_RUNTIME) $^
+	$(CC) $(CFLAGS) -o $@ -I$(BIN_DIR) -I$(SRC_DIR)/c -l$(ANTLR3.4_C_RUNTIME) $^
 

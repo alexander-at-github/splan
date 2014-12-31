@@ -55,33 +55,12 @@ void utils_freeStateShallow(struct state *state)
   free(state);
 }
 
-struct groundAction *
-utils_create_groundAction(struct action *action)
-{
-  struct groundAction *grAct = malloc(sizeof(*grAct));
-  grAct->action = action;
-  grAct->terms = malloc(sizeof(*grAct->terms) * action->numOfParams);
-  for (int32_t i = 0; i < action->numOfParams; ++i) {
-    grAct->terms[i] = NULL;
-  }
-  return grAct;
-}
-
-void
-utils_free_groundAction(struct groundAction *grAct)
-{
-  if (grAct->terms != NULL) {
-    free(grAct->terms);
-  }
-  free(grAct);
-}
-
 void
 utils_free_actionList(struct actionList *list)
 {
   while(list != NULL) {
     if(list->act != NULL) {
-      utils_free_groundAction(list->act);
+      libpddl31_free_groundAction(list->act);
     }
     struct actionList *next = list->next;
     free(list);
@@ -185,7 +164,7 @@ utils_tryToFixGap(struct action *action,
                   struct atom *atomToFix, // Atom which might fix the gap
                   struct atom *gapAtom)
 {
-  struct groundAction *newGrAct = utils_create_groundAction(action);
+  struct groundAction *newGrAct = libpddl31_create_groundAction(action);
 
   for ( int32_t idxArgs = 0;
         idxArgs < atomToFix->pred->numOfParams;
@@ -203,7 +182,7 @@ utils_tryToFixGap(struct action *action,
             newGrAct->terms[idxActParam] != gapTerm) {
           // Value was already been set to another constant. That is a
           // problem. The predicate does not fix the gap.
-          utils_free_groundAction(newGrAct);
+          libpddl31_free_groundAction(newGrAct);
           newGrAct = NULL;
           break;
         }
@@ -212,7 +191,7 @@ utils_tryToFixGap(struct action *action,
         if ( ! typeSystem_isa(gapTerm->type, effTerm->type) ||
              ! typeSystem_isa(gapTerm->type, predArgType)) {
           // Types do not match. The whole predicate does not fix the gap.
-          utils_free_groundAction(newGrAct);
+          libpddl31_free_groundAction(newGrAct);
           newGrAct = NULL;
           break;
         }
@@ -229,7 +208,7 @@ utils_tryToFixGap(struct action *action,
         continue;
       } else {
         // The whole predicate does not fix the gap.
-        utils_free_groundAction(newGrAct);
+        libpddl31_free_groundAction(newGrAct);
         newGrAct = NULL;
         break;
       }

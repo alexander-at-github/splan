@@ -21,18 +21,6 @@ struct literal
   struct atom *atom;
 };
 
-struct groundAction
-{
-  struct action *action;
-  // action->numOfParams
-
-  // The grounding
-  // An array of pointers to constants.
-  // It maps the parameter action->params[i] to terms[i] for i in
-  // 0..(action->numOfParams - 1).
-  struct term **terms;
-};
-
 // A single linked list of grounded actions.
 struct actionList
 {
@@ -58,14 +46,9 @@ void utils_print_literal(struct literal *literal);
 // For debug pusposes only.
 int32_t utils_actionList_length(struct actionList *list);
 
-// Creates (allocates) a ground action with all the groundings set to NULL.
-struct groundAction *utils_create_groundAction(struct action *action);
-
 // Completes the grounding of a list of parital grounded actions.
 struct actionList *utils_groundActions(struct problem *problem,
                                        struct actionList *partialGrounded);
-
-void utils_free_groundAction(struct groundAction *grAct);
 
 struct actionList *utils_concatActionLists(struct actionList *l1,
                                            struct actionList *l2);

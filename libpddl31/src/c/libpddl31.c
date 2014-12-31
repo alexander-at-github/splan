@@ -752,3 +752,24 @@ libpddl31_problem_print(struct problem *problem)
 
     printf("]");
 }
+
+struct groundAction *
+libpddl31_create_groundAction(struct action *action)
+{
+  struct groundAction *grAct = malloc(sizeof(*grAct));
+  grAct->action = action;
+  grAct->terms = malloc(sizeof(*grAct->terms) * action->numOfParams);
+  for (int32_t i = 0; i < action->numOfParams; ++i) {
+    grAct->terms[i] = NULL;
+  }
+  return grAct;
+}
+
+void
+libpddl31_free_groundAction(struct groundAction *grAct)
+{
+  if (grAct->terms != NULL) {
+    free(grAct->terms);
+  }
+  free(grAct);
+}

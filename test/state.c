@@ -164,7 +164,7 @@ test_addRemoveWithGrounding()
 
   struct action *action0 = actionManag_getAction(domain->actionManag,
                                                  "action0");
-  struct groundAction *grAct0 = utils_create_groundAction(action0);
+  struct groundAction *grAct0 = libpddl31_create_groundAction(action0);
   grAct0->terms[0] = objManag_getObject(problem->objManag, "obj0");
   grAct0->terms[1] = objManag_getObject(problem->objManag, "obj1");
   grAct0->terms[2] = objManag_getObject(problem->objManag, "obj2");
@@ -177,7 +177,7 @@ test_addRemoveWithGrounding()
   atom0->terms[1] = objManag_getObject(problem->objManag, "obj1");
   atom0->terms[2] = objManag_getObject(problem->objManag, "obj2");
 
-  struct groundAction *grAct1 = utils_create_groundAction(action0);
+  struct groundAction *grAct1 = libpddl31_create_groundAction(action0);
   grAct1->terms[0] = objManag_getObject(problem->objManag, "obj0");
   grAct1->terms[1] = objManag_getObject(problem->objManag, "obj1");
   grAct1->terms[2] = objManag_getObject(problem->objManag, "obj3");
@@ -190,7 +190,7 @@ test_addRemoveWithGrounding()
   atom1->terms[1] = objManag_getObject(problem->objManag, "obj1");
   atom1->terms[2] = objManag_getObject(problem->objManag, "obj3");
 
-  struct groundAction *grAct2 = utils_create_groundAction(action0);
+  struct groundAction *grAct2 = libpddl31_create_groundAction(action0);
   grAct2->terms[0] = objManag_getObject(problem->objManag, "obj0");
   grAct2->terms[1] = objManag_getObject(problem->objManag, "obj3");
   grAct2->terms[2] = objManag_getObject(problem->objManag, "const0");
@@ -265,9 +265,9 @@ test_addRemoveWithGrounding()
 
   // Clean up.
   state_free(state);
-  utils_free_groundAction(grAct0);
-  utils_free_groundAction(grAct1);
-  utils_free_groundAction(grAct2);
+  libpddl31_free_groundAction(grAct0);
+  libpddl31_free_groundAction(grAct1);
+  libpddl31_free_groundAction(grAct2);
   libpddl31_atom_free(atom0);
   free(atom0);
   libpddl31_atom_free(atom1);

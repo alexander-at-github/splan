@@ -33,4 +33,10 @@ void libpddl31_free_state(struct state *state);
 
 struct term *libpddl31_term_clone(struct term *src);
 
+
+// Creates (allocates) a ground action with all the groundings set to NULL.
+struct groundAction *libpddl31_create_groundAction(struct action *action);
+void libpddl31_free_groundAction(struct groundAction *grAct);
+
+
 #endif // LIBPDDL31_H

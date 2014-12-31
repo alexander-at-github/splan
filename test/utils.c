@@ -1,3 +1,4 @@
+#include "libpddl31.h"
 #include "minunit.h"
 #include "utils.h"
 
@@ -552,7 +553,7 @@ test_groundActions_simple()
   struct actionList *resultHead = NULL;
 
   action = actionManag_getAction(domain->actionManag, "a10");
-  struct groundAction *grAct = utils_create_groundAction(action);
+  struct groundAction *grAct = libpddl31_create_groundAction(action);
 
 
   /*** Try with empty grounding ***/
@@ -597,7 +598,7 @@ test_groundActions_simple()
   utils_free_actionList(resultHead);
 
 
-  utils_free_groundAction(grAct);
+  libpddl31_free_groundAction(grAct);
 
 
   libpddl31_problem_free(problem);
@@ -619,7 +620,7 @@ test_groundActions_basic()
   struct groundAction *grAct = NULL;
 
   action = actionManag_getAction(domain->actionManag, "a11");
-  grAct = utils_create_groundAction(action); // empty ground action.
+  grAct = libpddl31_create_groundAction(action); // empty ground action.
 
   /*** Action 'a11' got two unground variables. ***/
 
@@ -661,7 +662,7 @@ test_groundActions_basic()
 
 
 
-  utils_free_groundAction(grAct);
+  libpddl31_free_groundAction(grAct);
 
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
@@ -682,7 +683,7 @@ test_groundActions_typeChecks()
   struct groundAction *grAct = NULL;
 
   action = actionManag_getAction(domain->actionManag, "a12");
-  grAct = utils_create_groundAction(action); // empty ground action.
+  grAct = libpddl31_create_groundAction(action); // empty ground action.
 
   /*** Action 'a11' got two unground variables. ***/
 
@@ -716,12 +717,12 @@ test_groundActions_typeChecks()
             strcmp(result->act->terms[1]->name, "obj3") == 0);
 
   utils_free_actionList(resultHead);
-  utils_free_groundAction(grAct);
+  libpddl31_free_groundAction(grAct);
 
 
 
   action = actionManag_getAction(domain->actionManag, "a13");
-  grAct = utils_create_groundAction(action); // empty ground action.
+  grAct = libpddl31_create_groundAction(action); // empty ground action.
   singletonL.act = grAct;
 
   result = utils_groundActions(problem, &singletonL);
@@ -737,7 +738,7 @@ test_groundActions_typeChecks()
 
 
 
-  utils_free_groundAction(grAct);
+  libpddl31_free_groundAction(grAct);
 
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
@@ -760,10 +761,10 @@ test_groundActions_multipleActions()
   struct actionList listE1;
   struct actionList listE2;
   action = actionManag_getAction(domain->actionManag, "a14");
-  listE1.act = utils_create_groundAction(action);
+  listE1.act = libpddl31_create_groundAction(action);
   listE1.next = &listE2;
   action = actionManag_getAction(domain->actionManag, "a15");
-  listE2.act = utils_create_groundAction(action);
+  listE2.act = libpddl31_create_groundAction(action);
   listE2.next = NULL;
 
   result = utils_groundActions(problem, &listE1);
@@ -798,8 +799,8 @@ test_groundActions_multipleActions()
   mu_assert("Error wrong grounding of list of partially grounded actions.\n",
             strcmp(result->act->terms[0]->name, "const1") == 0);
 
-  utils_free_groundAction(listE1.act);
-  utils_free_groundAction(listE2.act);
+  libpddl31_free_groundAction(listE1.act);
+  libpddl31_free_groundAction(listE2.act);
 
   utils_free_actionList(resultHead);
 
