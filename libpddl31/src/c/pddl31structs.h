@@ -10,6 +10,10 @@
 #include "objManag.h"
 //#include "state.h"
 
+// Forward declaration for state
+struct  st_state;
+typedef struct st_state * state_t;
+
 enum requirement
 {
     STRIPS
@@ -72,8 +76,8 @@ struct problem
 
     // Objects will be saved in the domains object manager
 
-    // TODO: state_t *init;
-    struct state *init;
+    state_t init;
+    //struct state *init;
 
     struct goal *goal;
 };
@@ -106,11 +110,13 @@ struct predicate
 // Semantics: A state is a conjunction of fluents.
 // Closed world assumption and unique name assumption apply. The state can be
 // treated as a set of fluents.
+/*
 struct state
 {
     int32_t numOfFluents;
     struct atom *fluents;
 };
+*/
 
 /** Goal **/
 // Composition of a predicate and terms as arguments.

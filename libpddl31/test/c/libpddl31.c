@@ -14,9 +14,11 @@ main (int agrc, char **argv)
     char *problemFilename =
                         "../test_instances/openstacks-strips/p01.pddl";
                         //"test_instances/probBLOCKS-4-0_altered.pddl";
-    struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
+    struct problem *problem = libpddl31_problem_parse(domain,
+                                                      problemFilename);
     printf("\n");
     libpddl31_problem_print(problem);
+    printf("\n");
 
     /*
     bool isMember = libpddl31_problem_is_member_of_domain(problem, domain);

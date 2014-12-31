@@ -11,6 +11,7 @@
 #include "objManag.h"
 #include "predManag.h"
 #include "actionManag.h"
+#include "state.h"
 #include "typeSystem.h"
 
 // In order to read Latin-1 input files (pddl-domain or pddl-problem files)
@@ -466,25 +467,25 @@ libpddl31_problem_parse(struct domain *domain, char *filename)
     return problem;
 }
 
-void
-libpddl31_free_state(struct state *state)
-{
-    if (state == NULL) {
-        return;
-    }
+/* void */
+/* libpddl31_free_state(struct state *state) */
+/* { */
+/*     if (state == NULL) { */
+/*         return; */
+/*     } */
 
-    if (state->fluents != NULL) {
-        for (size_t i = 0; i < state->numOfFluents; ++i) {
-            // These atoms only point to prediactes and terms which will be
-            // free'd by coresponding managers. The array of pointers to terms
-            // of atom needs to be free'd though.
-            // TODO: Maybe improve that!
-            free(state->fluents[i].terms);
-        }
-        free(state->fluents);
-        state->fluents = NULL;
-    }
-}
+/*     if (state->fluents != NULL) { */
+/*         for (size_t i = 0; i < state->numOfFluents; ++i) { */
+/*             // These atoms only point to prediactes and terms which will be */
+/*             // free'd by coresponding managers. The array of pointers to terms */
+/*             // of atom needs to be free'd though. */
+/*             // TODO: Maybe improve that! */
+/*             free(state->fluents[i].terms); */
+/*         } */
+/*         free(state->fluents); */
+/*         state->fluents = NULL; */
+/*     } */
+/* } */
 
 void
 libpddl31_problem_free(struct problem *problem)
@@ -518,8 +519,9 @@ libpddl31_problem_free(struct problem *problem)
     }
 
     if (problem->init != NULL) {
-        libpddl31_free_state(problem->init);
-        free(problem->init);
+        state_free(problem->init);
+        //libpddl31_free_state(problem->init);
+        //free(problem->init);
         problem->init = NULL;
     }
 
@@ -717,18 +719,18 @@ libpddl31_action_print(struct action *action)
     printf("]");
 }
 
-void
-libpddl31_state_print(struct state *state)
-{
-    printf("State:[");
-    for (size_t i = 0; i < state->numOfFluents; ++i) {
-        libpddl31_atom_print(&state->fluents[i]);
-        if (i < state->numOfFluents - 1) {
-            printf(",");
-        }
-    }
-    printf("]");
-}
+/* void */
+/* libpddl31_state_print(struct state *state) */
+/* { */
+/*     printf("State:["); */
+/*     for (size_t i = 0; i < state->numOfFluents; ++i) { */
+/*         libpddl31_atom_print(&state->fluents[i]); */
+/*         if (i < state->numOfFluents - 1) { */
+/*             printf(","); */
+/*         } */
+/*     } */
+/*     printf("]"); */
+/* } */
 
 void
 libpddl31_problem_print(struct problem *problem)
@@ -746,7 +748,8 @@ libpddl31_problem_print(struct problem *problem)
     printf("], ");
 
     printf("Init:");
-    libpddl31_state_print(problem->init);
+    state_print(problem->init);
+    //libpddl31_state_print(problem->init);
     printf(", Goal:");
     libpddl31_goal_print(problem->goal);
 

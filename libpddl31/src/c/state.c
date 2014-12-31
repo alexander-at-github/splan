@@ -5,6 +5,8 @@
 
 #include "state.h"
 
+#include "libpddl31.h"
+
 // This state data structure is an adopted trie.
 struct st_state {
 
@@ -58,6 +60,7 @@ state_createEmpty(struct domain *domain)
   state_t state = malloc(sizeof(*state));
   state->domain = domain;
   state->numOfChldrn = domain->predManag->numOfPreds;
+  //printf("state_createEmpty(): state->numOfChldrn: %d\n", state->numOfChldrn); // DEBUG
   state->predManagFirst = domain->predManag->preds;
   state->chldrn = malloc(sizeof(*state->chldrn) * state->numOfChldrn);
   for (int32_t i = 0; i < state->numOfChldrn; ++i) {
@@ -70,11 +73,16 @@ state_t
 state_createFromLibpddl31(struct domain *domain, pANTLR3_LIST listOfAtoms)
 {
   state_t state = state_createEmpty(domain);
-  state->numOfChldrn = listOfAtoms->size(listOfAtoms);
-  for (int32_t i = 0; i < state->numOfChldrn; ++i) {
+  //printf("state_createFromLibpddl31(): listOfAtoms->size(): %d\n",
+  //       listOfAtoms->size(listOfAtoms)); // DEBUG
+  //printf("\n"); // DEBUG
+  for (int32_t i = 0; i < listOfAtoms->size(listOfAtoms); ++i) {
     // ANTLR3 list index starts from one.
+    //libpddl31_atom_print(listOfAtoms->get(listOfAtoms, i+1)); // DEBUG
+    //printf("\n"); // DEBUG
     state_add(state, listOfAtoms->get(listOfAtoms, i+1));
   }
+  //state_print(state); // DEBUG
   return state;
 }
 
@@ -452,6 +460,7 @@ state_print_aux(char *nameAcc, int32_t nameAccLen, struct sNode *sNode)
 void
 state_print(state_t state)
 {
+  printf("state_print(): state->numOfChldrn: %d\n", state->numOfChldrn); // DEBUG
   printf("(State");
   for (int32_t idx = 0; idx < state->numOfChldrn; ++idx) {
     struct sNode *sNode = state->chldrn[idx];
