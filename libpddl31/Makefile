@@ -72,10 +72,10 @@ $(LIB_OBJ_FILE): $(SRC_DIR)/c/libpddl31.c $(LEXER_HEADER_FILE) $(PARSER_HEADER_F
 $(BUILD_DIR)/%.o: $(SRC_DIR)/c/%.c
 	$(CC) $(CFLAGS) -c -I$(SRC_DIR)/c -o $@ $<
 
-$(LIB_FILE): $(LIB_OBJ_FILE) $(LEXER_OBJ_FILE) $(LEXER_CORE_OBJ_FILE) $(PARSER_OBJ_FILE) $(BUILD_DIR)/predManag.o $(BUILD_DIR)/actionManag.o $(BUILD_DIR)/typeSystem.o $(BUILD_DIR)/objManag.o
+$(LIB_FILE): $(LIB_OBJ_FILE) $(LEXER_OBJ_FILE) $(LEXER_CORE_OBJ_FILE) $(PARSER_OBJ_FILE) $(BUILD_DIR)/predManag.o $(BUILD_DIR)/actionManag.o $(BUILD_DIR)/typeSystem.o $(BUILD_DIR)/objManag.o $(BUILD_DIR)/state.o
 	mkdir -p $(BIN_DIR)
 	$(AR) rcs $@ $^
-	cp $(LIB_HEADER_FILE) $(STRUCTS_HEADER_FILE) src/c/typeSystem.h src/c/predManag.h src/c/actionManag.h src/c/objManag.h $(BIN_DIR)
+	cp $(LIB_HEADER_FILE) $(STRUCTS_HEADER_FILE) src/c/typeSystem.h src/c/predManag.h src/c/actionManag.h src/c/objManag.h src/c/state.h $(BIN_DIR)
 
 $(BIN_DIR):
 	mkdir -p $@
@@ -88,6 +88,9 @@ clean:
 
 
 # Testing
+
+bin/test_state: test/c/state.c src/c/state.c $(LIB_FILE) $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ -I$(BIN_DIR) -I$(SRC_DIR)/c -I$(TOOL_DIR) test/c/state.c src/c/state.c $(LIB_FILE) -l$(ANTLR3.4_C_RUNTIME)
 
 bin/test_typeSystem: src/c/typeSystem.c test/c/typeSystem.c $(BIN_DIR)
 	$(CC) $(CFLAGS) -I$(SRC_DIR)/c -o $@ -I$(TOOL_DIR) src/c/typeSystem.c test/c/typeSystem.c 

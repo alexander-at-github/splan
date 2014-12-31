@@ -5,8 +5,6 @@
 
 #include "state.h"
 
-//#include "libpddl31.h"
-
 // This state data structure is an adopted trie.
 struct st_state {
 

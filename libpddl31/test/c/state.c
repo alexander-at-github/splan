@@ -6,7 +6,7 @@ int tests_run = 0;
 static char *
 test_createAFree()
 {
-  char *domainFilename = "test/state-domain.pddl";
+  char *domainFilename = "test/c/state-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
 
   state_t state = state_createEmpty(domain);
@@ -19,7 +19,7 @@ test_createAFree()
 static char *
 test_containsAddDelete()
 {
-  char *domainFilename = "test/state-domain.pddl";
+  char *domainFilename = "test/c/state-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
 
   state_t state = state_createEmpty(domain);
@@ -79,7 +79,7 @@ test_containsAddDelete()
 static char *
 test_clone()
 {
-  char *domainFilename = "test/state-domain.pddl";
+  char *domainFilename = "test/c/state-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
 
   struct atom *atom0 = malloc(sizeof(*atom0));
@@ -157,9 +157,9 @@ test_clone()
 static char *
 test_addRemoveWithGrounding()
 {
-  char *domainFilename = "test/state-domain.pddl";
+  char *domainFilename = "test/c/state-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/state-problem.pddl";
+  char *problemFilename = "test/c/state-problem.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   struct action *action0 = actionManag_getAction(domain->actionManag,
