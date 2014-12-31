@@ -38,5 +38,6 @@ struct term *libpddl31_term_clone(struct term *src);
 struct groundAction *libpddl31_create_groundAction(struct action *action);
 void libpddl31_free_groundAction(struct groundAction *grAct);
 
+bool libpddl31_term_equal(struct term *t1, struct term *t2);
 
 #endif // LIBPDDL31_H

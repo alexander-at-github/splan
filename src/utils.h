@@ -53,7 +53,6 @@ struct actionList *utils_groundActions(struct problem *problem,
 struct actionList *utils_concatActionLists(struct actionList *l1,
                                            struct actionList *l2);
 
-bool utils_term_equal(struct term *t1, struct term *t2);
 bool utils_atom_equal(struct atom *a1, struct atom *a2);
 // Atom 'a2' has to be affiliated with the ground action 'grAct'.
 bool utils_atom_equalWithGrounding( struct atom *a1,

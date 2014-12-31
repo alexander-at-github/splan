@@ -135,29 +135,6 @@ utils_concatActionLists(struct actionList *l1, struct actionList *l2)
   return l1;
 }
 
-bool
-utils_term_equal(struct term *t1, struct term *t2)
-{
-  return // t1->isVariable == t2->isVariable && // Not neccessary.
-
-         // Comparing the pointer should actually always be enough. Just to
-         // make sure I also consider the case that names are allocated
-         // multiple times.
-
-         //t1->name == t2->name;
-         // This version seems to be faster than the one one line above.
-         (t1->name == t2->name || strcmp(t1->name, t2->name) == 0);
-
-
-
-         //t1->name == t2->name;
-
-         // DO NOT compare types. Not any use of a variable also specifies its
-         // type.
-         //t1->type == t2->type; // Comparing pointers to types really has to be
-                                 // enough.
-}
-
 // Use, when there is chance to fix the gap.
 struct groundAction *
 utils_tryToFixGap(struct action *action,
@@ -203,7 +180,7 @@ utils_tryToFixGap(struct action *action,
       }
     } else {
       // A constant in the actions effect. Deal with it.
-      if (utils_term_equal(effTerm, gapTerm)) {
+      if (libpddl31_term_equal(effTerm, gapTerm)) {
         // Okay. Continue with next argument.
         continue;
       } else {
@@ -520,7 +497,7 @@ utils_atom_equal(struct atom *a1, struct atom *a2)
   }
 
   for (int32_t idxArgs = 0; idxArgs < a1->pred->numOfParams; ++idxArgs) {
-    if ( ! utils_term_equal(a1->terms[idxArgs], a2->terms[idxArgs])) {
+    if ( ! libpddl31_term_equal(a1->terms[idxArgs], a2->terms[idxArgs])) {
       return false;
     }
   }
@@ -551,13 +528,13 @@ utils_atom_equalWithGrounding(struct atom *a1,
     int32_t idxGrounding = a2->terms[idxArgs] - grAct->action->params;
 
     if (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams) {
-      if ( ! utils_term_equal(a1->terms[idxArgs], grAct->terms[idxGrounding])) {
+      if ( ! libpddl31_term_equal(a1->terms[idxArgs], grAct->terms[idxGrounding])) {
         return false;
       }
     } else {
       // This is a constant. Just compare it.
       assert ( ! a2->terms[idxArgs]->isVariable);
-      if ( ! utils_term_equal(a1->terms[idxArgs], a2->terms[idxArgs])) {
+      if ( ! libpddl31_term_equal(a1->terms[idxArgs], a2->terms[idxArgs])) {
         return false;
       }
     }

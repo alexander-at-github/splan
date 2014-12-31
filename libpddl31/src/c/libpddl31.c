@@ -773,3 +773,26 @@ libpddl31_free_groundAction(struct groundAction *grAct)
   }
   free(grAct);
 }
+
+bool
+libpddl31_term_equal(struct term *t1, struct term *t2)
+{
+  return // t1->isVariable == t2->isVariable && // Not neccessary.
+
+         // Comparing the pointer should actually always be enough. Just to
+         // make sure I also consider the case that names are allocated
+         // multiple times.
+
+         //t1->name == t2->name;
+         // This version seems to be faster than the one one line above.
+         (t1->name == t2->name || strcmp(t1->name, t2->name) == 0);
+
+
+
+         //t1->name == t2->name;
+
+         // DO NOT compare types. Not any use of a variable also specifies its
+         // type.
+         //t1->type == t2->type; // Comparing pointers to types really has to be
+                                 // enough.
+}

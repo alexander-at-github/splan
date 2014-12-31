@@ -6,7 +6,6 @@
 #include "state.h"
 
 //#include "libpddl31.h"
-#include "utils.h"
 
 // This state data structure is an adopted trie.
 struct st_state {
@@ -96,7 +95,7 @@ snFindOrCreate_aux(struct sNode *sNode, struct term *term)
   // Naive method.
   for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
     struct sNodeArrE *snae = &sNode->chldrn[idx];
-    if (utils_term_equal(snae->term, term)) {
+    if (libpddl31_term_equal(snae->term, term)) {
       return snae->chld;
     }
   }
@@ -190,7 +189,7 @@ snNextAe_aux(struct sNode *sNode, struct term *searchTerm)
   // Naive method.
   for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
     struct sNodeArrE *snae = &sNode->chldrn[idx];
-    if (utils_term_equal(snae->term, searchTerm)) {
+    if (libpddl31_term_equal(snae->term, searchTerm)) {
       return snae;
     }
   }

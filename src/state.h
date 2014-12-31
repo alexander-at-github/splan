@@ -2,7 +2,6 @@
 #define STATE_H
 
 #include "libpddl31.h"
-//#include "utils.h"
 
 typedef struct st_state * state_t;
 
