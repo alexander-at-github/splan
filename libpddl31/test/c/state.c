@@ -1,6 +1,8 @@
 #include "minunit.h"
 #include "state.h"
 
+#include "libpddl31.h"
+
 int tests_run = 0;
 
 static char *
