@@ -808,7 +808,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
 
     }
 
-    // Remove action from action accumulator for net iteration of loop.
+    // Remove action from action accumulator for next iteration of loop.
     if (curr == NULL) {
       actAcc = actAccBack;
     } else {

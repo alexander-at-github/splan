@@ -82,3 +82,5 @@ NOTES:
     print-1  |   6:01.97   |   5:47.54
 
 * v1 seems to be often faster than v2.
+* trie-state: Why are there so many calls to snClone_aux? Expecially in
+  comparision to snFree_aux. Shouldn't this numbers match?
