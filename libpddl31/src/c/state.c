@@ -203,6 +203,52 @@ snNextAe_aux(struct sNode *sNode, struct term *searchTerm)
 }
 
 bool
+state_containsGr(state_t state, struct atom *atom, struct groundAction *grAct)
+{
+  // Pointer arithmetic. See struct st_state.
+  // A pointer into the states' array of predicates.
+  int32_t statePredIdx = atom->pred - state->predManagFirst;
+  struct sNode *currSN = state->chldrn[statePredIdx];
+  if (currSN == NULL) {
+    return false;
+  }
+
+  for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
+    assert (currSN != NULL);
+    struct term *atomTerm = NULL;
+
+    // Pointer arithmentic.
+    int32_t idxGrounding = atom->terms[idxTerm] - grAct->action->params;
+    if (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams) {
+      // Action variable
+      atomTerm = grAct->terms[idxGrounding];
+    } else {
+      // Constant in action.
+      atomTerm = atom->terms[idxTerm];
+    }
+    struct sNodeArrE *snae = snNextAe_aux(currSN, atomTerm);
+    if (snae == NULL) {
+      return false;
+    }
+    struct sNode *nextSN = snae->chld;
+    assert (nextSN != NULL);
+    //if (nextSN == NULL) {
+    //  return false;
+    //}
+    currSN = nextSN;
+  }
+  //printf("currSN->numOfChldrn: %d, currSN->chldrn: %p\n",
+  //       currSN->numOfChldrn,
+  //       currSN->chldrn); // DEBUG
+
+  // This predicate can not have any further terms as arguments. I.e., it's a
+  // leave node.
+  assert (currSN->numOfChldrn == 0 && currSN->chldrn == NULL);
+
+  return true;
+}
+
+bool
 state_contains(state_t state, struct atom *atom)
 {
   // Pointer arithmetic. See struct st_state.

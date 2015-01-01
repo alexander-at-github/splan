@@ -1069,13 +1069,20 @@ init[struct domain *domain] returns [state_t value]
     pANTLR3_LIST init_list = antlr3ListNew(LIST_SIZE_INIT);
 }
 @after {
+    // "Deep free" of these atoms. They are not used anymore, cause the
+    // state data structure does not use struct atom.
+    for (int32_t idx = 0; idx < init_list->size(init_list); ++idx) {
+        struct atom *atom = init_list->get(init_list, idx+1);
+        libpddl31_atom_free(atom);
+        free(atom);
+    }
     init_list->free(init_list);
 }
     : '(' ':init' (initEl {
                           // Check for NULL, because action-cost
                           // initializations return NULL.
                           if ($initEl.value != NULL) {
-                              init_list->add(init_list, $initEl.value, &free);
+                              init_list->add(init_list, $initEl.value, NULL);
                           }
                           }
                   )* ')'
@@ -1097,6 +1104,7 @@ initEl returns [struct atom *value]
           $value = NULL;
           // Should we free that?
           libpddl31_atom_free($literal_name.value);
+          free($literal_name.value);
       } else {
           $value = $literal_name.value;
       }

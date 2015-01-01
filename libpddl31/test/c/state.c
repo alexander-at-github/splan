@@ -207,8 +207,6 @@ test_addRemoveWithGrounding()
 
   state_t state = state_createEmpty(domain);
 
-  // TODO: continue here.
-
   state_addGr(state, grAct0->action->effect->elems[0].it.literal, grAct0);
   state_addGr(state, grAct1->action->effect->elems[0].it.literal, grAct1);
 
@@ -216,51 +214,108 @@ test_addRemoveWithGrounding()
   //printf("\n"); // DEBUG
 
   mu_assert("Error state_addGr()",
-            state_contains(state, atom0) && state_contains(state, atom1));
+            // Check with ordinary atom.
+            state_contains(state, atom0) &&
+            state_contains(state, atom1) &&
+            ! state_contains(state, atom2) &&
+
+            // And also check with ground atom.
+            state_containsGr(state,
+                             grAct0->action->effect->elems[0].it.literal,
+                             grAct0) &&
+            state_containsGr(state,
+                             grAct1->action->effect->elems[0].it.literal,
+                             grAct1) && 
+          ! state_containsGr(state,
+                             grAct2->action->effect->elems[0].it.literal,
+                             grAct2)
+            );
 
   state_removeGr(state, grAct2->action->effect->elems[0].it.literal, grAct2);
   state_removeGr(state, grAct0->action->effect->elems[0].it.literal, grAct0);
 
   mu_assert("Error state_removeGr()",
-            ! state_contains(state, atom0) &&
-            state_contains(state, atom1) &&
-            ! state_contains(state, atom2));
+             ! state_containsGr(state,
+                                grAct0->action->effect->elems[0].it.literal,
+                                grAct0) &&
+               state_containsGr(state,
+                                grAct1->action->effect->elems[0].it.literal,
+                                grAct1) &&
+             ! state_containsGr(state,
+                                grAct2->action->effect->elems[0].it.literal,
+                                grAct2)
+             );
 
   state_addGr(state, grAct1->action->effect->elems[0].it.literal, grAct1);
 
   mu_assert("Error state_removeGr()",
-            ! state_contains(state, atom0) &&
-            state_contains(state, atom1) &&
-            ! state_contains(state, atom2));
+             ! state_containsGr(state,
+                                grAct0->action->effect->elems[0].it.literal,
+                                grAct0) &&
+               state_containsGr(state,
+                                grAct1->action->effect->elems[0].it.literal,
+                                grAct1) &&
+             ! state_containsGr(state,
+                                grAct2->action->effect->elems[0].it.literal,
+                                grAct2)
+            );
 
   state_addGr(state, grAct0->action->effect->elems[0].it.literal, grAct0);
   state_addGr(state, grAct2->action->effect->elems[0].it.literal, grAct2);
 
   mu_assert("Error state_removeGr()",
-            state_contains(state, atom0) &&
-            state_contains(state, atom1) &&
-            state_contains(state, atom2));
+               state_containsGr(state,
+                                grAct0->action->effect->elems[0].it.literal,
+                                grAct0) &&
+               state_containsGr(state,
+                                grAct1->action->effect->elems[0].it.literal,
+                                grAct1) &&
+               state_containsGr(state,
+                                grAct2->action->effect->elems[0].it.literal,
+                                grAct2)
+            );
 
   state_removeGr(state, grAct1->action->effect->elems[0].it.literal, grAct1);
 
   mu_assert("Error state_removeGr()",
-            state_contains(state, atom0) &&
-            ! state_contains(state, atom1) &&
-            state_contains(state, atom2));
+               state_containsGr(state,
+                                grAct0->action->effect->elems[0].it.literal,
+                                grAct0) &&
+             ! state_containsGr(state,
+                                grAct1->action->effect->elems[0].it.literal,
+                                grAct1) &&
+               state_containsGr(state,
+                                grAct2->action->effect->elems[0].it.literal,
+                                grAct2)
+            );
 
   state_removeGr(state, grAct2->action->effect->elems[0].it.literal, grAct2);
 
   mu_assert("Error state_removeGr()",
-            state_contains(state, atom0) &&
-            ! state_contains(state, atom1) &&
-            ! state_contains(state, atom2));
+               state_containsGr(state,
+                                grAct0->action->effect->elems[0].it.literal,
+                                grAct0) &&
+             ! state_containsGr(state,
+                                grAct1->action->effect->elems[0].it.literal,
+                                grAct1) &&
+             ! state_containsGr(state,
+                                grAct2->action->effect->elems[0].it.literal,
+                                grAct2)
+            );
 
   state_removeGr(state, grAct0->action->effect->elems[0].it.literal, grAct0);
 
   mu_assert("Error state_removeGr()",
-            ! state_contains(state, atom0) &&
-            ! state_contains(state, atom1) &&
-            ! state_contains(state, atom2));
+             ! state_containsGr(state,
+                                grAct0->action->effect->elems[0].it.literal,
+                                grAct0) &&
+             ! state_containsGr(state,
+                                grAct1->action->effect->elems[0].it.literal,
+                                grAct1) &&
+             ! state_containsGr(state,
+                                grAct2->action->effect->elems[0].it.literal,
+                                grAct2)
+            );
 
   //state_print(state); // DEBUG
   //printf("\n"); // DEBUG

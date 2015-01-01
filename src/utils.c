@@ -13,47 +13,47 @@ void utils_free_literal(struct literal *literal)
   free(literal);
 }
 
-struct state *utils_copyState(struct state *state)
-{
-  struct state *result = malloc(sizeof(*result));
-  result->numOfFluents = state->numOfFluents;
-  size_t size = sizeof(*result->fluents) * result->numOfFluents;
+/* struct state *utils_copyState(struct state *state) */
+/* { */
+/*   struct state *result = malloc(sizeof(*result)); */
+/*   result->numOfFluents = state->numOfFluents; */
+/*   size_t size = sizeof(*result->fluents) * result->numOfFluents; */
 
-  result->fluents = malloc(size);
+/*   result->fluents = malloc(size); */
 
-  for (int32_t idxFluent = 0; idxFluent < result->numOfFluents; ++idxFluent) {
-    result->fluents[idxFluent].pred  = state->fluents[idxFluent].pred;
-    int32_t sizeTerms = sizeof(struct term *) *
-                                  result->fluents[idxFluent].pred->numOfParams;
+/*   for (int32_t idxFluent = 0; idxFluent < result->numOfFluents; ++idxFluent) { */
+/*     result->fluents[idxFluent].pred  = state->fluents[idxFluent].pred; */
+/*     int32_t sizeTerms = sizeof(struct term *) * */
+/*                                   result->fluents[idxFluent].pred->numOfParams; */
 
-    result->fluents[idxFluent].terms = malloc(sizeTerms);
-    memcpy( result->fluents[idxFluent].terms,
-            state->fluents[idxFluent].terms,
-            sizeTerms);
-  }
+/*     result->fluents[idxFluent].terms = malloc(sizeTerms); */
+/*     memcpy( result->fluents[idxFluent].terms, */
+/*             state->fluents[idxFluent].terms, */
+/*             sizeTerms); */
+/*   } */
 
-  return result;
-}
+/*   return result; */
+/* } */
 
-void utils_freeState(struct state *state)
-{
-  if (state->fluents != NULL) {
-    // TODO for all fluents do free
-    for (int32_t i = 0; i < state->numOfFluents; ++i) {
-      libpddl31_atom_free(&state->fluents[i]);
-    }
-    free(state->fluents);
-  }
-  free(state);
-}
+/* void utils_freeState(struct state *state) */
+/* { */
+/*   if (state->fluents != NULL) { */
+/*     // TODO for all fluents do free */
+/*     for (int32_t i = 0; i < state->numOfFluents; ++i) { */
+/*       libpddl31_atom_free(&state->fluents[i]); */
+/*     } */
+/*     free(state->fluents); */
+/*   } */
+/*   free(state); */
+/* } */
 
-void utils_freeStateShallow(struct state *state)
-{
-  if (state->fluents != NULL) {
-    free(state->fluents);
-  }
-  free(state);
-}
+/* void utils_freeStateShallow(struct state *state) */
+/* { */
+/*   if (state->fluents != NULL) { */
+/*     free(state->fluents); */
+/*   } */
+/*   free(state); */
+/* } */
 
 void
 utils_free_actionList(struct actionList *list)

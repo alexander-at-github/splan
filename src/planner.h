@@ -4,7 +4,7 @@
 #include "libpddl31.h"
 #include "utils.h"
 
-struct gap *planner_hasGap( struct state *initState,
+struct gap *planner_hasGap( state_t initState,
                             struct goal *goal,
                             struct actionList *actions);
 struct actionList *planner_getActsToFixGap( struct problem *problem,
@@ -14,13 +14,13 @@ struct actionList *planner_solveProblem(struct problem *problem,
 struct actionList *planner_solveProblem_v2( struct problem *problem,
                                             int32_t depthLimit);
 
-struct literal *planner_satisfies(struct state *state, struct goal *goal);
-void planner_stateRemoveAtom(struct state *state,
-                             struct groundAction *grAct,
-                             struct atom *atom);
-void planner_stateAddAtom(struct state *state,
-                          struct groundAction *grAct,
-                          struct atom *atom);
+struct literal *planner_satisfies(state_t state, struct goal *goal);
+/* void planner_stateRemoveAtom(struct state *state, */
+/*                              struct groundAction *grAct, */
+/*                              struct atom *atom); */
+/* void planner_stateAddAtom(struct state *state, */
+/*                           struct groundAction *grAct, */
+/*                           struct atom *atom); */
 struct actionList *planner_iterativeDeepeningSearch(struct problem *problem);
 struct actionList *planner_iterativeDeepeningSearch_v2(struct problem *problem);
 

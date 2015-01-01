@@ -26,6 +26,9 @@ void state_addGr( state_t state,
 state_t state_removeGr( state_t state,
                         struct atom *atom,
                         struct groundAction *grAct);
+bool state_containsGr(state_t state,
+                      struct atom *atom,
+                      struct groundAction *grAct);
 state_t state_clone(state_t state);
 void state_print(state_t state);
 
