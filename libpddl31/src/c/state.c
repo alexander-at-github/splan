@@ -89,6 +89,10 @@ state_createFromLibpddl31(struct domain *domain, pANTLR3_LIST listOfAtoms)
 struct sNode *
 snCreate_aux()
 {
+  //static int32_t counter = 0; // DEBUG
+  //counter++; // DEBUG
+  //printf("snCreate_aux(): %d\n", counter); // DEBUG
+
   struct sNode *result = malloc(sizeof(*result));
   result->numOfChldrn = 0;
   result->chldrn = NULL;
@@ -284,6 +288,25 @@ state_contains(state_t state, struct atom *atom)
   return true;
 }
 
+void snFree_aux(struct sNode *sNode)
+{
+  //static int32_t counter = 0; // DEBUG
+  //counter++; // DEBUG
+  //printf("snFree_aux(): %d\n", counter); // DEBUG
+
+  if (sNode->numOfChldrn > 0) {
+    for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
+      struct sNodeArrE *snae = &sNode->chldrn[idx];
+      snFree_aux(snae->chld);
+      // No need to free snae. It is a array of struct sNodeArrE.
+    }
+    free(sNode->chldrn);
+  } else {
+    assert (sNode->chldrn == NULL);
+  }
+  free(sNode);
+}
+
 // A recursive function.
 // Returns true if it did remove something.
 bool
@@ -315,7 +338,7 @@ snRemove_aux(struct sNode *sNode, struct atom *atom, int32_t depth)
     // call of this recursive funtion (after the call snRemove_aux(sNode,atom,0)
     if (snaeNext->chld->numOfChldrn <= 0) {
       assert (snaeNext->chld->chldrn == NULL);
-      free(snaeNext->chld);
+      snFree_aux(snaeNext->chld); // DEBUG free(snaeNext->chld);
       snaeNext->chld = NULL;
 
       // Remove child reference from this nodes' array.
@@ -394,21 +417,6 @@ state_remove(state_t state, struct atom *atom)
   return state;
 }
 
-void snFree_aux(struct sNode *sNode)
-{
-  if (sNode->numOfChldrn > 0) {
-    for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
-      struct sNodeArrE *snae = &sNode->chldrn[idx];
-      snFree_aux(snae->chld);
-      // No need to free snae. It is a array of struct sNodeArrE.
-    }
-    free(sNode->chldrn);
-  } else {
-    assert (sNode->chldrn == NULL);
-  }
-  free(sNode);
-}
-
 void
 state_free(state_t state)
 {
@@ -432,6 +440,10 @@ state_free(state_t state)
 struct sNode *
 snClone_aux(struct sNode *sn)
 {
+  //static int32_t counter = 0; // DEBUG
+  //counter++; // DEBUG
+  //printf("snClone_aux(): %d\n", counter); // DEBUG
+
   struct sNode *result = malloc(sizeof(*result));
   result->numOfChldrn = sn->numOfChldrn;
 
