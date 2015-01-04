@@ -83,4 +83,8 @@ NOTES:
 
 * v1 seems to be often faster than v2.
 * trie-state: Why are there so many calls to snClone_aux? Expecially in
-  comparision to snFree_aux. Shouldn't this numbers match?
+  comparision to snFree_aux. Shouldn't this numbers match? They do not match
+  with gprof, but they do match with callgrind.
+* You could allocate an array of states before calling
+  planner_solveProblem_aux(). The number of states must be equal to the search
+  depth limit.

@@ -1,3 +1,7 @@
+// Note: This module is not thread save. We use a global buffer to store
+// unused sNodes, in order to keep the number of systemcalls to malloc() and
+// free() reasonable.
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -40,7 +44,8 @@ struct sNode {
   // a certain term, it means that this state does not contain the
   // coresponding atom.
   int32_t numOfChldrn;
-  // int32_t numOfAlloced; // TODO really?
+  // Siyze of array alloced for children.
+  int32_t numAlloced;
 
   // This is an unordered array. TODO: It might be good to do an ordered
   // array.
@@ -52,6 +57,95 @@ struct sNodeArrE {
   struct term *term; // However, this must be a constant.
   struct sNode *chld;
 };
+
+
+
+struct sNodeBuffer {
+  int32_t numOfSNodes;
+  int32_t numAlloced;
+  // An array of pointers to unused sNodes.
+  struct sNode **store;
+};
+
+// A static global variable. It will hold a set of unused sNodes. When a new
+// sNode is needed, we will try to retrieve one from here. When a sNode is not
+// needed anymore, we will put it here. In order to free the list with all its'
+// stored sNodes we need to call state_cleanupSNBuffer().
+// Attention: This is not thread save.
+static struct sNodeBuffer *sNodeBuffer = NULL;
+
+
+
+
+
+
+int32_t
+calcBufferSize(int32_t oldSize)
+{
+  int32_t initialBufferSize = 32;
+  int32_t growthFactor = 2;
+  int32_t newSize = (oldSize < (initialBufferSize / growthFactor)) ?
+         initialBufferSize :
+         (growthFactor * oldSize);
+
+  //printf("calcBufferSize() %d   ", initialBufferSize / growthFactor);
+
+  /* int32_t newSize; */
+  /* if (oldSize < (initialBufferSize / growthFactor)) { */
+  /*   newSize = initialBufferSize; */
+  /* } else { */
+  /*   newSize = growthFactor * oldSize; */
+  /* } */
+
+  //printf("calcBufferSize() oldSize: %d newSize: %d\n",
+  //       oldSize,
+  //       newSize); // DEBUG
+
+  return newSize;
+}
+
+void
+state_initSNBuffer()
+{
+  if (sNodeBuffer != NULL) {
+    return;
+  }
+
+  sNodeBuffer = malloc(sizeof(*sNodeBuffer));
+  sNodeBuffer->numOfSNodes = 0;
+  sNodeBuffer->numAlloced = calcBufferSize(0);
+  sNodeBuffer->store = malloc(sizeof(*sNodeBuffer->store) *
+                              sNodeBuffer->numAlloced);
+}
+
+void
+snFreeShallow_aux(struct sNode *sNode)
+{
+  if (sNode->chldrn != NULL) {
+    free(sNode->chldrn);
+    sNode->chldrn = NULL;
+  }
+  free(sNode);
+}
+
+void
+state_cleanupSNBuffer()
+{
+  if (sNodeBuffer == NULL) {
+    return;
+  }
+  if (sNodeBuffer->store != NULL) {
+    for (int32_t idx = 0; idx < sNodeBuffer->numOfSNodes; ++idx) {
+      snFreeShallow_aux(sNodeBuffer->store[idx]);
+    }
+    free(sNodeBuffer->store);
+  }
+  free(sNodeBuffer);
+
+  // Important to reset to NULL.
+  sNodeBuffer = NULL;
+}
+
 
 state_t
 state_createEmpty(struct domain *domain)
@@ -66,6 +160,9 @@ state_createEmpty(struct domain *domain)
   for (int32_t i = 0; i < state->numOfChldrn; ++i) {
     state->chldrn[i] = NULL;
   }
+
+  state_initSNBuffer();
+
   return state;
 }
 
@@ -86,21 +183,68 @@ state_createFromLibpddl31(struct domain *domain, pANTLR3_LIST listOfAtoms)
   return state;
 }
 
+void
+sNodeBufferAdd_aux(struct sNode *sNode)
+{
+  //printf("sNodeBufferAdd_aux()\n"); // DEBUG
+  if (sNode == NULL) {
+    return;
+  }
+
+  sNodeBuffer->numOfSNodes ++;
+  if (sNodeBuffer->numOfSNodes > sNodeBuffer->numAlloced) {
+    //printf( "numOfSNodes: %d numAlloced: %d ",
+    //        sNodeBuffer->numOfSNodes,
+    //        sNodeBuffer->numAlloced); // DEBUG
+    sNodeBuffer->numAlloced = calcBufferSize(sNodeBuffer->numAlloced);
+    sNodeBuffer->store = realloc(sNodeBuffer->store,
+                      sizeof(*sNodeBuffer->store) * sNodeBuffer->numAlloced);
+    //printf( "NEW: numOfSNodes: %d numAlloced: %d\n",
+    //        sNodeBuffer->numOfSNodes,
+    //        sNodeBuffer->numAlloced); // DEBUG
+  }
+
+  sNodeBuffer->store[sNodeBuffer->numOfSNodes - 1] = sNode;
+}
+
 struct sNode *
-snCreate_aux()
+snGetOrCreate_aux()
 {
   //static int32_t counter = 0; // DEBUG
   //counter++; // DEBUG
-  //printf("snCreate_aux(): %d\n", counter); // DEBUG
+  //printf("snGetOrCreate_aux(): %d\n", counter); // DEBUG
+
+  // Try to retrieve from sNodeBuffer.
+  assert (sNodeBuffer != NULL);
+  if (sNodeBuffer->numOfSNodes > 0) {
+    // Take a sNode from the sNodeBuffer.
+    sNodeBuffer->numOfSNodes --;
+    struct sNode *reusedSN = sNodeBuffer->store[sNodeBuffer->numOfSNodes];
+    sNodeBuffer->store[sNodeBuffer->numOfSNodes] = NULL;
+    // Set children count of the sNode. We will not change the other
+    // values. Note: There still might be some pointers to other nodes.
+    // Don't use them.
+    reusedSN->numOfChldrn = 0;
+    return reusedSN;
+  }
 
   struct sNode *result = malloc(sizeof(*result));
   result->numOfChldrn = 0;
+  result->numAlloced = 0;
   result->chldrn = NULL;
   return result;
 }
 
+void
+snGrowArray_aux(struct sNode *sNode)
+{
+  sNode->numAlloced = calcBufferSize(sNode->numAlloced);
+  sNode->chldrn = realloc(sNode->chldrn,
+                          sizeof(*sNode->chldrn) * sNode->numAlloced);
+}
+
 struct sNode *
-snFindOrCreate_aux(struct sNode *sNode, struct term *term)
+snFindOrAdd_aux(struct sNode *sNode, struct term *term)
 {
   // Naive method.
   for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
@@ -111,11 +255,14 @@ snFindOrCreate_aux(struct sNode *sNode, struct term *term)
   }
   // sNode does not contain term yet. Create it.
   sNode->numOfChldrn ++;
-  sNode->chldrn = realloc(sNode->chldrn,
-                          sizeof(*sNode->chldrn) * sNode->numOfChldrn);
+
+  if (sNode->numOfChldrn > sNode->numAlloced) {
+    snGrowArray_aux(sNode);
+  }
+
   struct sNodeArrE *newSNodeArrE = &sNode->chldrn[sNode->numOfChldrn - 1];
   newSNodeArrE->term = term;
-  newSNodeArrE->chld = snCreate_aux();
+  newSNodeArrE->chld = snGetOrCreate_aux();
 
   return newSNodeArrE->chld;
 }
@@ -153,7 +300,7 @@ state_addGr(state_t state, struct atom *atom, struct groundAction *grAct)
   // A pointer into the states' array of predicates.
   int32_t statePredIdx = atom->pred - state->predManagFirst;
   if (state->chldrn[statePredIdx] == NULL) {
-    state->chldrn[statePredIdx] = snCreate_aux();
+    state->chldrn[statePredIdx] = snGetOrCreate_aux();
   }
   struct sNode *currSN = state->chldrn[statePredIdx];
   for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
@@ -169,7 +316,7 @@ state_addGr(state_t state, struct atom *atom, struct groundAction *grAct)
       termToAdd = atom->terms[idxTerm];
     }
 
-    currSN = snFindOrCreate_aux(currSN, termToAdd);
+    currSN = snFindOrAdd_aux(currSN, termToAdd);
     // TODO: Is that correct?
   }
 }
@@ -183,12 +330,12 @@ state_add(state_t state, struct atom *atom)
   // A pointer into the states' array of predicates.
   int32_t statePredIdx = atom->pred - state->predManagFirst;
   if (state->chldrn[statePredIdx] == NULL) {
-    state->chldrn[statePredIdx] = snCreate_aux();
+    state->chldrn[statePredIdx] = snGetOrCreate_aux();
   }
   struct sNode *currSN = state->chldrn[statePredIdx];
   for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
     struct term *atomTerm = atom->terms[idxTerm];
-    currSN = snFindOrCreate_aux(currSN, atomTerm);
+    currSN = snFindOrAdd_aux(currSN, atomTerm);
     // TODO: Is that correct?
   }
 }
@@ -247,7 +394,7 @@ state_containsGr(state_t state, struct atom *atom, struct groundAction *grAct)
 
   // This predicate can not have any further terms as arguments. I.e., it's a
   // leave node.
-  assert (currSN->numOfChldrn == 0 && currSN->chldrn == NULL);
+  assert (currSN->numOfChldrn == 0);
 
   return true;
 }
@@ -283,28 +430,37 @@ state_contains(state_t state, struct atom *atom)
 
   // This predicate can not have any further terms as arguments. I.e., it's a
   // leave node.
-  assert (currSN->numOfChldrn == 0 && currSN->chldrn == NULL);
+  assert (currSN->numOfChldrn == 0);
 
   return true;
 }
 
-void snFree_aux(struct sNode *sNode)
+// This function frees a sNode and its' children.
+void snFreeRec_aux(struct sNode *sNode)
 {
   //static int32_t counter = 0; // DEBUG
   //counter++; // DEBUG
-  //printf("snFree_aux(): %d\n", counter); // DEBUG
+  //printf("snFreeRec_aux(): %d\n", counter); // DEBUG
 
-  if (sNode->numOfChldrn > 0) {
-    for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
-      struct sNodeArrE *snae = &sNode->chldrn[idx];
-      snFree_aux(snae->chld);
-      // No need to free snae. It is a array of struct sNodeArrE.
-    }
-    free(sNode->chldrn);
-  } else {
-    assert (sNode->chldrn == NULL);
+  for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
+    struct sNodeArrE *snae = &sNode->chldrn[idx];
+    snFreeRec_aux(snae->chld);
+    // No need to free snae. It is a array of struct sNodeArrE.
   }
-  free(sNode);
+  snFreeShallow_aux(sNode);
+
+
+  /* if (sNode->numOfChldrn > 0) { */
+  /*   for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) { */
+  /*     struct sNodeArrE *snae = &sNode->chldrn[idx]; */
+  /*     snFreeRec_aux(snae->chld); */
+  /*     // No need to free snae. It is a array of struct sNodeArrE. */
+  /*   } */
+  /*   free(sNode->chldrn); */
+  /* } else { */
+  /*   assert (sNode->chldrn == NULL); */
+  /* } */
+  /* free(sNode); */
 }
 
 // A recursive function.
@@ -333,12 +489,16 @@ snRemove_aux(struct sNode *sNode, struct atom *atom, int32_t depth)
       return false;
     }
 
-    // Free child node, if it is not needed anymore.
-    // We do that here, so we can also free the child node after the first
-    // call of this recursive funtion (after the call snRemove_aux(sNode,atom,0)
+    // Remove child node, if it is not needed anymore.
+    // We do that here, so we can also remove the child node after the first
+    // call of this recursive funtion (after the call
+    // snRemove_aux(sNode,atom,0).
+    // We do not free the node, but move it to the sNodeBuffer for reuse.
     if (snaeNext->chld->numOfChldrn <= 0) {
-      assert (snaeNext->chld->chldrn == NULL);
-      snFree_aux(snaeNext->chld); // DEBUG free(snaeNext->chld);
+
+      // Move the sNode into the sNodeBuffer for later reuse. Do not free it.
+      sNodeBufferAdd_aux(snaeNext->chld);
+
       snaeNext->chld = NULL;
 
       // Remove child reference from this nodes' array.
@@ -348,15 +508,6 @@ snRemove_aux(struct sNode *sNode, struct atom *atom, int32_t depth)
               snaeNext + 1,
               (sNode->numOfChldrn - idxSNodeArr - 1) * sizeof(*snaeNext));
       sNode->numOfChldrn --;
-      struct sNodeArrE *tmp = realloc(sNode->chldrn,
-                                      sizeof(*tmp) * sNode->numOfChldrn);
-      if (sNode->numOfChldrn <= 0) {
-        // Not really necessary, but nice to have for later assert.
-        sNode->chldrn == NULL;
-      } else if (tmp == NULL) {
-        assert (false);
-      }
-      sNode->chldrn = tmp;
     }
 
   } else {
@@ -371,6 +522,7 @@ state_t
 state_removeGr(state_t state, struct atom *atom, struct groundAction *grAct)
 {
   // TODO: improve that.
+
   // Just allocating a ground atom.
   struct atom *groundAtom = malloc(sizeof(*groundAtom));
   groundAtom->pred = atom->pred;
@@ -410,11 +562,41 @@ state_remove(state_t state, struct atom *atom)
   (void) snRemove_aux(currSN, atom, 0);
   // Free sNode if it is not needed anymore.
   if (currSN->numOfChldrn <= 0) {
-    assert (currSN->chldrn == NULL);
-    free(currSN);
+
+    // Move the sNode into the sNodeBuffer for later reuse. Do not free it.
+    sNodeBufferAdd_aux(currSN);
+
     state->chldrn[statePredIdx] = NULL;
   }
   return state;
+}
+
+void sNodeBufferAddRec_aux(struct sNode *sNode)
+{
+  for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
+    sNodeBufferAddRec_aux(sNode->chldrn[idx].chld);
+  }
+  sNodeBufferAdd_aux(sNode);
+}
+
+void
+state_empty(state_t state)
+{
+  for (int32_t idxSt = 0;
+       idxSt < state->numOfChldrn;
+       ++idxSt) {
+
+    if (state->chldrn[idxSt] == NULL) {
+      continue;
+    }
+    if (sNodeBuffer != NULL) {
+      // Move all the sNodes into the sNodeBuffer.
+      sNodeBufferAddRec_aux(state->chldrn[idxSt]);
+    } else {
+      snFreeRec_aux(state->chldrn[idxSt]);
+    }
+    state->chldrn[idxSt] = NULL;
+  }
 }
 
 void
@@ -423,16 +605,9 @@ state_free(state_t state)
   if (state == NULL) {
     return;
   }
-  for ( int32_t idxStChldrn = 0;
-        idxStChldrn < state->numOfChldrn;
-        ++idxStChldrn) {
 
-    struct sNode *sn = state->chldrn[idxStChldrn];
-    if (sn == NULL) {
-      continue;
-    }
-    snFree_aux(sn);
-  }
+  state_empty(state);
+
   free(state->chldrn);
   free(state);
 }
@@ -444,18 +619,12 @@ snClone_aux(struct sNode *sn)
   //counter++; // DEBUG
   //printf("snClone_aux(): %d\n", counter); // DEBUG
 
-  struct sNode *result = malloc(sizeof(*result));
+  struct sNode *result = snGetOrCreate_aux();
   result->numOfChldrn = sn->numOfChldrn;
-
-  // malloc with a size of zero will still return a pointer other than NULL
-  // and it should still be freed later. In order to avoid that we will not
-  // allocate if sn->numOfchldrn equals zero.
-  if (result->numOfChldrn == 0) {
-    result->chldrn = NULL;
-    return result;
+  if (result->numOfChldrn > result->numAlloced) {
+    snGrowArray_aux(result);
   }
 
-  result->chldrn = malloc(sizeof(*result->chldrn) * result->numOfChldrn);
   //printf("result->numOfChldrn: %d, result->chldrn: %p\n",
   //      result->numOfChldrn,
   //      result->chldrn); // DEBUG
@@ -467,6 +636,8 @@ snClone_aux(struct sNode *sn)
   }
   return result;
 }
+
+  // TODO:continue here.
 
 state_t
 state_clone(state_t state)

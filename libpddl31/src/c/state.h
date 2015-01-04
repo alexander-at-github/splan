@@ -31,5 +31,6 @@ bool state_containsGr(state_t state,
                       struct groundAction *grAct);
 state_t state_clone(state_t state);
 void state_print(state_t state);
+void state_cleanupSNBuffer();
 
 #endif // STATE_H

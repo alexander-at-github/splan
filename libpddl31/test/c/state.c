@@ -14,6 +14,7 @@ test_createAFree()
   state_t state = state_createEmpty(domain);
 
   state_free(state);
+  state_cleanupSNBuffer();
   libpddl31_domain_free(domain);
   return 0;
 }
@@ -74,6 +75,7 @@ test_containsAddDelete()
   libpddl31_atom_free(atom);
   free(atom);
   state_free(state);
+  state_cleanupSNBuffer();
   libpddl31_domain_free(domain);
   return 0;
 }
@@ -152,6 +154,7 @@ test_clone()
   free(atom1);
   state_free(state0);
   state_free(state1);
+  state_cleanupSNBuffer();
   libpddl31_domain_free(domain);
   return 0;
 }
@@ -322,6 +325,7 @@ test_addRemoveWithGrounding()
 
   // Clean up.
   state_free(state);
+  state_cleanupSNBuffer();
   libpddl31_free_groundAction(grAct0);
   libpddl31_free_groundAction(grAct1);
   libpddl31_free_groundAction(grAct2);

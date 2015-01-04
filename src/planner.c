@@ -540,9 +540,11 @@ planner_iterativeDeepeningSearch(struct problem *problem)
     printf("\n### depth search with depth %d\n\n", depth); // DEBUG
     struct actionList *solution = planner_solveProblem(problem, depth);
     if (solution != NULL) {
+      state_cleanupSNBuffer();
       return solution;
     }
   }
+  state_cleanupSNBuffer();
   return NULL;
 }
 
@@ -795,7 +797,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
                                            actAcc,
                                            depthLimit,
                                            depth+1);
-      // Return the first result
+      // Return the first solution.
       if (result != NULL) {
         //printf("RETURN RESULT"); // DEBUG
 
@@ -853,8 +855,12 @@ planner_iterativeDeepeningSearch_v2(struct problem *problem)
     printf("\n### depth search with depth %d\n\n", depth); // DEBUG
     struct actionList *solution = planner_solveProblem_v2(problem, depth);
     if (solution != NULL) {
+
+      state_cleanupSNBuffer();
+
       return solution;
     }
   }
+  state_cleanupSNBuffer();
   return NULL;
 }

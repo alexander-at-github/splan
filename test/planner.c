@@ -96,6 +96,8 @@ test_planner_hasGap()
 
   utils_free_actionList(actL2);
 
+  //state_cleanupSNBuffer();
+
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
   return 0;
@@ -139,6 +141,8 @@ test_planner_getActsToFixGap()
   utils_free_actionList(actsGapBackup);
   utils_free_gap(gap);
   gap = NULL;
+
+  //state_cleanupSNBuffer();
 
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
@@ -242,6 +246,8 @@ test_planner_satisfies()
   free(goal->posLiterals->terms);
   free(goal->posLiterals);
 
+  //state_cleanupSNBuffer();
+
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
   return 0;
@@ -268,6 +274,7 @@ test_planner_solveProblem()
   utils_print_actionList(result);
   utils_free_actionList(result);
 
+  //state_cleanupSNBuffer();
 
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
