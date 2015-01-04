@@ -88,3 +88,4 @@ NOTES:
 * You could allocate an array of states before calling
   planner_solveProblem_aux(). The number of states must be equal to the search
   depth limit.
+* valgrind --tool=callgrind ./bin/splan -d test_instances/tsp-neg-prec/domain.pddl -p test_instances/tsp-neg-prec/p7.pddl
