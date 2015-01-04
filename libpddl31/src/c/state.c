@@ -238,9 +238,9 @@ snGetOrCreate_aux()
 void
 snGrowArray_aux(struct sNode *sNode)
 {
-  printf("snGrowArray_aux() sNode->numAlloced: %d ", sNode->numAlloced);
+  //printf("snGrowArray_aux() sNode->numAlloced: %d ", sNode->numAlloced);
   sNode->numAlloced = calcBufferSize(sNode->numAlloced);
-  printf("NEW sNode->numAlloced: %d\n", sNode->numAlloced);
+  //printf("NEW sNode->numAlloced: %d\n", sNode->numAlloced);
   sNode->chldrn = realloc(sNode->chldrn,
                           sizeof(*sNode->chldrn) * sNode->numAlloced);
 }
