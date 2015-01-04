@@ -85,8 +85,8 @@ calcBufferSize(int32_t oldSize)
   int32_t initialBufferSize = 32;
   int32_t growthFactor = 2;
   int32_t newSize = (oldSize < (initialBufferSize / growthFactor)) ?
-         initialBufferSize :
-         (growthFactor * oldSize);
+          initialBufferSize :
+          (growthFactor * oldSize);
 
   //printf("calcBufferSize() %d   ", initialBufferSize / growthFactor);
 
@@ -238,7 +238,9 @@ snGetOrCreate_aux()
 void
 snGrowArray_aux(struct sNode *sNode)
 {
+  printf("snGrowArray_aux() sNode->numAlloced: %d ", sNode->numAlloced);
   sNode->numAlloced = calcBufferSize(sNode->numAlloced);
+  printf("NEW sNode->numAlloced: %d\n", sNode->numAlloced);
   sNode->chldrn = realloc(sNode->chldrn,
                           sizeof(*sNode->chldrn) * sNode->numAlloced);
 }
@@ -621,10 +623,11 @@ snClone_aux(struct sNode *sn)
 
   struct sNode *result = snGetOrCreate_aux();
   result->numOfChldrn = sn->numOfChldrn;
-  if (result->numOfChldrn > result->numAlloced) {
+  while (result->numOfChldrn > result->numAlloced) {
     snGrowArray_aux(result);
   }
 
+  assert (result->numOfChldrn <= result->numAlloced);
   //printf("result->numOfChldrn: %d, result->chldrn: %p\n",
   //      result->numOfChldrn,
   //      result->chldrn); // DEBUG
