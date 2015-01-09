@@ -76,10 +76,11 @@ NOTES:
 
 * Testruns with different versions:
 
-    problem  |  v1-solver  |  v2-solver
-  ---------------------------------------
-    tsp-7    |   0:29.79   |   1:02.89
-    print-1  |   6:01.97   |   5:47.54
+    problem  |  v1-solver  |  v2-solver  |  v2-solver
+             |  old-state  |  old-state  |  trie-state2
+  ---------------------------------------------------------
+    tsp-7    |   0:29.79   |   1:02.89   |  0:28.191
+    print-1  |   6:01.97   |   5:47.54   |  4:55.62
 
 * v1 seems to be often faster than v2.
 * trie-state: Why are there so many calls to snClone_aux? Expecially in
