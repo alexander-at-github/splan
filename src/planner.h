@@ -24,4 +24,9 @@ struct literal *planner_satisfies(state_t state, struct goal *goal);
 struct actionList *planner_iterativeDeepeningSearch(struct problem *problem);
 struct actionList *planner_iterativeDeepeningSearch_v2(struct problem *problem);
 
+// Returns NULL iff the state satisfies the goal.
+// Returns the first literal which is not satisfied otherwise.
+struct literal *planner_satisfiesPrecond(state_t state,
+                                         struct groundAction *grAct);
+
 #endif // PLANNER_H

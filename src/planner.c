@@ -6,6 +6,7 @@
 #include "planner.h"
 
 #include "libpddl31.h"
+#include "probUniv.h"
 #include "state.h"
 #include "utils.h"
 
@@ -37,6 +38,9 @@ planner_getActsToFixGap(struct problem *problem, struct gap *gap)
 
     // Clean up.
     utils_free_actionList(fix);
+
+    // Filter actions according to problem universe.
+    newActs = pu_filter(newActs);
 
     result = utils_concatActionLists(newActs, result);
   }
@@ -536,14 +540,23 @@ planner_solveProblem(struct problem *problem, int32_t depthLimit)
 struct actionList *
 planner_iterativeDeepeningSearch(struct problem *problem)
 {
+  pu_init(problem);
+  printf("Problem Universe: "); // DEBUG
+  state_print(pu_getSingleton()); // DEBUG
+  printf("\n"); // DEBUG
+
   for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
     printf("\n### depth search with depth %d\n\n", depth); // DEBUG
     struct actionList *solution = planner_solveProblem(problem, depth);
     if (solution != NULL) {
+
+      pu_cleanup();
       state_cleanupSNBuffer();
       return solution;
     }
   }
+
+  pu_cleanup();
   state_cleanupSNBuffer();
   return NULL;
 }
@@ -700,6 +713,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
                             int32_t depthLimit,
                             int32_t depth)
 {
+  //printf("*");
   //printf("\n>>>planner_solveProblem_aux_v2()   ");
   //utils_print_actionList(actAcc); // DEBUG
   //printf("\n");
@@ -851,16 +865,24 @@ planner_solveProblem_v2(struct problem *problem, int32_t depthLimit)
 struct actionList *
 planner_iterativeDeepeningSearch_v2(struct problem *problem)
 {
+  pu_init(problem);
+  printf("Problem Universe: "); // DEBUG
+  state_print(pu_getSingleton()); // DEBUG
+  printf("\n"); // DEBUG
+
   for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
     printf("\n### depth search with depth %d\n\n", depth); // DEBUG
     struct actionList *solution = planner_solveProblem_v2(problem, depth);
     if (solution != NULL) {
 
+      pu_cleanup();
       state_cleanupSNBuffer();
 
       return solution;
     }
   }
+
+  pu_cleanup();
   state_cleanupSNBuffer();
   return NULL;
 }

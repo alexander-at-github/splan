@@ -692,7 +692,7 @@ state_print_aux(char *nameAcc, int32_t nameAccLen, struct sNode *sNode)
 void
 state_print(state_t state)
 {
-  printf("state_print(): state->numOfChldrn: %d\n", state->numOfChldrn); // DEBUG
+  //printf("state_print(): state->numOfChldrn: %d\n", state->numOfChldrn); // DEBUG
   printf("(State");
   for (int32_t idx = 0; idx < state->numOfChldrn; ++idx) {
     struct sNode *sNode = state->chldrn[idx];
