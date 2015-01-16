@@ -3,7 +3,8 @@
 #include "minunit.h"
 
 #include "planner.h"
-#include "state.h"
+#include "probSpace.h"
+#include "trie.h"
 #include "utils.h"
 
 int tests_run = 0;
@@ -96,8 +97,6 @@ test_planner_hasGap()
 
   utils_free_actionList(actL2);
 
-  //state_cleanupSNBuffer();
-
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
   return 0;
@@ -110,6 +109,7 @@ test_planner_getActsToFixGap()
   struct domain *domain = libpddl31_domain_parse(domainFilename);
   char *problemFilename = "test/planner-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
+  ps_init(problem);
 
   struct gap *gap = NULL;
   struct actionList *actsGap = NULL;
@@ -126,26 +126,22 @@ test_planner_getActsToFixGap()
   //utils_print_actionList(actsGap); // DEBUG
 
   mu_assert("Error planner_getActsToFixGap()",
-            utils_actionList_length(actsGap) == 2 &&
+            utils_actionList_length(actsGap) == 1 &&
 
             strcmp(actsGap->act->terms[0]->name, "p2") == 0 &&
             strcmp(actsGap->act->terms[1]->name, "p1") == 0
            );
-  actsGap = actsGap->next; // next action
-  mu_assert("Error planner_getActsToFixGap()",
-            strcmp(actsGap->act->terms[0]->name, "p1") == 0 &&
-            strcmp(actsGap->act->terms[1]->name, "p1") == 0
-           );
-
 
   utils_free_actionList(actsGapBackup);
   utils_free_gap(gap);
   gap = NULL;
 
-  //state_cleanupSNBuffer();
+  ps_cleanup();
+  //trie_cleanupSNBuffer();
 
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
+
   return 0;
 }
 
@@ -187,12 +183,12 @@ test_planner_satisfies()
   goal->negLiterals->terms = malloc(sizeof(*goal->negLiterals->terms));
   goal->negLiterals->terms[0] = objManag_getObject(problem->objManag, "p2");
 
-  state_t state = state_createEmpty(domain);
+  trie_t state = trie_createEmpty(domain);
   struct atom *atom0 = malloc(sizeof(*atom0));
   atom0->pred = predManag_getPred(domain->predManag, "at");
   atom0->terms = malloc(sizeof(*atom0->terms) * atom0->pred->numOfParams);
   atom0->terms[0] = objManag_getObject(problem->objManag, "p1");
-  state_add(state, atom0);
+  trie_add(state, atom0);
   /* struct state s; */
   /* struct state *state = &s; */
   /* state->numOfFluents = 1; */
@@ -209,7 +205,7 @@ test_planner_satisfies()
   atom1->pred = predManag_getPred(domain->predManag, "visited");
   atom1->terms = malloc(sizeof(*atom1->terms) * atom1->pred->numOfParams);
   atom1->terms[0] = objManag_getObject(problem->objManag, "p2");
-  state_add(state, atom1);
+  trie_add(state, atom1);
   /* state->numOfFluents = 2; */
   /* state->fluents = realloc(state->fluents, */
   /*                          sizeof(*state->fluents) * state->numOfFluents); */
@@ -236,7 +232,7 @@ test_planner_satisfies()
   utils_free_literal(lit);
 
   // Clean up this mess.
-  state_free(state);
+  trie_free(state);
   libpddl31_atom_free(atom0);
   free(atom0);
   libpddl31_atom_free(atom1);
@@ -246,7 +242,7 @@ test_planner_satisfies()
   free(goal->posLiterals->terms);
   free(goal->posLiterals);
 
-  //state_cleanupSNBuffer();
+  //trie_cleanupSNBuffer();
 
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
@@ -256,8 +252,6 @@ test_planner_satisfies()
 static char *
 test_planner_solveProblem()
 {
-  // TODO: Why does it take so long? Why doesn't it select the right actions
-  // because of gaps immediately?
   char *domainFilename = "test_instances/tsp-neg-prec/domain.pddl";
                         //"test_instances/openstacks-strips/p01-domain.pddl";
                           //"test/planner-domain0.pddl";
@@ -266,6 +260,7 @@ test_planner_solveProblem()
                           //"test_instances/openstacks-strips/p01.pddl";
                           //"test/planner-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
+  ps_init(problem);
 
   // The problem instance tsp-neg-prec/p3.pddl shortest solution is of length
   // four.
@@ -274,7 +269,8 @@ test_planner_solveProblem()
   utils_print_actionList(result);
   utils_free_actionList(result);
 
-  //state_cleanupSNBuffer();
+  ps_cleanup();
+  //trie_cleanupSNBuffer();
 
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);
@@ -312,6 +308,8 @@ allTests()
   mu_run_test(test_planner_satisfies);
   mu_run_test(test_planner_solveProblem);
   mu_run_test(test_planner_iterativeDeepeningSearch);
+
+  trie_cleanupSNBuffer();
 
   return 0;
 }

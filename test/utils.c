@@ -1,5 +1,6 @@
 #include "libpddl31.h"
 #include "minunit.h"
+#include "trie.h"
 #include "utils.h"
 
 /* All the test cases use test instances (that is, domains and problems)
@@ -826,6 +827,8 @@ allTests()
   mu_run_test(test_groundActions_basic);
   mu_run_test(test_groundActions_typeChecks);
   mu_run_test(test_groundActions_multipleActions);
+
+  trie_cleanupSNBuffer();
 
   return 0;
 }

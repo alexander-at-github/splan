@@ -1,5 +1,5 @@
 #include "minunit.h"
-#include "state.h"
+#include "trie.h"
 
 #include "libpddl31.h"
 
@@ -8,13 +8,13 @@ int tests_run = 0;
 static char *
 test_createAFree()
 {
-  char *domainFilename = "test/c/state-domain.pddl";
+  char *domainFilename = "test/c/trie-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
 
-  state_t state = state_createEmpty(domain);
+  trie_t trie = trie_createEmpty(domain);
 
-  state_free(state);
-  state_cleanupSNBuffer();
+  trie_free(trie);
+  trie_cleanupSNBuffer();
   libpddl31_domain_free(domain);
   return 0;
 }
@@ -22,60 +22,60 @@ test_createAFree()
 static char *
 test_containsAddDelete()
 {
-  char *domainFilename = "test/c/state-domain.pddl";
+  char *domainFilename = "test/c/trie-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
 
-  state_t state = state_createEmpty(domain);
+  trie_t trie = trie_createEmpty(domain);
   struct atom *atom = malloc(sizeof(*atom));
   atom->pred = predManag_getPred(domain->predManag, "p0");
   // predicate "p0" has only one parameter.
   atom->terms = malloc(sizeof(*atom->terms) * atom->pred->numOfParams);
   atom->terms[0] = objManag_getObject(domain->objManag, "const0");
 
-  //state_print(state); // DEBUG
+  //trie_print(trie); // DEBUG
   //printf("\n"); // DEBUG
 
-  mu_assert("Error state_conatins() returns true on empty state.",
-            ! state_contains(state, atom));
+  mu_assert("Error trie_conatins() returns true on empty trie.",
+            ! trie_contains(trie, atom));
 
-  state_add(state, atom);
+  trie_add(trie, atom);
 
-  //state_print(state); // DEBUG
+  //trie_print(trie); // DEBUG
   //printf("\n"); // DEBUG
 
-  mu_assert("Error state_conatins() returns false on added atom.",
-            state_contains(state, atom));
+  mu_assert("Error trie_conatins() returns false on added atom.",
+            trie_contains(trie, atom));
 
-  state_remove(state, atom);
+  trie_remove(trie, atom);
 
-  mu_assert("Error state_conatins() returns true after removing atom.",
-            ! state_contains(state, atom));
+  mu_assert("Error trie_conatins() returns true after removing atom.",
+            ! trie_contains(trie, atom));
 
-  state_add(state, atom);
+  trie_add(trie, atom);
 
   atom->terms[0] = objManag_getObject(domain->objManag, "const1");
 
-  state_add(state, atom);
+  trie_add(trie, atom);
 
   atom->terms[0] = objManag_getObject(domain->objManag, "const0");
 
-  state_remove(state, atom);
+  trie_remove(trie, atom);
 
-  mu_assert("Error state_conatins().",
-            ! state_contains(state, atom));
+  mu_assert("Error trie_conatins().",
+            ! trie_contains(trie, atom));
 
   atom->terms[0] = objManag_getObject(domain->objManag, "const1");
 
-  mu_assert("Error state_conatins().",
-            state_contains(state, atom));
+  mu_assert("Error trie_conatins().",
+            trie_contains(trie, atom));
 
-  //state_print(state); // DEBUG
+  //trie_print(trie); // DEBUG
   //printf("\n"); // DEBUG
 
   libpddl31_atom_free(atom);
   free(atom);
-  state_free(state);
-  state_cleanupSNBuffer();
+  trie_free(trie);
+  trie_cleanupSNBuffer();
   libpddl31_domain_free(domain);
   return 0;
 }
@@ -83,7 +83,7 @@ test_containsAddDelete()
 static char *
 test_clone()
 {
-  char *domainFilename = "test/c/state-domain.pddl";
+  char *domainFilename = "test/c/trie-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
 
   struct atom *atom0 = malloc(sizeof(*atom0));
@@ -101,60 +101,60 @@ test_clone()
   atom1->terms = malloc(sizeof(*atom1->terms) * atom1->pred->numOfParams);
   atom1->terms[0] = objManag_getObject(domain->objManag, "const1");
 
-  state_t state0 = state_createEmpty(domain);
+  trie_t trie0 = trie_createEmpty(domain);
 
-  state_add(state0, atom0);
-  state_add(state0, atom1);
+  trie_add(trie0, atom0);
+  trie_add(trie0, atom1);
 
-  state_t state1 = state_clone(state0);
+  trie_t trie1 = trie_clone(trie0);
 
-  mu_assert("Error state_clone().",
-            state_contains(state0, atom0) &&
-            state_contains(state0, atom1) &&
-            state_contains(state1, atom0) &&
-            state_contains(state1, atom1)
+  mu_assert("Error trie_clone().",
+            trie_contains(trie0, atom0) &&
+            trie_contains(trie0, atom1) &&
+            trie_contains(trie1, atom0) &&
+            trie_contains(trie1, atom1)
            );
 
-  state_remove(state0, atom1);
+  trie_remove(trie0, atom1);
 
-  mu_assert("Error state_clone().",
-            state_contains(state0, atom0) &&
-            ! state_contains(state0, atom1) &&
-            state_contains(state1, atom0) &&
-            state_contains(state1, atom1)
+  mu_assert("Error trie_clone().",
+            trie_contains(trie0, atom0) &&
+            ! trie_contains(trie0, atom1) &&
+            trie_contains(trie1, atom0) &&
+            trie_contains(trie1, atom1)
            );
 
-  state_remove(state1, atom0);
+  trie_remove(trie1, atom0);
 
-  mu_assert("Error state_clone().",
-            state_contains(state0, atom0) &&
-            ! state_contains(state0, atom1) &&
-            ! state_contains(state1, atom0) &&
-            state_contains(state1, atom1)
+  mu_assert("Error trie_clone().",
+            trie_contains(trie0, atom0) &&
+            ! trie_contains(trie0, atom1) &&
+            ! trie_contains(trie1, atom0) &&
+            trie_contains(trie1, atom1)
            );
 
-  state_remove(state0, atom0);
-  state_add(state1, atom0);
+  trie_remove(trie0, atom0);
+  trie_add(trie1, atom0);
 
-  mu_assert("Error state_clone().",
-            ! state_contains(state0, atom0) &&
-            ! state_contains(state0, atom1) &&
-            state_contains(state1, atom0) &&
-            state_contains(state1, atom1)
+  mu_assert("Error trie_clone().",
+            ! trie_contains(trie0, atom0) &&
+            ! trie_contains(trie0, atom1) &&
+            trie_contains(trie1, atom0) &&
+            trie_contains(trie1, atom1)
            );
 
-  //state_print(state0); // DEBUG
+  //trie_print(trie0); // DEBUG
   //printf("\n"); // DEBUG
-  //state_print(state1); // DEBUG
+  //trie_print(trie1); // DEBUG
   //printf("\n"); // DEBUG
 
   libpddl31_atom_free(atom0);
   free(atom0);
   libpddl31_atom_free(atom1);
   free(atom1);
-  state_free(state0);
-  state_free(state1);
-  state_cleanupSNBuffer();
+  trie_free(trie0);
+  trie_free(trie1);
+  trie_cleanupSNBuffer();
   libpddl31_domain_free(domain);
   return 0;
 }
@@ -162,9 +162,9 @@ test_clone()
 static char *
 test_addRemoveWithGrounding()
 {
-  char *domainFilename = "test/c/state-domain.pddl";
+  char *domainFilename = "test/c/trie-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/c/state-problem.pddl";
+  char *problemFilename = "test/c/trie-problem.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   struct action *action0 = actionManag_getAction(domain->actionManag,
@@ -208,124 +208,124 @@ test_addRemoveWithGrounding()
   atom2->terms[1] = objManag_getObject(problem->objManag, "obj3");
   atom2->terms[2] = objManag_getObject(problem->objManag, "const0");
 
-  state_t state = state_createEmpty(domain);
+  trie_t trie = trie_createEmpty(domain);
 
-  state_addGr(state, grAct0->action->effect->elems[0].it.literal, grAct0);
-  state_addGr(state, grAct1->action->effect->elems[0].it.literal, grAct1);
+  trie_addGr(trie, grAct0->action->effect->elems[0].it.literal, grAct0);
+  trie_addGr(trie, grAct1->action->effect->elems[0].it.literal, grAct1);
 
-  //state_print(state); // DEBUG
+  //trie_print(trie); // DEBUG
   //printf("\n"); // DEBUG
 
-  mu_assert("Error state_addGr()",
+  mu_assert("Error trie_addGr()",
             // Check with ordinary atom.
-            state_contains(state, atom0) &&
-            state_contains(state, atom1) &&
-            ! state_contains(state, atom2) &&
+            trie_contains(trie, atom0) &&
+            trie_contains(trie, atom1) &&
+            ! trie_contains(trie, atom2) &&
 
             // And also check with ground atom.
-            state_containsGr(state,
+            trie_containsGr(trie,
                              grAct0->action->effect->elems[0].it.literal,
                              grAct0) &&
-            state_containsGr(state,
+            trie_containsGr(trie,
                              grAct1->action->effect->elems[0].it.literal,
                              grAct1) && 
-          ! state_containsGr(state,
+          ! trie_containsGr(trie,
                              grAct2->action->effect->elems[0].it.literal,
                              grAct2)
             );
 
-  state_removeGr(state, grAct2->action->effect->elems[0].it.literal, grAct2);
-  state_removeGr(state, grAct0->action->effect->elems[0].it.literal, grAct0);
+  trie_removeGr(trie, grAct2->action->effect->elems[0].it.literal, grAct2);
+  trie_removeGr(trie, grAct0->action->effect->elems[0].it.literal, grAct0);
 
-  mu_assert("Error state_removeGr()",
-             ! state_containsGr(state,
+  mu_assert("Error trie_removeGr()",
+             ! trie_containsGr(trie,
                                 grAct0->action->effect->elems[0].it.literal,
                                 grAct0) &&
-               state_containsGr(state,
+               trie_containsGr(trie,
                                 grAct1->action->effect->elems[0].it.literal,
                                 grAct1) &&
-             ! state_containsGr(state,
+             ! trie_containsGr(trie,
                                 grAct2->action->effect->elems[0].it.literal,
                                 grAct2)
              );
 
-  state_addGr(state, grAct1->action->effect->elems[0].it.literal, grAct1);
+  trie_addGr(trie, grAct1->action->effect->elems[0].it.literal, grAct1);
 
-  mu_assert("Error state_removeGr()",
-             ! state_containsGr(state,
+  mu_assert("Error trie_removeGr()",
+             ! trie_containsGr(trie,
                                 grAct0->action->effect->elems[0].it.literal,
                                 grAct0) &&
-               state_containsGr(state,
+               trie_containsGr(trie,
                                 grAct1->action->effect->elems[0].it.literal,
                                 grAct1) &&
-             ! state_containsGr(state,
+             ! trie_containsGr(trie,
                                 grAct2->action->effect->elems[0].it.literal,
                                 grAct2)
             );
 
-  state_addGr(state, grAct0->action->effect->elems[0].it.literal, grAct0);
-  state_addGr(state, grAct2->action->effect->elems[0].it.literal, grAct2);
+  trie_addGr(trie, grAct0->action->effect->elems[0].it.literal, grAct0);
+  trie_addGr(trie, grAct2->action->effect->elems[0].it.literal, grAct2);
 
-  mu_assert("Error state_removeGr()",
-               state_containsGr(state,
+  mu_assert("Error trie_removeGr()",
+               trie_containsGr(trie,
                                 grAct0->action->effect->elems[0].it.literal,
                                 grAct0) &&
-               state_containsGr(state,
+               trie_containsGr(trie,
                                 grAct1->action->effect->elems[0].it.literal,
                                 grAct1) &&
-               state_containsGr(state,
+               trie_containsGr(trie,
                                 grAct2->action->effect->elems[0].it.literal,
                                 grAct2)
             );
 
-  state_removeGr(state, grAct1->action->effect->elems[0].it.literal, grAct1);
+  trie_removeGr(trie, grAct1->action->effect->elems[0].it.literal, grAct1);
 
-  mu_assert("Error state_removeGr()",
-               state_containsGr(state,
+  mu_assert("Error trie_removeGr()",
+               trie_containsGr(trie,
                                 grAct0->action->effect->elems[0].it.literal,
                                 grAct0) &&
-             ! state_containsGr(state,
+             ! trie_containsGr(trie,
                                 grAct1->action->effect->elems[0].it.literal,
                                 grAct1) &&
-               state_containsGr(state,
+               trie_containsGr(trie,
                                 grAct2->action->effect->elems[0].it.literal,
                                 grAct2)
             );
 
-  state_removeGr(state, grAct2->action->effect->elems[0].it.literal, grAct2);
+  trie_removeGr(trie, grAct2->action->effect->elems[0].it.literal, grAct2);
 
-  mu_assert("Error state_removeGr()",
-               state_containsGr(state,
+  mu_assert("Error trie_removeGr()",
+               trie_containsGr(trie,
                                 grAct0->action->effect->elems[0].it.literal,
                                 grAct0) &&
-             ! state_containsGr(state,
+             ! trie_containsGr(trie,
                                 grAct1->action->effect->elems[0].it.literal,
                                 grAct1) &&
-             ! state_containsGr(state,
+             ! trie_containsGr(trie,
                                 grAct2->action->effect->elems[0].it.literal,
                                 grAct2)
             );
 
-  state_removeGr(state, grAct0->action->effect->elems[0].it.literal, grAct0);
+  trie_removeGr(trie, grAct0->action->effect->elems[0].it.literal, grAct0);
 
-  mu_assert("Error state_removeGr()",
-             ! state_containsGr(state,
+  mu_assert("Error trie_removeGr()",
+             ! trie_containsGr(trie,
                                 grAct0->action->effect->elems[0].it.literal,
                                 grAct0) &&
-             ! state_containsGr(state,
+             ! trie_containsGr(trie,
                                 grAct1->action->effect->elems[0].it.literal,
                                 grAct1) &&
-             ! state_containsGr(state,
+             ! trie_containsGr(trie,
                                 grAct2->action->effect->elems[0].it.literal,
                                 grAct2)
             );
 
-  //state_print(state); // DEBUG
+  //trie_print(trie); // DEBUG
   //printf("\n"); // DEBUG
 
   // Clean up.
-  state_free(state);
-  state_cleanupSNBuffer();
+  trie_free(trie);
+  trie_cleanupSNBuffer();
   libpddl31_free_groundAction(grAct0);
   libpddl31_free_groundAction(grAct1);
   libpddl31_free_groundAction(grAct2);

@@ -11,8 +11,8 @@
 //#include "state.h"
 
 // Forward declaration for state
-struct  st_state;
-typedef struct st_state * state_t;
+struct  st_trie;
+typedef struct st_trie * trie_t;
 
 enum requirement
 {
@@ -76,8 +76,8 @@ struct problem
 
     // Objects will be saved in the domains object manager
 
-    state_t init;
-    //struct state *init;
+    // The initial state. We use a trie as a state.
+    trie_t init;
 
     struct goal *goal;
 };

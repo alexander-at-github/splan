@@ -4,7 +4,7 @@
 
 #include "libpddl31.h"
 #include "probSpace.h"
-#include "state.h"
+#include "trie.h"
 #include "utils.h"
 
 struct actionList *
@@ -44,73 +44,10 @@ planner_getActsToFixGap(struct problem *problem, struct gap *gap)
   return result;
 }
 
-/* bool */
-/* planner_contains(struct state *state, struct atom *atom) */
-/* { */
-/*   if (atom == NULL) { */
-/*     // That should not happen. */
-/*     assert (false); */
-/*     // Any state fullfills the nonexisting atom. */
-/*     return true; */
-/*   } */
-/*   if (state == NULL) { */
-/*     // An empty state does not contain any fluents anyway. */
-/*     return false; */
-/*   } */
-/*   for ( int32_t idxFluents = 0; */
-/*         idxFluents < state->numOfFluents; */
-/*         ++idxFluents) { */
-
-/*     struct atom *fluent = &state->fluents[idxFluents]; */
-
-/*     if (utils_atom_equal(fluent, atom)) { */
-/*       return true; */
-/*     } */
-
-/*   } */
-/*   return false; */
-/* } */
-
-/* // The 'atom' must be from the action affiliated with 'grAct'. */
-/* bool */
-/* planner_containsPrecondAtom(struct state *state, */
-/*                             struct groundAction *grAct, */
-/*                             struct atom *atom) */
-/* { */
-/*   if (atom == NULL) { */
-/*     // That should not happen. */
-/*     assert (false); */
-/*     // Any state fullfills the nonexisting atom. */
-/*     return true; */
-/*   } */
-/*   if (state == NULL) { */
-/*     // An empty state does not contain any fluents anyway. */
-/*     return false; */
-/*   } */
-/*   if (grAct == NULL) { */
-/*     // That should not happen */
-/*     assert (false); */
-/*     // If there is no grounding, then the state does not fullfill the atom. */
-/*     return false; */
-/*   } */
-
-/*   for ( int32_t idxFluents = 0; */
-/*         idxFluents < state->numOfFluents; */
-/*         ++idxFluents) { */
-
-/*     struct atom *fluent = &state->fluents[idxFluents]; */
-/*     if (utils_atom_equalWithGrounding(fluent, atom, grAct)) { */
-/*       return true; */
-/*     } */
-
-/*   } */
-/*   return false; */
-/* } */
-
 // Returns NULL iff the state satisfies the goal.
 // Returns the first literal which is not satisfied otherwise.
 struct literal *
-planner_satisfiesPrecond(state_t state, struct groundAction *grAct)
+planner_satisfiesPrecond(trie_t state, struct groundAction *grAct)
 {
   if (grAct == NULL) {
     // The precondition of an empty ground action is considered to be
@@ -123,7 +60,7 @@ planner_satisfiesPrecond(state_t state, struct groundAction *grAct)
 
   for (int32_t i = 0; i < precond->numOfPos; ++i) {
     struct atom *atom = &precond->posLiterals[i];
-    if ( ! state_containsGr(state, atom, grAct)) {
+    if ( ! trie_containsGr(state, atom, grAct)) {
       struct literal *returnVal = malloc(sizeof(*returnVal));
       returnVal->atom = utils_atom_cloneWithGrounding(atom, grAct);
       returnVal->isPos = true;
@@ -132,7 +69,7 @@ planner_satisfiesPrecond(state_t state, struct groundAction *grAct)
   }
   for (int32_t i = 0; i < precond->numOfNeg; ++i) {
     struct atom *atom = &precond->negLiterals[i];
-    if (state_containsGr(state, atom, grAct)) {
+    if (trie_containsGr(state, atom, grAct)) {
       struct literal *returnVal = malloc(sizeof(*returnVal));
       returnVal->atom = utils_atom_cloneWithGrounding(atom, grAct);
       returnVal->isPos = false;
@@ -146,7 +83,7 @@ planner_satisfiesPrecond(state_t state, struct groundAction *grAct)
 // Returns NULL iff the state satisfies the goal.
 // Returns the first literal which is not satisfied otherwise.
 struct literal *
-planner_satisfies(state_t state, struct goal *goal)
+planner_satisfies(trie_t state, struct goal *goal)
 {
   if (goal == NULL) {
     // An empty goal is always satisfied.
@@ -158,7 +95,7 @@ planner_satisfies(state_t state, struct goal *goal)
 
   for (int32_t i = 0; i < goal->numOfPos; ++i) {
     struct atom *atom = &goal->posLiterals[i];
-    if ( ! state_contains(state, atom)) {
+    if ( ! trie_contains(state, atom)) {
       struct literal *returnVal = malloc(sizeof(*returnVal));
       returnVal->atom = utils_atom_clone(atom);
       returnVal->isPos = true;
@@ -167,7 +104,7 @@ planner_satisfies(state_t state, struct goal *goal)
   }
   for (int32_t i = 0; i < goal->numOfNeg; ++i) {
     struct atom *atom = &goal->negLiterals[i];
-    if (state_contains(state, atom)) {
+    if (trie_contains(state, atom)) {
       struct literal *returnVal = malloc(sizeof(*returnVal));
       returnVal->atom = utils_atom_clone(atom);
       returnVal->isPos = false;
@@ -178,109 +115,8 @@ planner_satisfies(state_t state, struct goal *goal)
   return NULL;
 }
 
-/* void */
-/* planner_stateAddAtom( struct state *state, */
-/*                       struct groundAction *grAct, */
-/*                       struct atom *atom) */
-/* { */
-/*   if (atom == NULL) { */
-/*     return; */
-/*   } */
-
-/*   for (int32_t idx = 0; idx < state->numOfFluents; ++idx) { */
-/*     struct atom *fluent = &state->fluents[idx]; */
-/*     if (utils_atom_equalWithGrounding(fluent, atom, grAct)) { */
-/*       return; */
-/*     } */
-/*   } */
-/*   // Check if the types od the predicates parameter allow the atom to be */
-/*   // added. */
-/*   // TODO: If we would know that all types (action parameter types and */ 
-/*   // predicate parameter types) match after grounding, we would no need that. */
-/*   for (int32_t idxArgs = 0; idxArgs < atom->pred->numOfParams; ++idxArgs) { */
-/*     struct type *predParamType = atom->pred->params[idxArgs].type; */
-/*     // Pointer arithmetic. */
-/*     int32_t idxGrounding = atom->terms[idxArgs] - grAct->action->params; */
-/*     if (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams) { */
-/*       // We are dealing with a grounding. Check type. */
-/*       if ( ! typeSystem_isa(grAct->terms[idxGrounding]->type, predParamType)) { */
-/*         // Can not apply atom. Type missmatch. */
-/*         return; */
-/*       } */
-/*     } else { */
-/*       // We are dealing with a constant. */
-/*       if ( ! typeSystem_isa(atom->terms[idxArgs]->type, predParamType)) { */
-/*         // Can not apply atom. */
-/*         // That should never happen, since it's a constant. */
-/*         assert (false); */
-/*         return; */
-/*       } */
-/*     } */
-/*   } */
-
-/*   // Add the atom. */
-/*   ++state->numOfFluents; */
-/*   state->fluents = realloc(state->fluents, */
-/*                            sizeof(*state->fluents) * state->numOfFluents); */
-
-/*   //memcpy(&state->fluents[state->numOfFluents - 1], atom, sizeof(*atom)); */
-/*   state->fluents[state->numOfFluents - 1].pred = atom->pred; */
-/*   int32_t size = sizeof(*state->fluents[state->numOfFluents - 1].terms) * */
-/*                  atom->pred->numOfParams; */
-/*   state->fluents[state->numOfFluents - 1].terms = malloc(size); */
-
-/*   // Set terms to objects according to mapping. */
-/*   for (int32_t idxArgs = 0; idxArgs < atom->pred->numOfParams; ++idxArgs) { */
-/*     // Pointer arithmetic. */
-/*     int32_t idxGrounding = atom->terms[idxArgs] - grAct->action->params; */
-/*     if (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams) { */
-/*       // We are dealing with a grounding. */
-/*       state->fluents[state->numOfFluents - 1].terms[idxArgs] = */
-/*                                                     grAct->terms[idxGrounding]; */
-/*     } else { */
-/*       // We are dealing with a constant. */
-/*       state->fluents[state->numOfFluents - 1].terms[idxArgs] = */
-/*                                                           atom->terms[idxArgs]; */
-/*     } */
-/*   } */
-/* } */
-
-/* void */
-/* planner_stateRemoveAtom(struct state *state, */
-/*                         struct groundAction *grAct, */
-/*                         struct atom *atom) */
-/* { */
-/*   if (atom == NULL) { */
-/*     return; */
-/*   } */
-
-/*   for (int32_t idx = 0; idx < state->numOfFluents; ++idx) { */
-/*     struct atom *fluent = &state->fluents[idx]; */
-/*     if (utils_atom_equalWithGrounding(fluent, atom, grAct)) { */
-/*       //printf("REMOVING ATOM FROM STATE\n"); // DEBUG */
-/*       // Remove atom. */
-/*       --state->numOfFluents; */
-/*       struct atom *tmp = malloc(sizeof(*tmp) * (state->numOfFluents)); */
-/*       // Copy memory before the element to remove. */
-/*       memcpy(tmp, state->fluents, sizeof(*tmp) * idx); */
-/*       // Copy memory after the element to remove. */
-/*       memcpy( &tmp[idx], */
-/*               &state->fluents[idx + 1], */
-/*               sizeof(*tmp) * (state->numOfFluents - idx)); */
-
-/*       // Clean up removed fluent */
-/*       libpddl31_atom_free(&state->fluents[idx]); */
-/*       // And old array */
-/*       free(state->fluents); */
-
-/*       state->fluents = tmp; */
-/*       // Do not return here. I want to remove all of them. */
-/*     } */
-/*   } */
-/* } */
-
 void
-planner_applyEffElem( state_t state,
+planner_applyEffElem( trie_t state,
                       struct groundAction *grAct,
                       struct effectElem *effElem)
 {
@@ -289,11 +125,11 @@ planner_applyEffElem( state_t state,
   }
   switch(effElem->type) {
   case POS_LITERAL : {
-    state_addGr(state, effElem->it.literal, grAct);
+    trie_addGr(state, effElem->it.literal, grAct);
     break;
   }
   case NEG_LITERAL: {
-    state_removeGr(state, effElem->it.literal, grAct);
+    trie_removeGr(state, effElem->it.literal, grAct);
     break;
   }
   case FORALL: {
@@ -318,13 +154,13 @@ planner_applyEffElem( state_t state,
 //               This function does not check that.
 //
 void
-planner_apply(state_t state, struct groundAction *grAct)
+planner_apply(trie_t state, struct groundAction *grAct)
 {
   if (grAct == NULL) {
     return;
   }
   if (state == NULL) {
-    // Parser creates an empty state_t in case of an empty state.
+    // Parser creates an empty trie_t in case of an empty state.
     assert (false);
   }
 
@@ -340,7 +176,7 @@ planner_apply(state_t state, struct groundAction *grAct)
 
 // Returns NULL iff there is no gap. Returns the gap otherwise.
 struct gap *
-planner_hasGap( state_t initState,
+planner_hasGap( trie_t initState,
                 struct goal *goal,
                 struct actionList *actions)
 {
@@ -354,7 +190,7 @@ planner_hasGap( state_t initState,
 
   struct gap *result = NULL;
   // Copy the state, so we can modify it freely.
-  state_t lState = state_clone(initState);
+  trie_t lState = trie_clone(initState);
   struct literal *gapLiteral = NULL;
 
   /* Check actions' precondition and apply the action. */
@@ -377,7 +213,7 @@ planner_hasGap( state_t initState,
       result->literal = gapLiteral;
       result->position = idxAct;
       // Clean up.
-      state_free(lState);
+      trie_free(lState);
       return result;
     }
     // Precondition is met. Apply the action.
@@ -401,7 +237,7 @@ planner_hasGap( state_t initState,
   }
 
   /* Clean up */
-  state_free(lState);
+  trie_free(lState);
   return result; // Returns NULL when neccessary.
 }
 
@@ -423,7 +259,7 @@ planner_solveProblem_aux( struct problem *problem,
 
   struct actionList *actAccBack = actAcc;
 
-  state_t initState = problem->init;
+  trie_t initState = problem->init;
   struct goal *goal = problem->goal;
   struct gap *gap = planner_hasGap(initState, goal, actAcc);
   if (gap == NULL) {
@@ -539,7 +375,7 @@ planner_iterativeDeepeningSearch(struct problem *problem)
 {
   ps_init(problem);
   printf("Problem Space: "); // DEBUG
-  state_print(ps_getSingleton()); // DEBUG
+  trie_print(ps_getSingleton()); // DEBUG
   printf("\n"); // DEBUG
 
   for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
@@ -548,13 +384,13 @@ planner_iterativeDeepeningSearch(struct problem *problem)
     if (solution != NULL) {
 
       ps_cleanup();
-      state_cleanupSNBuffer();
+      trie_cleanupSNBuffer();
       return solution;
     }
   }
 
   ps_cleanup();
-  state_cleanupSNBuffer();
+  trie_cleanupSNBuffer();
   return NULL;
 }
 
@@ -564,7 +400,7 @@ planner_iterativeDeepeningSearch(struct problem *problem)
 // be zero. For every atom of the precondition, which is not fulfilled, its
 // weight will be incremented by one.
 void planner_actionList_calculateWeights(struct actionList *actL,
-                                         state_t state)
+                                         trie_t state)
 {
   //printf("CALL: planner_actionList_calculateWeights()\n"); // DEBUG
 
@@ -579,14 +415,14 @@ void planner_actionList_calculateWeights(struct actionList *actL,
     // Iterate over precondition atoms.
     for (int32_t idxPrecond = 0; idxPrecond < precond->numOfPos; ++idxPrecond) {
       struct atom *atom = &precond->posLiterals[idxPrecond];
-      if ( ! state_containsGr(state, atom, grAct)) {
+      if ( ! trie_containsGr(state, atom, grAct)) {
         // Actually increasing the weight, when a precondition is not met.
         weight++;
       }
     }
     for (int32_t idxPrecond = 0; idxPrecond < precond->numOfNeg; ++idxPrecond) {
       struct atom *atom = &precond->negLiterals[idxPrecond];
-      if (state_containsGr(state, atom, grAct)) {
+      if (trie_containsGr(state, atom, grAct)) {
         // Actually increasing the weight, when a precondition is not met.
         weight++;
       }
@@ -690,7 +526,7 @@ planner_quicksort(struct actionList *actL)
 }
 
 struct actionList *
-planner_sortActsAccToState(struct actionList *actL, state_t state)
+planner_sortActsAccToState(struct actionList *actL, trie_t state)
 {
   // Calculate weights for sorting.
   planner_actionList_calculateWeights(actL, state);
@@ -720,7 +556,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
 
   struct actionList *actAccBack = actAcc;
 
-  state_t initState = problem->init;
+  trie_t initState = problem->init;
   struct goal *goal = problem->goal;
   struct gap *gap = planner_hasGap(initState, goal, actAcc);
   if (gap == NULL) {
@@ -757,7 +593,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
   }
 
   // Copy the state, so we can modify it freely.
-  state_t lState = state_clone(initState);
+  trie_t lState = trie_clone(initState);
 
   // The order of the following loops can be changed freely. I just choose
   // a abritrarily for now.
@@ -815,7 +651,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
         //printf("RETURN RESULT"); // DEBUG
 
         // Clean up before return.
-        state_free(lState);
+        trie_free(lState);
         utils_free_gap(gap);
         utils_free_actionList(actsToFixGap);
         return result;
@@ -849,7 +685,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
   // No solution within this depth-limit found.
   // Clean up
   //printf("Cleanup in planner_solveProblem_aux()\n\n");
-  state_free(lState);
+  trie_free(lState);
   utils_free_gap(gap);
   utils_free_actionList(actsToFixGap);
   return NULL;
@@ -866,7 +702,7 @@ planner_iterativeDeepeningSearch_v2(struct problem *problem)
 {
   ps_init(problem);
   printf("Problem Space: "); // DEBUG
-  state_print(ps_getSingleton()); // DEBUG
+  trie_print(ps_getSingleton()); // DEBUG
   printf("\n"); // DEBUG
   printf("variable occurance: %d\n", ps_calcMaxVarOcc());
 
@@ -876,13 +712,13 @@ planner_iterativeDeepeningSearch_v2(struct problem *problem)
     if (solution != NULL) {
 
       ps_cleanup();
-      state_cleanupSNBuffer();
+      trie_cleanupSNBuffer();
 
       return solution;
     }
   }
 
   ps_cleanup();
-  state_cleanupSNBuffer();
+  trie_cleanupSNBuffer();
   return NULL;
 }

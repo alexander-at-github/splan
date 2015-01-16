@@ -4,18 +4,18 @@
 #include "probSpace.h"
 
 #include "planner.h"
-#include "state.h"
+#include "trie.h"
 #include "utils.h"
 
 // Problem Space. That is a state, which is an union of all possible
 // states in the problem instance.
-static state_t probSpace = NULL;
+static trie_t probSpace = NULL;
 struct actionList *allGrActInSpace = NULL;
 
 
-// Returns true if it did add an atom to the state, false otherwise.
+// Returns true if it did add an atom to the trie, false otherwise.
 bool
-ps_applyEffElem(state_t state,
+ps_applyEffElem(trie_t trie,
                 struct groundAction *grAct,
                 struct effectElem *effElem)
 {
@@ -26,9 +26,9 @@ ps_applyEffElem(state_t state,
 
   switch(effElem->type) {
   case POS_LITERAL : {
-    bool contains =  state_containsGr(state, effElem->it.literal, grAct);
+    bool contains =  trie_containsGr(trie, effElem->it.literal, grAct);
     if (!contains) {
-      state_addGr(state, effElem->it.literal, grAct);
+      trie_addGr(trie, effElem->it.literal, grAct);
       val = true;
     }
     break;
@@ -57,14 +57,14 @@ ps_applyEffElem(state_t state,
 }
 
 // This function is different from planner_apply(). It only adds atoms to the
-// state and never removes atoms. That is because we want to know all the
+// trie and never removes atoms. That is because we want to know all the
 // possible atoms in a problems' state.
-// This function returns false, if it did not change the state, and true
+// This function returns false, if it did not change the trie, and true
 // otherwise.
 bool
-ps_apply(state_t state, struct groundAction *grAct)
+ps_apply(trie_t trie, struct groundAction *grAct)
 {
-  assert (state != NULL);
+  assert (trie != NULL);
   assert (grAct != NULL);
 
   // Return value.
@@ -74,7 +74,7 @@ ps_apply(state_t state, struct groundAction *grAct)
 
   for (int32_t idx = 0; idx < effCurr->numOfElems; ++idx) {
     struct effectElem *effElem = &effCurr->elems[idx];
-    bool locVal = ps_applyEffElem(state, grAct, effElem);
+    bool locVal = ps_applyEffElem(trie, grAct, effElem);
     if (locVal) {
       val = true;
     }
@@ -87,7 +87,7 @@ void
 ps_init(struct problem *problem)
 {
   // Initialize problem space with initial state of problem.
-  probSpace = state_clone(problem->init);
+  probSpace = trie_clone(problem->init);
 
   struct actionManag *actionManag = problem->domain->actionManag;
 
@@ -156,10 +156,10 @@ ps_calcMaxVarOcc()
   // The whole function will only work on a copy of the problem space.
   // Later this copy might be used for more things, like an index onto the
   // actions.
-  state_t psClone = state_clone(probSpace);
+  trie_t psClone = trie_clone(probSpace);
 
   // Set occurrance count to zero.
-  state_setCount(psClone, 0);
+  trie_setCount(psClone, 0);
 
   for (struct actionList *currLE = allGrActInSpace;
        currLE != NULL;
@@ -175,30 +175,30 @@ ps_calcMaxVarOcc()
     // be only counted once per precodition. In order to achieve that
     // we will use another set of fluents to accumulate the ground atoms,
     // which we already considered.
-    state_t precondSet = state_createEmptyFrom(probSpace);
+    trie_t precondSet = trie_createEmptyFrom(probSpace);
     // Add and count all the positive precondition fluents.
     for (int32_t idxPP = 0; idxPP < precond->numOfPos; ++idxPP) {
       struct atom *atom = &precond->posLiterals[idxPP];
-      if (state_containsGr(precondSet, atom, grAct)) {
+      if (trie_containsGr(precondSet, atom, grAct)) {
         // This atom was already considered. Do not count it again.
         continue;
       }
-      state_addGr(precondSet, atom, grAct);
-      state_addGr(psClone, atom, grAct);
-      state_incCountGr(psClone, atom, grAct);
+      trie_addGr(precondSet, atom, grAct);
+      trie_addGr(psClone, atom, grAct);
+      trie_incCountGr(psClone, atom, grAct);
     }
 
     // Add and count all the negative precondition fluents.
     for (int32_t idxNP = 0; idxNP < precond->numOfNeg; ++idxNP) {
       struct atom *atom = &precond->negLiterals[idxNP];
-      if (state_containsGr(precondSet, atom, grAct)) {
+      if (trie_containsGr(precondSet, atom, grAct)) {
         // This atom was already considered in the precondition. Do not count
         // it again.
         continue;
       }
-      state_addGr(precondSet, atom, grAct);
-      state_addGr(psClone, atom, grAct);
-      state_incCountGr(psClone, atom, grAct);
+      trie_addGr(precondSet, atom, grAct);
+      trie_addGr(psClone, atom, grAct);
+      trie_incCountGr(psClone, atom, grAct);
     }
 
     // Add and count all the effect fluents.
@@ -207,18 +207,18 @@ ps_calcMaxVarOcc()
     // counted once per effect. In order to achieve that we will use another
     // set of fluents to accumulate the ground atoms, which we already
     // considered.
-    state_t effectSet = state_createEmptyFrom(probSpace);
+    trie_t effectSet = trie_createEmptyFrom(probSpace);
     for (int32_t idxE = 0; idxE < effect->numOfElems; ++idxE) {
       struct effectElem *effElem = &effect->elems[idxE];
       if (effElem->type == POS_LITERAL || effElem->type == NEG_LITERAL) {
         struct atom *atom = effElem->it.literal;
-        if (state_containsGr(effectSet, atom, grAct)) {
+        if (trie_containsGr(effectSet, atom, grAct)) {
           // This atomw as already considered.
           continue;
         }
-        state_addGr(effectSet, atom, grAct);
-        state_addGr(psClone, atom, grAct);
-        state_incCountGr(psClone, atom, grAct);
+        trie_addGr(effectSet, atom, grAct);
+        trie_addGr(psClone, atom, grAct);
+        trie_incCountGr(psClone, atom, grAct);
       } else {
         // We do not support conditional effects. However, the the data
         // structures from pddl31structs.h do support conditional effects.
@@ -226,20 +226,20 @@ ps_calcMaxVarOcc()
       }
     }
 
-    state_free(precondSet);
-    state_free(effectSet);
+    trie_free(precondSet);
+    trie_free(effectSet);
   }
   // Now all the variables should be counted. We just have to retrieve tha
   // maximum count from the psClone.
 
-  int32_t result = state_getMaxCount(psClone);
+  int32_t result = trie_getMaxCount(psClone);
 
-  state_free(psClone);
+  trie_free(psClone);
 
   return result;
 }
 
-state_t
+trie_t
 ps_getSingleton()
 {
   if (probSpace == NULL) {
@@ -253,16 +253,17 @@ ps_getSingleton()
 void
 ps_cleanup()
 {
-  state_free(probSpace);
-  utils_free_actionList(allGrActInSpace);
+  trie_free(probSpace);
   probSpace = NULL;
+  utils_free_actionList(allGrActInSpace);
+  allGrActInSpace = NULL;
 }
 
 // Checks the ground actions precondition. It only considers positive
 // precondtions. Returns true if they are all satisfied by the state, and false
 // otherwise.
 bool
-ps_satisfiesPosPrecondAtoms(state_t state, struct groundAction *grAct)
+ps_satisfiesPosPrecondAtoms(trie_t state, struct groundAction *grAct)
 {
   assert(grAct != NULL);
 
@@ -270,7 +271,7 @@ ps_satisfiesPosPrecondAtoms(state_t state, struct groundAction *grAct)
 
   for (int32_t i = 0; i < precond->numOfPos; ++i) {
     struct atom *atom = &precond->posLiterals[i];
-    if ( ! state_containsGr(state, atom, grAct)) {
+    if ( ! trie_containsGr(state, atom, grAct)) {
       return false;
     }
   }

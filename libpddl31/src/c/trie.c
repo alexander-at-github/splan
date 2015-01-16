@@ -1,5 +1,5 @@
 // Note: This module is not thread save. We use a global buffer to store
-// unused sNodes, in order to keep the number of systemcalls to malloc() and
+// unused tNodes, in order to keep the number of systemcalls to malloc() and
 // free() reasonable.
 
 #include <assert.h>
@@ -7,12 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "state.h"
+#include "trie.h"
 
 #include "libpddl31.h"
 
-// This state data structure is an adopted trie.
-struct st_state {
+// A trie data structure. It is mostly used as a state.
+struct st_trie {
 
   // A pointer to the coresponding domain.
   struct domain *domain;
@@ -21,7 +21,7 @@ struct st_state {
   // is, The pointers to all the predicates will be consecutive. We will use
   // that fact here.
 
-  // Array of sNode pointer. The length of the array is
+  // Array of tNode pointer. The length of the array is
   // domain->predManag->numOfPreds.
   // We will save that value here for later use.
   int32_t numOfChldrn;
@@ -33,15 +33,15 @@ struct st_state {
   // pointer arithmetic later on.
   struct predicate *predManagFirst;
 
-  // If the state does not have an atom with a certain predicate, then this
+  // If the trie does not contain an atom with a certain predicate, then this
   // pointer will be NULL. Otherwise it will have a child which will represent
   // (possible multiple) the atom (the predicate with its' terms).
-  struct sNode **chldrn;
+  struct tNode **chldrn;
 };
 
-struct sNode {
-  // A sNode contains an array of term-child pairs. If it does not contain
-  // a certain term, it means that this state does not contain the
+struct tNode {
+  // A tNode contains an array of term-child pairs. If it does not contain
+  // a certain term, it means that this trie does not contain the
   // coresponding atom.
   int32_t numOfChldrn;
   // Siyze of array alloced for children.
@@ -49,40 +49,38 @@ struct sNode {
 
   // This is an unordered array. TODO: It might be good to do an ordered
   // array.
-  struct sNodeArrE *chldrn;
+  struct tNodeArrE *chldrn;
 
   // A count variable. This variable will be used only on leaf nodes. It is
   // intended to be used to count the number of variable occurences in a
   // planning problem.
   // To include this data field here reduces the cohesion, which is not
-  // favourable. The count has actually nothing to do with the state itself.
+  // favourable. The count has actually nothing to do with the trie itself.
   // I will just do that, cause it is so much easier.
   int32_t count;
 };
 
-// Composition of term and sNode child.
-struct sNodeArrE {
+// Composition of term and tNode child.
+struct tNodeArrE {
   struct term *term; // However, this must be a constant.
-  struct sNode *chld;
+  struct tNode *chld;
 };
 
 
 
-struct sNodeBuffer {
+struct tNodeBuffer {
   int32_t numOfSNodes;
   int32_t numAlloced;
-  // An array of pointers to unused sNodes.
-  struct sNode **store;
+  // An array of pointers to unused tNodes.
+  struct tNode **store;
 };
 
-// A static global variable. It will hold a set of unused sNodes. When a new
-// sNode is needed, we will try to retrieve one from here. When a sNode is not
+// A static global variable. It will hold a set of unused tNodes. When a new
+// tNode is needed, we will try to retrieve one from here. When a tNode is not
 // needed anymore, we will put it here. In order to free the list with all its'
-// stored sNodes we need to call state_cleanupSNBuffer().
+// stored tNodes we need to call trie_cleanupSNBuffer().
 // Attention: This is not thread save.
-static struct sNodeBuffer *sNodeBuffer = NULL;
-
-
+static struct tNodeBuffer *tNodeBuffer = NULL;
 
 
 
@@ -113,128 +111,128 @@ calcBufferSize(int32_t oldSize)
 }
 
 void
-state_initSNBuffer()
+trie_initSNBuffer()
 {
-  if (sNodeBuffer != NULL) {
+  if (tNodeBuffer != NULL) {
     return;
   }
 
-  sNodeBuffer = malloc(sizeof(*sNodeBuffer));
-  sNodeBuffer->numOfSNodes = 0;
-  sNodeBuffer->numAlloced = calcBufferSize(0);
-  sNodeBuffer->store = malloc(sizeof(*sNodeBuffer->store) *
-                              sNodeBuffer->numAlloced);
+  tNodeBuffer = malloc(sizeof(*tNodeBuffer));
+  tNodeBuffer->numOfSNodes = 0;
+  tNodeBuffer->numAlloced = calcBufferSize(0);
+  tNodeBuffer->store = malloc(sizeof(*tNodeBuffer->store) *
+                              tNodeBuffer->numAlloced);
 }
 
 void
-snFreeShallow_aux(struct sNode *sNode)
+snFreeShallow_aux(struct tNode *tNode)
 {
-  if (sNode->chldrn != NULL) {
-    free(sNode->chldrn);
-    sNode->chldrn = NULL;
+  if (tNode->chldrn != NULL) {
+    free(tNode->chldrn);
+    tNode->chldrn = NULL;
   }
-  free(sNode);
+  free(tNode);
 }
 
 void
-state_cleanupSNBuffer()
+trie_cleanupSNBuffer()
 {
-  if (sNodeBuffer == NULL) {
+  if (tNodeBuffer == NULL) {
     return;
   }
-  if (sNodeBuffer->store != NULL) {
-    for (int32_t idx = 0; idx < sNodeBuffer->numOfSNodes; ++idx) {
-      snFreeShallow_aux(sNodeBuffer->store[idx]);
+  if (tNodeBuffer->store != NULL) {
+    for (int32_t idx = 0; idx < tNodeBuffer->numOfSNodes; ++idx) {
+      snFreeShallow_aux(tNodeBuffer->store[idx]);
     }
-    free(sNodeBuffer->store);
+    free(tNodeBuffer->store);
   }
-  free(sNodeBuffer);
+  free(tNodeBuffer);
 
   // Important to reset to NULL.
-  sNodeBuffer = NULL;
+  tNodeBuffer = NULL;
 }
 
-state_t
-state_createEmpty(struct domain *domain)
+trie_t
+trie_createEmpty(struct domain *domain)
 {
   // TODO: Check for correctness.
-  state_t state = malloc(sizeof(*state));
-  state->domain = domain;
-  state->numOfChldrn = domain->predManag->numOfPreds;
-  //printf("state_createEmpty(): state->numOfChldrn: %d\n", state->numOfChldrn); // DEBUG
-  state->predManagFirst = domain->predManag->preds;
-  state->chldrn = malloc(sizeof(*state->chldrn) * state->numOfChldrn);
-  for (int32_t i = 0; i < state->numOfChldrn; ++i) {
-    state->chldrn[i] = NULL;
+  trie_t trie = malloc(sizeof(*trie));
+  trie->domain = domain;
+  trie->numOfChldrn = domain->predManag->numOfPreds;
+  //printf("trie_createEmpty(): trie->numOfChldrn: %d\n", trie->numOfChldrn); // DEBUG
+  trie->predManagFirst = domain->predManag->preds;
+  trie->chldrn = malloc(sizeof(*trie->chldrn) * trie->numOfChldrn);
+  for (int32_t i = 0; i < trie->numOfChldrn; ++i) {
+    trie->chldrn[i] = NULL;
   }
 
-  state_initSNBuffer();
+  trie_initSNBuffer();
 
-  return state;
+  return trie;
 }
 
-state_t
-state_createEmptyFrom(state_t state)
+trie_t
+trie_createEmptyFrom(trie_t trie)
 {
-  return state_createEmpty(state->domain);
+  return trie_createEmpty(trie->domain);
 }
 
-state_t
-state_createFromLibpddl31(struct domain *domain, pANTLR3_LIST listOfAtoms)
+trie_t
+trie_createFromLibpddl31(struct domain *domain, pANTLR3_LIST listOfAtoms)
 {
-  state_t state = state_createEmpty(domain);
-  //printf("state_createFromLibpddl31(): listOfAtoms->size(): %d\n",
+  trie_t trie = trie_createEmpty(domain);
+  //printf("trie_createFromLibpddl31(): listOfAtoms->size(): %d\n",
   //       listOfAtoms->size(listOfAtoms)); // DEBUG
   //printf("\n"); // DEBUG
   for (int32_t i = 0; i < listOfAtoms->size(listOfAtoms); ++i) {
     // ANTLR3 list index starts from one.
     //libpddl31_atom_print(listOfAtoms->get(listOfAtoms, i+1)); // DEBUG
     //printf("\n"); // DEBUG
-    state_add(state, listOfAtoms->get(listOfAtoms, i+1));
+    trie_add(trie, listOfAtoms->get(listOfAtoms, i+1));
   }
-  //state_print(state); // DEBUG
-  return state;
+  //trie_print(trie); // DEBUG
+  return trie;
 }
 
 void
-sNodeBufferAdd_aux(struct sNode *sNode)
+tNodeBufferAdd_aux(struct tNode *tNode)
 {
-  //printf("sNodeBufferAdd_aux()\n"); // DEBUG
-  if (sNode == NULL) {
+  //printf("tNodeBufferAdd_aux()\n"); // DEBUG
+  if (tNode == NULL) {
     return;
   }
 
-  sNodeBuffer->numOfSNodes ++;
-  if (sNodeBuffer->numOfSNodes > sNodeBuffer->numAlloced) {
+  tNodeBuffer->numOfSNodes ++;
+  if (tNodeBuffer->numOfSNodes > tNodeBuffer->numAlloced) {
     //printf( "numOfSNodes: %d numAlloced: %d ",
-    //        sNodeBuffer->numOfSNodes,
-    //        sNodeBuffer->numAlloced); // DEBUG
-    sNodeBuffer->numAlloced = calcBufferSize(sNodeBuffer->numAlloced);
-    sNodeBuffer->store = realloc(sNodeBuffer->store,
-                      sizeof(*sNodeBuffer->store) * sNodeBuffer->numAlloced);
+    //        tNodeBuffer->numOfSNodes,
+    //        tNodeBuffer->numAlloced); // DEBUG
+    tNodeBuffer->numAlloced = calcBufferSize(tNodeBuffer->numAlloced);
+    tNodeBuffer->store = realloc(tNodeBuffer->store,
+                      sizeof(*tNodeBuffer->store) * tNodeBuffer->numAlloced);
     //printf( "NEW: numOfSNodes: %d numAlloced: %d\n",
-    //        sNodeBuffer->numOfSNodes,
-    //        sNodeBuffer->numAlloced); // DEBUG
+    //        tNodeBuffer->numOfSNodes,
+    //        tNodeBuffer->numAlloced); // DEBUG
   }
 
-  sNodeBuffer->store[sNodeBuffer->numOfSNodes - 1] = sNode;
+  tNodeBuffer->store[tNodeBuffer->numOfSNodes - 1] = tNode;
 }
 
-struct sNode *
+struct tNode *
 snGetOrCreate_aux()
 {
   //static int32_t counter = 0; // DEBUG
   //counter++; // DEBUG
   //printf("snGetOrCreate_aux(): %d\n", counter); // DEBUG
 
-  // Try to retrieve from sNodeBuffer.
-  assert (sNodeBuffer != NULL);
-  if (sNodeBuffer->numOfSNodes > 0) {
-    // Take a sNode from the sNodeBuffer.
-    sNodeBuffer->numOfSNodes --;
-    struct sNode *reusedSN = sNodeBuffer->store[sNodeBuffer->numOfSNodes];
-    sNodeBuffer->store[sNodeBuffer->numOfSNodes] = NULL;
-    // Set number of children and count of the sNode. We will not change the
+  // Try to retrieve from tNodeBuffer.
+  assert (tNodeBuffer != NULL);
+  if (tNodeBuffer->numOfSNodes > 0) {
+    // Take a tNode from the tNodeBuffer.
+    tNodeBuffer->numOfSNodes --;
+    struct tNode *reusedSN = tNodeBuffer->store[tNodeBuffer->numOfSNodes];
+    tNodeBuffer->store[tNodeBuffer->numOfSNodes] = NULL;
+    // Set number of children and count of the tNode. We will not change the
     // other values. Note: There still might be some pointers to other nodes.
     // Don't use them.
     reusedSN->numOfChldrn = 0;
@@ -242,8 +240,8 @@ snGetOrCreate_aux()
     return reusedSN;
   }
 
-  // Alloc and initialize new sNode.
-  struct sNode *result = malloc(sizeof(*result));
+  // Alloc and initialize new tNode.
+  struct tNode *result = malloc(sizeof(*result));
   result->numOfChldrn = 0;
   result->numAlloced = 0;
   result->chldrn = NULL;
@@ -252,33 +250,33 @@ snGetOrCreate_aux()
 }
 
 void
-snGrowArray_aux(struct sNode *sNode)
+snGrowArray_aux(struct tNode *tNode)
 {
-  //printf("snGrowArray_aux() sNode->numAlloced: %d ", sNode->numAlloced);
-  sNode->numAlloced = calcBufferSize(sNode->numAlloced);
-  //printf("NEW sNode->numAlloced: %d\n", sNode->numAlloced);
-  sNode->chldrn = realloc(sNode->chldrn,
-                          sizeof(*sNode->chldrn) * sNode->numAlloced);
+  //printf("snGrowArray_aux() tNode->numAlloced: %d ", tNode->numAlloced);
+  tNode->numAlloced = calcBufferSize(tNode->numAlloced);
+  //printf("NEW tNode->numAlloced: %d\n", tNode->numAlloced);
+  tNode->chldrn = realloc(tNode->chldrn,
+                          sizeof(*tNode->chldrn) * tNode->numAlloced);
 }
 
-struct sNode *
-snFindOrAdd_aux(struct sNode *sNode, struct term *term)
+struct tNode *
+snFindOrAdd_aux(struct tNode *tNode, struct term *term)
 {
   // Naive method.
-  for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
-    struct sNodeArrE *snae = &sNode->chldrn[idx];
+  for (int32_t idx = 0; idx < tNode->numOfChldrn; ++idx) {
+    struct tNodeArrE *snae = &tNode->chldrn[idx];
     if (libpddl31_term_equal(snae->term, term)) {
       return snae->chld;
     }
   }
-  // sNode does not contain term yet. Create it.
-  sNode->numOfChldrn ++;
+  // tNode does not contain term yet. Create it.
+  tNode->numOfChldrn ++;
 
-  if (sNode->numOfChldrn > sNode->numAlloced) {
-    snGrowArray_aux(sNode);
+  if (tNode->numOfChldrn > tNode->numAlloced) {
+    snGrowArray_aux(tNode);
   }
 
-  struct sNodeArrE *newSNodeArrE = &sNode->chldrn[sNode->numOfChldrn - 1];
+  struct tNodeArrE *newSNodeArrE = &tNode->chldrn[tNode->numOfChldrn - 1];
   newSNodeArrE->term = term;
   newSNodeArrE->chld = snGetOrCreate_aux();
 
@@ -286,7 +284,7 @@ snFindOrAdd_aux(struct sNode *sNode, struct term *term)
 }
 
 void
-state_addGr(state_t state, struct atom *atom, struct groundAction *grAct)
+trie_addGr(trie_t trie, struct atom *atom, struct groundAction *grAct)
 {
   // TODO: Remove that for performance reasons? All the types should be okay.
   /* First check the types before we change anything. */
@@ -314,13 +312,13 @@ state_addGr(state_t state, struct atom *atom, struct groundAction *grAct)
   // All types are okay.
   /* Apply the atom. */
 
-  // Pointer arithmetic. See struct st_state.
-  // A pointer into the states' array of predicates.
-  int32_t statePredIdx = atom->pred - state->predManagFirst;
-  if (state->chldrn[statePredIdx] == NULL) {
-    state->chldrn[statePredIdx] = snGetOrCreate_aux();
+  // Pointer arithmetic. See struct st_trie.
+  // A pointer into the tries' array of predicates.
+  int32_t triePredIdx = atom->pred - trie->predManagFirst;
+  if (trie->chldrn[triePredIdx] == NULL) {
+    trie->chldrn[triePredIdx] = snGetOrCreate_aux();
   }
-  struct sNode *currSN = state->chldrn[statePredIdx];
+  struct tNode *currSN = trie->chldrn[triePredIdx];
   for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
     struct term *termToAdd;
 
@@ -340,17 +338,17 @@ state_addGr(state_t state, struct atom *atom, struct groundAction *grAct)
 }
 
 void
-state_add(state_t state, struct atom *atom)
+trie_add(trie_t trie, struct atom *atom)
 {
   // TODO: Add type checks before you change anything!
 
-  // Pointer arithmetic. See struct st_state.
-  // A pointer into the states' array of predicates.
-  int32_t statePredIdx = atom->pred - state->predManagFirst;
-  if (state->chldrn[statePredIdx] == NULL) {
-    state->chldrn[statePredIdx] = snGetOrCreate_aux();
+  // Pointer arithmetic. See struct st_trie.
+  // A pointer into the tries' array of predicates.
+  int32_t triePredIdx = atom->pred - trie->predManagFirst;
+  if (trie->chldrn[triePredIdx] == NULL) {
+    trie->chldrn[triePredIdx] = snGetOrCreate_aux();
   }
-  struct sNode *currSN = state->chldrn[statePredIdx];
+  struct tNode *currSN = trie->chldrn[triePredIdx];
   for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
     struct term *atomTerm = atom->terms[idxTerm];
     currSN = snFindOrAdd_aux(currSN, atomTerm);
@@ -358,12 +356,12 @@ state_add(state_t state, struct atom *atom)
   }
 }
 
-struct sNodeArrE *
-snNextAe_aux(struct sNode *sNode, struct term *searchTerm)
+struct tNodeArrE *
+snNextAe_aux(struct tNode *tNode, struct term *searchTerm)
 {
   // Naive method.
-  for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
-    struct sNodeArrE *snae = &sNode->chldrn[idx];
+  for (int32_t idx = 0; idx < tNode->numOfChldrn; ++idx) {
+    struct tNodeArrE *snae = &tNode->chldrn[idx];
     if (libpddl31_term_equal(snae->term, searchTerm)) {
       return snae;
     }
@@ -372,12 +370,12 @@ snNextAe_aux(struct sNode *sNode, struct term *searchTerm)
 }
 
 bool
-state_containsGr(state_t state, struct atom *atom, struct groundAction *grAct)
+trie_containsGr(trie_t trie, struct atom *atom, struct groundAction *grAct)
 {
-  // Pointer arithmetic. See struct st_state.
-  // A pointer into the states' array of predicates.
-  int32_t statePredIdx = atom->pred - state->predManagFirst;
-  struct sNode *currSN = state->chldrn[statePredIdx];
+  // Pointer arithmetic. See struct st_trie.
+  // A pointer into the tries' array of predicates.
+  int32_t triePredIdx = atom->pred - trie->predManagFirst;
+  struct tNode *currSN = trie->chldrn[triePredIdx];
   if (currSN == NULL) {
     return false;
   }
@@ -395,11 +393,11 @@ state_containsGr(state_t state, struct atom *atom, struct groundAction *grAct)
       // Constant in action.
       atomTerm = atom->terms[idxTerm];
     }
-    struct sNodeArrE *snae = snNextAe_aux(currSN, atomTerm);
+    struct tNodeArrE *snae = snNextAe_aux(currSN, atomTerm);
     if (snae == NULL) {
       return false;
     }
-    struct sNode *nextSN = snae->chld;
+    struct tNode *nextSN = snae->chld;
     assert (nextSN != NULL);
     //if (nextSN == NULL) {
     //  return false;
@@ -418,12 +416,12 @@ state_containsGr(state_t state, struct atom *atom, struct groundAction *grAct)
 }
 
 bool
-state_contains(state_t state, struct atom *atom)
+trie_contains(trie_t trie, struct atom *atom)
 {
-  // Pointer arithmetic. See struct st_state.
-  // A pointer into the states' array of predicates.
-  int32_t statePredIdx = atom->pred - state->predManagFirst;
-  struct sNode *currSN = state->chldrn[statePredIdx];
+  // Pointer arithmetic. See struct st_trie.
+  // A pointer into the tries' array of predicates.
+  int32_t triePredIdx = atom->pred - trie->predManagFirst;
+  struct tNode *currSN = trie->chldrn[triePredIdx];
   if (currSN == NULL) {
     return false;
   }
@@ -431,11 +429,11 @@ state_contains(state_t state, struct atom *atom)
   for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
     assert (currSN != NULL);
     struct term *atomTerm = atom->terms[idxTerm];
-    struct sNodeArrE *snae = snNextAe_aux(currSN, atomTerm);
+    struct tNodeArrE *snae = snNextAe_aux(currSN, atomTerm);
     if (snae == NULL) {
       return false;
     }
-    struct sNode *nextSN = snae->chld;
+    struct tNode *nextSN = snae->chld;
     assert (nextSN != NULL);
     //if (nextSN == NULL) {
     //  return false;
@@ -453,52 +451,52 @@ state_contains(state_t state, struct atom *atom)
   return true;
 }
 
-// This function frees a sNode and its' children.
-void snFreeRec_aux(struct sNode *sNode)
+// This function frees a tNode and its' children.
+void snFreeRec_aux(struct tNode *tNode)
 {
   //static int32_t counter = 0; // DEBUG
   //counter++; // DEBUG
   //printf("snFreeRec_aux(): %d\n", counter); // DEBUG
 
-  for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
-    struct sNodeArrE *snae = &sNode->chldrn[idx];
+  for (int32_t idx = 0; idx < tNode->numOfChldrn; ++idx) {
+    struct tNodeArrE *snae = &tNode->chldrn[idx];
     snFreeRec_aux(snae->chld);
-    // No need to free snae. It is a array of struct sNodeArrE.
+    // No need to free snae. It is a array of struct tNodeArrE.
   }
-  snFreeShallow_aux(sNode);
+  snFreeShallow_aux(tNode);
 
 
-  /* if (sNode->numOfChldrn > 0) { */
-  /*   for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) { */
-  /*     struct sNodeArrE *snae = &sNode->chldrn[idx]; */
+  /* if (tNode->numOfChldrn > 0) { */
+  /*   for (int32_t idx = 0; idx < tNode->numOfChldrn; ++idx) { */
+  /*     struct tNodeArrE *snae = &tNode->chldrn[idx]; */
   /*     snFreeRec_aux(snae->chld); */
-  /*     // No need to free snae. It is a array of struct sNodeArrE. */
+  /*     // No need to free snae. It is a array of struct tNodeArrE. */
   /*   } */
-  /*   free(sNode->chldrn); */
+  /*   free(tNode->chldrn); */
   /* } else { */
-  /*   assert (sNode->chldrn == NULL); */
+  /*   assert (tNode->chldrn == NULL); */
   /* } */
-  /* free(sNode); */
+  /* free(tNode); */
 }
 
 // A recursive function.
 // Returns true if it did remove something.
 bool
-snRemove_aux(struct sNode *sNode, struct atom *atom, int32_t depth)
+snRemove_aux(struct tNode *tNode, struct atom *atom, int32_t depth)
 {
   if (depth > atom->pred->numOfParams) {
     // This is a sever error.
     assert (false);
-    fprintf(stderr, "ERROR in state_remove()\n");
+    fprintf(stderr, "ERROR in trie_remove()\n");
     return false;
   }
 
-  if (sNode->numOfChldrn > 0) {
+  if (tNode->numOfChldrn > 0) {
     assert (depth < atom->pred->numOfParams);
 
-    struct sNodeArrE *snaeNext = snNextAe_aux(sNode, atom->terms[depth]);
+    struct tNodeArrE *snaeNext = snNextAe_aux(tNode, atom->terms[depth]);
     if (snaeNext == NULL) {
-      // Term does not exist. I.e., this atom is not in this state.
+      // Term does not exist. I.e., this atom is not in this trie.
       return false;
     }
 
@@ -510,22 +508,22 @@ snRemove_aux(struct sNode *sNode, struct atom *atom, int32_t depth)
     // Remove child node, if it is not needed anymore.
     // We do that here, so we can also remove the child node after the first
     // call of this recursive funtion (after the call
-    // snRemove_aux(sNode,atom,0).
-    // We do not free the node, but move it to the sNodeBuffer for reuse.
+    // snRemove_aux(tNode,atom,0).
+    // We do not free the node, but move it to the tNodeBuffer for reuse.
     if (snaeNext->chld->numOfChldrn <= 0) {
 
-      // Move the sNode into the sNodeBuffer for later reuse. Do not free it.
-      sNodeBufferAdd_aux(snaeNext->chld);
+      // Move the tNode into the tNodeBuffer for later reuse. Do not free it.
+      tNodeBufferAdd_aux(snaeNext->chld);
 
       snaeNext->chld = NULL;
 
       // Remove child reference from this nodes' array.
       // Pointer arithmetic.
-      int32_t idxSNodeArr = snaeNext - sNode->chldrn;
+      int32_t idxSNodeArr = snaeNext - tNode->chldrn;
       memmove(snaeNext,
               snaeNext + 1,
-              (sNode->numOfChldrn - idxSNodeArr - 1) * sizeof(*snaeNext));
-      sNode->numOfChldrn --;
+              (tNode->numOfChldrn - idxSNodeArr - 1) * sizeof(*snaeNext));
+      tNode->numOfChldrn --;
     }
 
   } else {
@@ -536,8 +534,8 @@ snRemove_aux(struct sNode *sNode, struct atom *atom, int32_t depth)
   return true;
 }
 
-state_t
-state_removeGr(state_t state, struct atom *atom, struct groundAction *grAct)
+trie_t
+trie_removeGr(trie_t trie, struct atom *atom, struct groundAction *grAct)
 {
   // TODO: improve that.
 
@@ -558,7 +556,7 @@ state_removeGr(state_t state, struct atom *atom, struct groundAction *grAct)
     }
   }
 
-  state_t result = state_remove(state, groundAtom);
+  trie_t result = trie_remove(trie, groundAtom);
 
   libpddl31_atom_free(groundAtom);
   free(groundAtom);
@@ -566,78 +564,78 @@ state_removeGr(state_t state, struct atom *atom, struct groundAction *grAct)
   return result;
 }
 
-state_t
-state_remove(state_t state, struct atom *atom)
+trie_t
+trie_remove(trie_t trie, struct atom *atom)
 {
-  // Pointer arithmetic. See struct st_state.
-  // A pointer into the states' array of predicates.
-  int32_t statePredIdx = atom->pred - state->predManagFirst;
-  struct sNode *currSN = state->chldrn[statePredIdx];
+  // Pointer arithmetic. See struct st_trie.
+  // A pointer into the tries' array of predicates.
+  int32_t triePredIdx = atom->pred - trie->predManagFirst;
+  struct tNode *currSN = trie->chldrn[triePredIdx];
   if (currSN == NULL) {
     // Nothing to do.
-    return state;
+    return trie;
   }
   (void) snRemove_aux(currSN, atom, 0);
-  // Free sNode if it is not needed anymore.
+  // Free tNode if it is not needed anymore.
   if (currSN->numOfChldrn <= 0) {
 
-    // Move the sNode into the sNodeBuffer for later reuse. Do not free it.
-    sNodeBufferAdd_aux(currSN);
+    // Move the tNode into the tNodeBuffer for later reuse. Do not free it.
+    tNodeBufferAdd_aux(currSN);
 
-    state->chldrn[statePredIdx] = NULL;
+    trie->chldrn[triePredIdx] = NULL;
   }
-  return state;
+  return trie;
 }
 
-void sNodeBufferAddRec_aux(struct sNode *sNode)
+void tNodeBufferAddRec_aux(struct tNode *tNode)
 {
-  for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
-    sNodeBufferAddRec_aux(sNode->chldrn[idx].chld);
+  for (int32_t idx = 0; idx < tNode->numOfChldrn; ++idx) {
+    tNodeBufferAddRec_aux(tNode->chldrn[idx].chld);
   }
-  sNodeBufferAdd_aux(sNode);
+  tNodeBufferAdd_aux(tNode);
 }
 
 void
-state_empty(state_t state)
+trie_empty(trie_t trie)
 {
   for (int32_t idxSt = 0;
-       idxSt < state->numOfChldrn;
+       idxSt < trie->numOfChldrn;
        ++idxSt) {
 
-    if (state->chldrn[idxSt] == NULL) {
+    if (trie->chldrn[idxSt] == NULL) {
       continue;
     }
-    if (sNodeBuffer != NULL) {
-      // Move all the sNodes into the sNodeBuffer.
-      sNodeBufferAddRec_aux(state->chldrn[idxSt]);
+    if (tNodeBuffer != NULL) {
+      // Move all the tNodes into the tNodeBuffer.
+      tNodeBufferAddRec_aux(trie->chldrn[idxSt]);
     } else {
-      snFreeRec_aux(state->chldrn[idxSt]);
+      snFreeRec_aux(trie->chldrn[idxSt]);
     }
-    state->chldrn[idxSt] = NULL;
+    trie->chldrn[idxSt] = NULL;
   }
 }
 
 void
-state_free(state_t state)
+trie_free(trie_t trie)
 {
-  if (state == NULL) {
+  if (trie == NULL) {
     return;
   }
 
-  state_empty(state);
+  trie_empty(trie);
 
-  free(state->chldrn);
-  free(state);
+  free(trie->chldrn);
+  free(trie);
 }
 
-struct sNode *
-snClone_aux(struct sNode *sn)
+struct tNode *
+snClone_aux(struct tNode *sn)
 {
   //static int32_t counter = 0; // DEBUG
   //counter++; // DEBUG
   //printf("snClone_aux(): %d\n", counter); // DEBUG
 
-  struct sNode *result = snGetOrCreate_aux();
+  struct tNode *result = snGetOrCreate_aux();
   result->numOfChldrn = sn->numOfChldrn;
   while (result->numOfChldrn > result->numAlloced) {
     snGrowArray_aux(result);
@@ -656,34 +654,34 @@ snClone_aux(struct sNode *sn)
   return result;
 }
 
-state_t
-state_clone(state_t state)
+trie_t
+trie_clone(trie_t trie)
 {
-  if (state == NULL) {
+  if (trie == NULL) {
     return NULL;
   }
 
-  state_t result = state_createEmpty(state->domain);
-  for (int32_t idx = 0; idx < state->numOfChldrn; ++idx) {
-    if (state->chldrn[idx] == NULL) {
+  trie_t result = trie_createEmpty(trie->domain);
+  for (int32_t idx = 0; idx < trie->numOfChldrn; ++idx) {
+    if (trie->chldrn[idx] == NULL) {
       continue;
     }
-    result->chldrn[idx] = snClone_aux(state->chldrn[idx]);
+    result->chldrn[idx] = snClone_aux(trie->chldrn[idx]);
   }
   return result;
 }
 
 void
-state_print_aux(char *nameAcc, int32_t nameAccLen, struct sNode *sNode)
+trie_print_aux(char *nameAcc, int32_t nameAccLen, struct tNode *tNode)
 {
-  assert (sNode != NULL);
-  if (sNode->numOfChldrn == 0) {
+  assert (tNode != NULL);
+  if (tNode->numOfChldrn == 0) {
     printf(" (%s)", nameAcc);
     return;
   }
 
-  for (int32_t idx = 0; idx < sNode->numOfChldrn; ++idx) {
-    struct sNodeArrE *snae = &sNode->chldrn[idx];
+  for (int32_t idx = 0; idx < tNode->numOfChldrn; ++idx) {
+    struct tNodeArrE *snae = &tNode->chldrn[idx];
 
     int32_t snaeTermNameLen = strlen(snae->term->name);
     // Adding +1 for the delimiter
@@ -697,67 +695,67 @@ state_print_aux(char *nameAcc, int32_t nameAccLen, struct sNode *sNode)
     strncpy(nameAccNew + nameAccLen + 1, snae->term->name, snaeTermNameLen);
     nameAccNew[nameAccLenNew] = '\0';
 
-    state_print_aux(nameAccNew, nameAccLenNew, snae->chld);
+    trie_print_aux(nameAccNew, nameAccLenNew, snae->chld);
 
     free(nameAccNew);
   }
 }
 
 void
-state_print(state_t state)
+trie_print(trie_t trie)
 {
-  //printf("state_print(): state->numOfChldrn: %d\n", state->numOfChldrn); // DEBUG
-  printf("(State");
-  for (int32_t idx = 0; idx < state->numOfChldrn; ++idx) {
-    struct sNode *sNode = state->chldrn[idx];
-    if (sNode == NULL) {
+  //printf("trie_print(): trie->numOfChldrn: %d\n", trie->numOfChldrn); // DEBUG
+  printf("(trie");
+  for (int32_t idx = 0; idx < trie->numOfChldrn; ++idx) {
+    struct tNode *tNode = trie->chldrn[idx];
+    if (tNode == NULL) {
       continue;
     }
     // Pointer arithmetic.
-    struct predicate *pred = state->predManagFirst + idx;
-    state_print_aux(pred->name, strlen(pred->name), sNode);
+    struct predicate *pred = trie->predManagFirst + idx;
+    trie_print_aux(pred->name, strlen(pred->name), tNode);
   }
   printf(")");
 }
 
 void
-state_setCountRec_aux(struct sNode *sNode, int32_t num)
+trie_setCountRec_aux(struct tNode *tNode, int32_t num)
 {
-  sNode->count = num;
-  for (int32_t idxC = 0; idxC < sNode->numOfChldrn; ++idxC) {
-    state_setCountRec_aux(sNode->chldrn[idxC].chld, num);
+  tNode->count = num;
+  for (int32_t idxC = 0; idxC < tNode->numOfChldrn; ++idxC) {
+    trie_setCountRec_aux(tNode->chldrn[idxC].chld, num);
   }
 }
 
 void
-state_setCount(state_t state, int32_t num)
+trie_setCount(trie_t trie, int32_t num)
 {
-  for (int32_t idxP = 0; idxP < state->numOfChldrn; ++idxP) {
-    struct sNode *sn = state->chldrn[idxP];
+  for (int32_t idxP = 0; idxP < trie->numOfChldrn; ++idxP) {
+    struct tNode *sn = trie->chldrn[idxP];
     if (sn == NULL) {
       continue;
     }
-    state_setCountRec_aux(sn, num);
+    trie_setCountRec_aux(sn, num);
   }
 }
 
 // Returns true if it did increase count. Returns false otherwise (when the
 // atom is not in the set of fluents).
 bool
-state_incCountGr(state_t state, struct atom *atom, struct groundAction *grAct)
+trie_incCountGr(trie_t trie, struct atom *atom, struct groundAction *grAct)
 {
-  //printf("state_incCountGr(): "); // DEBUG
+  //printf("trie_incCountGr(): "); // DEBUG
   //libpddl31_atom_print(atom); // DEBUG
   //printf("%s %s\n", grAct->terms[0]->name, grAct->terms[1]->name); // DEBUG
 
 
-  // Pointer arithmetic. See struct st_state.
-  // A pointer into the states' array of predicates.
-  int32_t statePredIdx = atom->pred - state->predManagFirst;
-  if (state->chldrn[statePredIdx] == NULL) {
+  // Pointer arithmetic. See struct st_trie.
+  // A pointer into the tries' array of predicates.
+  int32_t triePredIdx = atom->pred - trie->predManagFirst;
+  if (trie->chldrn[triePredIdx] == NULL) {
     return false;
   }
-  struct sNode *currSN = state->chldrn[statePredIdx];
+  struct tNode *currSN = trie->chldrn[triePredIdx];
   for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
       struct term *atomTerm;
 
@@ -771,11 +769,11 @@ state_incCountGr(state_t state, struct atom *atom, struct groundAction *grAct)
         atomTerm = atom->terms[idxTerm];
     }
 
-    struct sNodeArrE *snae = snNextAe_aux(currSN, atomTerm);
+    struct tNodeArrE *snae = snNextAe_aux(currSN, atomTerm);
     if (snae == NULL) {
       return false;
     }
-    struct sNode *nextSN = snae->chld;
+    struct tNode *nextSN = snae->chld;
     assert (nextSN != NULL);
     currSN = nextSN;
   }
@@ -792,19 +790,19 @@ state_incCountGr(state_t state, struct atom *atom, struct groundAction *grAct)
 }
 
 int32_t
-state_getMaxCountRec_aux(struct sNode *sNode)
+trie_getMaxCountRec_aux(struct tNode *tNode)
 {
-  if (sNode->numOfChldrn == 0) {
+  if (tNode->numOfChldrn == 0) {
     // It is ia leaf node.
-    return sNode->count;
+    return tNode->count;
   }
   int32_t max = 0;
-  for (int32_t idxC = 0; idxC < sNode->numOfChldrn; ++idxC) {
-    int32_t subTreeMax = state_getMaxCountRec_aux(sNode->chldrn[idxC].chld);
+  for (int32_t idxC = 0; idxC < tNode->numOfChldrn; ++idxC) {
+    int32_t subTreeMax = trie_getMaxCountRec_aux(tNode->chldrn[idxC].chld);
     if (subTreeMax > max) {
-      //printf("state_getMaxCountRec_aux() new max: %d, term: %s\n",
+      //printf("trie_getMaxCountRec_aux() new max: %d, term: %s\n",
       //       subTreeMax,
-      //       sNode->chldrn[idxC].term->name); // DEBUG
+      //       tNode->chldrn[idxC].term->name); // DEBUG
       max = subTreeMax;
     }
   }
@@ -812,16 +810,16 @@ state_getMaxCountRec_aux(struct sNode *sNode)
 }
 
 int32_t
-state_getMaxCount(state_t state)
+trie_getMaxCount(trie_t trie)
 {
   int32_t max = 0;
 
-  for (int32_t idxP = 0; idxP < state->numOfChldrn; ++idxP) {
-    struct sNode *currSN = state->chldrn[idxP];
+  for (int32_t idxP = 0; idxP < trie->numOfChldrn; ++idxP) {
+    struct tNode *currSN = trie->chldrn[idxP];
     if (currSN == NULL) {
       continue;
     }
-    int32_t subTreeMax = state_getMaxCountRec_aux(currSN);
+    int32_t subTreeMax = trie_getMaxCountRec_aux(currSN);
     if (subTreeMax > max) {
       max = subTreeMax;
     }

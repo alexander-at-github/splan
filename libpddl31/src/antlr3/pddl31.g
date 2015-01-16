@@ -21,7 +21,7 @@ import pddl31core;
     #include "objManag.h"
     #include "predManag.h"
     #include "actionManag.h"
-    #include "state.h"
+    #include "trie.h"
     #include "typeSystem.h"
 
     // Size of lists when initialized
@@ -1066,7 +1066,7 @@ objectDeclaration returns [int32_t value_num, struct term **value]
       }
     ;
 
-init[struct domain *domain] returns [state_t value]
+init[struct domain *domain] returns [trie_t value]
 @init {
     pANTLR3_LIST init_list = antlr3ListNew(LIST_SIZE_INIT);
 }
@@ -1089,7 +1089,7 @@ init[struct domain *domain] returns [state_t value]
                           }
                   )* ')'
         {
-        $value = state_createFromLibpddl31($domain, init_list);
+        $value = trie_createFromLibpddl31($domain, init_list);
         }
     ;
 

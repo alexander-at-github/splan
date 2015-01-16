@@ -1,6 +1,6 @@
 CC=gcc #clang
 
-CFLAGS=-D_DEFAULT_SOURCE -std=c11 -O3 #-g -pg -O3 -DNDEBUG #-g # turns off assertions
+CFLAGS=-D_DEFAULT_SOURCE -std=c11 -O3 -g #-g -pg -O3 -DNDEBUG #-g # turns off assertions
 
 SRC_DIR=src
 BUILD_DIR=build
@@ -58,5 +58,5 @@ bin/test_utils : test/utils.c src/utils.c $(LIB_PDDL31) $(BIN_DIR)
 #bin/test_state: test/state.c src/state.c src/utils.c $(LIB_PDDL31) $(BIN_DIR)
 #	$(CC) $(CFLAGS) -o $@ -I$(SRC_DIR) -I$(TOOL_DIR) -I$(LIB_PDDL31_BIN_DIR) test/state.c src/state.c src/utils.c $(LIB_PDDL31) -l$(ANTLR3.4_C_RUNTIME)
 
-bin/test_planner: test/planner.c src/planner.c src/utils.c $(LIB_PDDL31) $(BIN_DIR)
-	$(CC) $(CFLAGS) -o $@ -I$(SRC_DIR) -I$(TOOL_DIR) -I$(LIB_PDDL31_BIN_DIR) test/planner.c src/planner.c src/utils.c $(LIB_PDDL31) -l$(ANTLR3.4_C_RUNTIME)
+bin/test_planner: test/planner.c src/planner.c src/utils.c src/probSpace.c $(LIB_PDDL31) $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ -I$(SRC_DIR) -I$(TOOL_DIR) -I$(LIB_PDDL31_BIN_DIR) test/planner.c src/planner.c src/utils.c src/probSpace.c $(LIB_PDDL31) -l$(ANTLR3.4_C_RUNTIME)
