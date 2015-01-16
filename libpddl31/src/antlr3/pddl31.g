@@ -525,10 +525,12 @@ requireKey returns [enum requirement *value]
 //    | ':existential-preconditions'
 //    | ':universal-preconditions'
 //    | ':quantified-preconditions'
-    | ':conditional-effects'
-      {
-      *$value = CONDITIONAL_EFFECTS;
-      }
+
+//    | ':conditional-effects'
+//      {
+//      *$value = CONDITIONAL_EFFECTS;
+//      }
+      
 //    | ':fluents'
 //    | ':numeric-fluents'
 //    | ':adl'

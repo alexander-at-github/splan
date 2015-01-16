@@ -747,8 +747,10 @@ planner_solveProblem_aux_v2(struct problem *problem,
   //printf("\n"); // DEBUG
 
   struct actionList *actsToFixGap = planner_getActsToFixGap(problem, gap);
-  //printf("actsToFixGap.length: %d\n",
-  //       utils_actionList_length(actsToFixGap)); //DEBUG
+  //if ( depth == 4) {
+  //  printf("actsToFixGap.length: %d\n",
+  //         utils_actionList_length(actsToFixGap)); //DEBUG
+  //}
   //utils_print_actionList(actsToFixGap); // DEBUG
   //printf("\n"); // DEBUG
   if (actsToFixGap == NULL) {
@@ -869,6 +871,7 @@ planner_iterativeDeepeningSearch_v2(struct problem *problem)
   printf("Problem Universe: "); // DEBUG
   state_print(pu_getSingleton()); // DEBUG
   printf("\n"); // DEBUG
+  printf("variable occurance: %d\n", pu_calcMaxVarOcc());
 
   for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
     printf("\n### depth search with depth %d\n\n", depth); // DEBUG

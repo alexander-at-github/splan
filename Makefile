@@ -1,6 +1,6 @@
 CC=gcc #clang
 
-CFLAGS=-D_DEFAULT_SOURCE -std=c11 #-g -pg -O3 -DNDEBUG #-g # turns off assertions
+CFLAGS=-D_DEFAULT_SOURCE -std=c11 -O3 #-g -pg -O3 -DNDEBUG #-g # turns off assertions
 
 SRC_DIR=src
 BUILD_DIR=build

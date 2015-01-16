@@ -66,8 +66,8 @@ OPEN QUESTIONS
 TODO:
 * Turn off assertions for time measurments.
 * Put return value and function name on separate lines.
-* Refactor struct state such that it consists of an array of pointers to
-  fluents.
+* Parser: type -> (either type+) . Should I still do that?
+* Remove requirement :conditional-effect from parser
 
 NOTES:
 * Testrun for test_instances/openstacks-strips/p01.pddl with searchdepth 4 took

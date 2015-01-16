@@ -50,6 +50,14 @@ struct sNode {
   // This is an unordered array. TODO: It might be good to do an ordered
   // array.
   struct sNodeArrE *chldrn;
+
+  // A count variable. This variable will be used only on leaf nodes. It is
+  // intended to be used to count the number of variable occurences in a
+  // planning problem.
+  // To include this data field here reduces the cohesion, which is not
+  // favourable. The count has actually nothing to do with the state itself.
+  // I will just do that, cause it is so much easier.
+  int32_t count;
 };
 
 // Composition of term and sNode child.
@@ -146,7 +154,6 @@ state_cleanupSNBuffer()
   sNodeBuffer = NULL;
 }
 
-
 state_t
 state_createEmpty(struct domain *domain)
 {
@@ -164,6 +171,12 @@ state_createEmpty(struct domain *domain)
   state_initSNBuffer();
 
   return state;
+}
+
+state_t
+state_createEmptyFrom(state_t state)
+{
+  return state_createEmpty(state->domain);
 }
 
 state_t
@@ -221,17 +234,20 @@ snGetOrCreate_aux()
     sNodeBuffer->numOfSNodes --;
     struct sNode *reusedSN = sNodeBuffer->store[sNodeBuffer->numOfSNodes];
     sNodeBuffer->store[sNodeBuffer->numOfSNodes] = NULL;
-    // Set children count of the sNode. We will not change the other
-    // values. Note: There still might be some pointers to other nodes.
+    // Set number of children and count of the sNode. We will not change the
+    // other values. Note: There still might be some pointers to other nodes.
     // Don't use them.
     reusedSN->numOfChldrn = 0;
+    reusedSN->count = 0;
     return reusedSN;
   }
 
+  // Alloc and initialize new sNode.
   struct sNode *result = malloc(sizeof(*result));
   result->numOfChldrn = 0;
   result->numAlloced = 0;
   result->chldrn = NULL;
+  result->count = 0;
   return result;
 }
 
@@ -640,8 +656,6 @@ snClone_aux(struct sNode *sn)
   return result;
 }
 
-  // TODO:continue here.
-
 state_t
 state_clone(state_t state)
 {
@@ -704,4 +718,114 @@ state_print(state_t state)
     state_print_aux(pred->name, strlen(pred->name), sNode);
   }
   printf(")");
+}
+
+void
+state_setCountRec_aux(struct sNode *sNode, int32_t num)
+{
+  sNode->count = num;
+  for (int32_t idxC = 0; idxC < sNode->numOfChldrn; ++idxC) {
+    state_setCountRec_aux(sNode->chldrn[idxC].chld, num);
+  }
+}
+
+void
+state_setCount(state_t state, int32_t num)
+{
+  for (int32_t idxP = 0; idxP < state->numOfChldrn; ++idxP) {
+    struct sNode *sn = state->chldrn[idxP];
+    if (sn == NULL) {
+      continue;
+    }
+    state_setCountRec_aux(sn, num);
+  }
+}
+
+// Returns true if it did increase count. Returns false otherwise (when the
+// atom is not in the set of fluents).
+bool
+state_incCountGr(state_t state, struct atom *atom, struct groundAction *grAct)
+{
+  //printf("state_incCountGr(): "); // DEBUG
+  //libpddl31_atom_print(atom); // DEBUG
+  //printf("%s %s\n", grAct->terms[0]->name, grAct->terms[1]->name); // DEBUG
+
+
+  // Pointer arithmetic. See struct st_state.
+  // A pointer into the states' array of predicates.
+  int32_t statePredIdx = atom->pred - state->predManagFirst;
+  if (state->chldrn[statePredIdx] == NULL) {
+    return false;
+  }
+  struct sNode *currSN = state->chldrn[statePredIdx];
+  for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
+      struct term *atomTerm;
+
+      // Pointer arithmetic of ground action.
+      int32_t idxGrounding = atom->terms[idxTerm] - grAct->action->params;
+      if (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams) {
+        // We are dealing with a grounding.
+        atomTerm = grAct->terms[idxGrounding];
+      } else {
+        // We are dealing with a constant.
+        atomTerm = atom->terms[idxTerm];
+    }
+
+    struct sNodeArrE *snae = snNextAe_aux(currSN, atomTerm);
+    if (snae == NULL) {
+      return false;
+    }
+    struct sNode *nextSN = snae->chld;
+    assert (nextSN != NULL);
+    currSN = nextSN;
+  }
+
+  // This predicate can not have any further terms as arguments. I.e., it's a
+  // leave node.
+  assert (currSN->numOfChldrn == 0);
+
+  // Leaf node found. The purpose of this function is to increment the leaf
+  // nodes counter.
+  currSN->count++;
+
+  return true;
+}
+
+int32_t
+state_getMaxCountRec_aux(struct sNode *sNode)
+{
+  if (sNode->numOfChldrn == 0) {
+    // It is ia leaf node.
+    return sNode->count;
+  }
+  int32_t max = 0;
+  for (int32_t idxC = 0; idxC < sNode->numOfChldrn; ++idxC) {
+    int32_t subTreeMax = state_getMaxCountRec_aux(sNode->chldrn[idxC].chld);
+    if (subTreeMax > max) {
+      //printf("state_getMaxCountRec_aux() new max: %d, term: %s\n",
+      //       subTreeMax,
+      //       sNode->chldrn[idxC].term->name); // DEBUG
+      max = subTreeMax;
+    }
+  }
+  return max;
+}
+
+int32_t
+state_getMaxCount(state_t state)
+{
+  int32_t max = 0;
+
+  for (int32_t idxP = 0; idxP < state->numOfChldrn; ++idxP) {
+    struct sNode *currSN = state->chldrn[idxP];
+    if (currSN == NULL) {
+      continue;
+    }
+    int32_t subTreeMax = state_getMaxCountRec_aux(currSN);
+    if (subTreeMax > max) {
+      max = subTreeMax;
+    }
+  }
+
+  return max;
 }
