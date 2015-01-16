@@ -64,6 +64,7 @@ OPEN QUESTIONS
   I chose second option for now.
 
 TODO:
+* Improve tries tNodes, so it does not have to search for children.
 * Turn off assertions for time measurments.
 * Put return value and function name on separate lines.
 * Parser: type -> (either type+) . Should I still do that?
