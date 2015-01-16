@@ -1,21 +1,21 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "probUniv.h"
+#include "probSpace.h"
 
 #include "planner.h"
 #include "state.h"
 #include "utils.h"
 
-// Problem Universe. That is a state, which is an union of all possible
+// Problem Space. That is a state, which is an union of all possible
 // states in the problem instance.
-static state_t probUniv = NULL;
-struct actionList *allGrActInUniv = NULL;
+static state_t probSpace = NULL;
+struct actionList *allGrActInSpace = NULL;
 
 
 // Returns true if it did add an atom to the state, false otherwise.
 bool
-pu_applyEffElem(state_t state,
+ps_applyEffElem(state_t state,
                 struct groundAction *grAct,
                 struct effectElem *effElem)
 {
@@ -62,7 +62,7 @@ pu_applyEffElem(state_t state,
 // This function returns false, if it did not change the state, and true
 // otherwise.
 bool
-pu_apply(state_t state, struct groundAction *grAct)
+ps_apply(state_t state, struct groundAction *grAct)
 {
   assert (state != NULL);
   assert (grAct != NULL);
@@ -74,7 +74,7 @@ pu_apply(state_t state, struct groundAction *grAct)
 
   for (int32_t idx = 0; idx < effCurr->numOfElems; ++idx) {
     struct effectElem *effElem = &effCurr->elems[idx];
-    bool locVal = pu_applyEffElem(state, grAct, effElem);
+    bool locVal = ps_applyEffElem(state, grAct, effElem);
     if (locVal) {
       val = true;
     }
@@ -84,10 +84,10 @@ pu_apply(state_t state, struct groundAction *grAct)
 }
 
 void
-pu_init(struct problem *problem)
+ps_init(struct problem *problem)
 {
-  // Initialize problem universe with initial state of problem.
-  probUniv = state_clone(problem->init);
+  // Initialize problem space with initial state of problem.
+  probSpace = state_clone(problem->init);
 
   struct actionManag *actionManag = problem->domain->actionManag;
 
@@ -109,7 +109,7 @@ pu_init(struct problem *problem)
                                                             allActions);
   utils_free_actionList(allActions);
 
-  // Apply all the action effects to the problem universe (which still equals
+  // Apply all the action effects to the problem space(which still equals
   // the initial state), until it reaches a fix point, that is, until it
   // does not change anymore.
   bool done = false;
@@ -121,9 +121,9 @@ pu_init(struct problem *problem)
 
       struct groundAction *grAct = actL->act;
 
-      struct literal *isSatisfied = planner_satisfiesPrecond(probUniv, grAct);
+      struct literal *isSatisfied = planner_satisfiesPrecond(probSpace, grAct);
       if (isSatisfied == NULL) {
-        bool change = pu_apply(probUniv, grAct);
+        bool change = ps_apply(probSpace, grAct);
         if (change && done) {
           done = false;
         }
@@ -133,13 +133,13 @@ pu_init(struct problem *problem)
     }
   }
 
-  allGrActInUniv = pu_filter(allGroundActions);
+  allGrActInSpace = ps_filter(allGroundActions);
   // Don't free allGroundActions, because it just has been reduced to
-  // allGrActInUniv by the previous call. All the unneccessary elements
+  // allGrActInSpace by the previous call. All the unneccessary elements
   // have been freed by that call, too.
   
   printf("all ground actions in problem space:\n");
-  utils_print_actionList(allGrActInUniv);
+  utils_print_actionList(allGrActInSpace);
   printf("\n");
 }
 
@@ -151,18 +151,17 @@ pu_init(struct problem *problem)
 //  The number of occurrences of a variable v ∈ V is defined as
 //  Sum_a∈A (occ v (pre(a)) + occ v (eff(a))).i"
 int32_t
-pu_calcMaxVarOcc()
+ps_calcMaxVarOcc()
 {
-  // The whole function will only work on a copy of the problem universe.
+  // The whole function will only work on a copy of the problem space.
   // Later this copy might be used for more things, like an index onto the
-  // actionsused for more things, like an index onto the
   // actions.
-  state_t puClone = state_clone(probUniv);
+  state_t psClone = state_clone(probSpace);
 
   // Set occurrance count to zero.
-  state_setCount(puClone, 0);
+  state_setCount(psClone, 0);
 
-  for (struct actionList *currLE = allGrActInUniv;
+  for (struct actionList *currLE = allGrActInSpace;
        currLE != NULL;
        currLE = currLE->next) {
 
@@ -176,7 +175,7 @@ pu_calcMaxVarOcc()
     // be only counted once per precodition. In order to achieve that
     // we will use another set of fluents to accumulate the ground atoms,
     // which we already considered.
-    state_t precondSet = state_createEmptyFrom(probUniv);
+    state_t precondSet = state_createEmptyFrom(probSpace);
     // Add and count all the positive precondition fluents.
     for (int32_t idxPP = 0; idxPP < precond->numOfPos; ++idxPP) {
       struct atom *atom = &precond->posLiterals[idxPP];
@@ -185,8 +184,8 @@ pu_calcMaxVarOcc()
         continue;
       }
       state_addGr(precondSet, atom, grAct);
-      state_addGr(puClone, atom, grAct);
-      state_incCountGr(puClone, atom, grAct);
+      state_addGr(psClone, atom, grAct);
+      state_incCountGr(psClone, atom, grAct);
     }
 
     // Add and count all the negative precondition fluents.
@@ -198,8 +197,8 @@ pu_calcMaxVarOcc()
         continue;
       }
       state_addGr(precondSet, atom, grAct);
-      state_addGr(puClone, atom, grAct);
-      state_incCountGr(puClone, atom, grAct);
+      state_addGr(psClone, atom, grAct);
+      state_incCountGr(psClone, atom, grAct);
     }
 
     // Add and count all the effect fluents.
@@ -208,7 +207,7 @@ pu_calcMaxVarOcc()
     // counted once per effect. In order to achieve that we will use another
     // set of fluents to accumulate the ground atoms, which we already
     // considered.
-    state_t effectSet = state_createEmptyFrom(probUniv);
+    state_t effectSet = state_createEmptyFrom(probSpace);
     for (int32_t idxE = 0; idxE < effect->numOfElems; ++idxE) {
       struct effectElem *effElem = &effect->elems[idxE];
       if (effElem->type == POS_LITERAL || effElem->type == NEG_LITERAL) {
@@ -218,8 +217,8 @@ pu_calcMaxVarOcc()
           continue;
         }
         state_addGr(effectSet, atom, grAct);
-        state_addGr(puClone, atom, grAct);
-        state_incCountGr(puClone, atom, grAct);
+        state_addGr(psClone, atom, grAct);
+        state_incCountGr(psClone, atom, grAct);
       } else {
         // We do not support conditional effects. However, the the data
         // structures from pddl31structs.h do support conditional effects.
@@ -231,39 +230,39 @@ pu_calcMaxVarOcc()
     state_free(effectSet);
   }
   // Now all the variables should be counted. We just have to retrieve tha
-  // maximum count from the puClone.
+  // maximum count from the psClone.
 
-  int32_t result = state_getMaxCount(puClone);
+  int32_t result = state_getMaxCount(psClone);
 
-  state_free(puClone);
+  state_free(psClone);
 
   return result;
 }
 
 state_t
-pu_getSingleton()
+ps_getSingleton()
 {
-  if (probUniv == NULL) {
+  if (probSpace == NULL) {
     assert(false);
-    fprintf(stderr, "\nERROR: pu_getSingleton(): not initialized. Please call "
-                    "pu_init() first");
+    fprintf(stderr, "\nERROR: ps_getSingleton(): not initialized. Please call "
+                    "ps_init() first");
   }
-  return probUniv;
+  return probSpace;
 }
 
 void
-pu_cleanup()
+ps_cleanup()
 {
-  state_free(probUniv);
-  utils_free_actionList(allGrActInUniv);
-  probUniv = NULL;
+  state_free(probSpace);
+  utils_free_actionList(allGrActInSpace);
+  probSpace = NULL;
 }
 
 // Checks the ground actions precondition. It only considers positive
 // precondtions. Returns true if they are all satisfied by the state, and false
 // otherwise.
 bool
-pu_satisfiesPosPrecondAtoms(state_t state, struct groundAction *grAct)
+ps_satisfiesPosPrecondAtoms(state_t state, struct groundAction *grAct)
 {
   assert(grAct != NULL);
 
@@ -276,15 +275,15 @@ pu_satisfiesPosPrecondAtoms(state_t state, struct groundAction *grAct)
     }
   }
 
-  // Ignoring negative precondtions here on purpose.
+  // Ignoring negative precondtions here on psrpose.
 
   return true;
 }
 
 struct actionList *
-pu_filter(struct actionList *actL)
+ps_filter(struct actionList *actL)
 {
-  //printf("pu_filter()\n"); // DEBUG
+  //printf("ps_filter()\n"); // DEBUG
   //utils_print_actionListCompact(actL); // DEBUG
   //printf("\n"); // DEBUG
  
@@ -298,7 +297,7 @@ pu_filter(struct actionList *actL)
 
     struct groundAction *grAct = actLIter->act;
 
-    bool isSatisfied = pu_satisfiesPosPrecondAtoms(probUniv, grAct);
+    bool isSatisfied = ps_satisfiesPosPrecondAtoms(probSpace, grAct);
     if (isSatisfied) {
       // Add ground action to result.
       actLIter->next = result;

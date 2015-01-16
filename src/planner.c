@@ -1,12 +1,9 @@
-
-/***  TODO: FIX new state ***/
-
 #include <assert.h>
 
 #include "planner.h"
 
 #include "libpddl31.h"
-#include "probUniv.h"
+#include "probSpace.h"
 #include "state.h"
 #include "utils.h"
 
@@ -39,8 +36,8 @@ planner_getActsToFixGap(struct problem *problem, struct gap *gap)
     // Clean up.
     utils_free_actionList(fix);
 
-    // Filter actions according to problem universe.
-    newActs = pu_filter(newActs);
+    // Filter actions according to problem space.
+    newActs = ps_filter(newActs);
 
     result = utils_concatActionLists(newActs, result);
   }
@@ -540,9 +537,9 @@ planner_solveProblem(struct problem *problem, int32_t depthLimit)
 struct actionList *
 planner_iterativeDeepeningSearch(struct problem *problem)
 {
-  pu_init(problem);
-  printf("Problem Universe: "); // DEBUG
-  state_print(pu_getSingleton()); // DEBUG
+  ps_init(problem);
+  printf("Problem Space: "); // DEBUG
+  state_print(ps_getSingleton()); // DEBUG
   printf("\n"); // DEBUG
 
   for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
@@ -550,13 +547,13 @@ planner_iterativeDeepeningSearch(struct problem *problem)
     struct actionList *solution = planner_solveProblem(problem, depth);
     if (solution != NULL) {
 
-      pu_cleanup();
+      ps_cleanup();
       state_cleanupSNBuffer();
       return solution;
     }
   }
 
-  pu_cleanup();
+  ps_cleanup();
   state_cleanupSNBuffer();
   return NULL;
 }
@@ -867,25 +864,25 @@ planner_solveProblem_v2(struct problem *problem, int32_t depthLimit)
 struct actionList *
 planner_iterativeDeepeningSearch_v2(struct problem *problem)
 {
-  pu_init(problem);
-  printf("Problem Universe: "); // DEBUG
-  state_print(pu_getSingleton()); // DEBUG
+  ps_init(problem);
+  printf("Problem Space: "); // DEBUG
+  state_print(ps_getSingleton()); // DEBUG
   printf("\n"); // DEBUG
-  printf("variable occurance: %d\n", pu_calcMaxVarOcc());
+  printf("variable occurance: %d\n", ps_calcMaxVarOcc());
 
   for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
     printf("\n### depth search with depth %d\n\n", depth); // DEBUG
     struct actionList *solution = planner_solveProblem_v2(problem, depth);
     if (solution != NULL) {
 
-      pu_cleanup();
+      ps_cleanup();
       state_cleanupSNBuffer();
 
       return solution;
     }
   }
 
-  pu_cleanup();
+  ps_cleanup();
   state_cleanupSNBuffer();
   return NULL;
 }
