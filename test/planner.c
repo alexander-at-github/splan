@@ -109,7 +109,7 @@ test_planner_getActsToFixGap()
   struct domain *domain = libpddl31_domain_parse(domainFilename);
   char *problemFilename = "test/planner-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
-  ps_init(problem);
+  struct probSpace *probSpace = ps_init(problem);
 
   struct gap *gap = NULL;
   struct actionList *actsGap = NULL;
@@ -121,7 +121,7 @@ test_planner_getActsToFixGap()
   //utils_print_gap(gap); // DEBUG
   //printf("\n"); // DEBUG
 
-  actsGap = planner_getActsToFixGap(problem, gap);
+  actsGap = planner_getActsToFixGap(problem, probSpace, gap);
   actsGapBackup = actsGap;
   //utils_print_actionList(actsGap); // DEBUG
 
@@ -136,7 +136,7 @@ test_planner_getActsToFixGap()
   utils_free_gap(gap);
   gap = NULL;
 
-  ps_cleanup();
+  ps_free(probSpace);
   //trie_cleanupSNBuffer();
 
   libpddl31_problem_free(problem);
@@ -260,16 +260,16 @@ test_planner_solveProblem()
                           //"test_instances/openstacks-strips/p01.pddl";
                           //"test/planner-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
-  ps_init(problem);
+  struct probSpace *probSpace = ps_init(problem);
 
   // The problem instance tsp-neg-prec/p3.pddl shortest solution is of length
   // four.
-  struct actionList *result = planner_solveProblem_v2(problem, 4);
+  struct actionList *result = planner_solveProblem_v2(problem, probSpace, 4);
   mu_assert("Error planner_solveProblem()", result != NULL);
   utils_print_actionList(result);
   utils_free_actionList(result);
 
-  ps_cleanup();
+  ps_free(probSpace);
   //trie_cleanupSNBuffer();
 
   libpddl31_problem_free(problem);

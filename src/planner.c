@@ -8,7 +8,9 @@
 #include "utils.h"
 
 struct actionList *
-planner_getActsToFixGap(struct problem *problem, struct gap *gap)
+planner_getActsToFixGap(struct problem *problem,
+                        struct probSpace *probSpace,
+                        struct gap *gap)
 {
   struct actionManag *actManag = problem->domain->actionManag;
 
@@ -37,7 +39,7 @@ planner_getActsToFixGap(struct problem *problem, struct gap *gap)
     utils_free_actionList(fix);
 
     // Filter actions according to problem space.
-    newActs = ps_filter(newActs);
+    newActs = ps_filter(probSpace, newActs);
 
     result = utils_concatActionLists(newActs, result);
   }
@@ -245,6 +247,7 @@ planner_hasGap( trie_t initState,
 // found.
 static struct actionList *
 planner_solveProblem_aux( struct problem *problem,
+                          struct probSpace *probSpace,
                           // an Accumulator for actions
                           struct actionList *actAcc,
                           int32_t depthLimit,
@@ -282,7 +285,9 @@ planner_solveProblem_aux( struct problem *problem,
   //utils_print_gap(gap); // DEBUG
   //printf("\n"); // DEBUG
 
-  struct actionList *actsToFixGap = planner_getActsToFixGap(problem, gap);
+  struct actionList *actsToFixGap = planner_getActsToFixGap(problem,
+                                                            probSpace,
+                                                            gap);
   //printf("actsToFixGap.length: %d\n",
   //       utils_actionList_length(actsToFixGap)); //DEBUG
   //utils_print_actionList(actsToFixGap); // DEBUG
@@ -324,7 +329,11 @@ planner_solveProblem_aux( struct problem *problem,
 
       // Recurse with new parital solution.
       struct actionList *result;
-      result = planner_solveProblem_aux(problem, actAcc, depthLimit, depth+1);
+      result = planner_solveProblem_aux(problem,
+                                        probSpace,
+                                        actAcc,
+                                        depthLimit,
+                                        depth+1);
       // Return the first result
       if (result != NULL) {
         //printf("RETURN RESULT"); // DEBUG
@@ -365,31 +374,41 @@ planner_solveProblem_aux( struct problem *problem,
 }
 
 struct actionList *
-planner_solveProblem(struct problem *problem, int32_t depthLimit)
+planner_solveProblem(struct problem *problem,
+                     struct probSpace *probSpace,
+                     int32_t depthLimit)
 {
-  return planner_solveProblem_aux(problem, NULL, depthLimit, 0);
+  return planner_solveProblem_aux(problem,
+                                  probSpace,
+                                  NULL,
+                                  depthLimit,
+                                  0);
 }
 
 struct actionList *
 planner_iterativeDeepeningSearch(struct problem *problem)
 {
-  ps_init(problem);
+  // Set file scope variable.
+  struct probSpace *probSpace = ps_init(problem);
+
   printf("Problem Space: "); // DEBUG
-  trie_print(ps_getSingleton()); // DEBUG
+  trie_print(probSpace->setFluents); // DEBUG
   printf("\n"); // DEBUG
 
   for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
     printf("\n### depth search with depth %d\n\n", depth); // DEBUG
-    struct actionList *solution = planner_solveProblem(problem, depth);
+    struct actionList *solution = planner_solveProblem(problem,
+                                                       probSpace,
+                                                       depth);
     if (solution != NULL) {
 
-      ps_cleanup();
+      ps_free(probSpace);
       trie_cleanupSNBuffer();
       return solution;
     }
   }
 
-  ps_cleanup();
+  ps_free(probSpace);
   trie_cleanupSNBuffer();
   return NULL;
 }
@@ -541,6 +560,7 @@ planner_sortActsAccToState(struct actionList *actL, trie_t state)
 // found.
 static struct actionList *
 planner_solveProblem_aux_v2(struct problem *problem,
+                            struct probSpace *probSpace,
                             // an Accumulator for actions
                             struct actionList *actAcc,
                             int32_t depthLimit,
@@ -579,7 +599,9 @@ planner_solveProblem_aux_v2(struct problem *problem,
   //utils_print_gap(gap); // DEBUG
   //printf("\n"); // DEBUG
 
-  struct actionList *actsToFixGap = planner_getActsToFixGap(problem, gap);
+  struct actionList *actsToFixGap = planner_getActsToFixGap(problem,
+                                                            probSpace,
+                                                            gap);
   //if ( depth == 4) {
   //  printf("actsToFixGap.length: %d\n",
   //         utils_actionList_length(actsToFixGap)); //DEBUG
@@ -643,6 +665,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
       // Recurse with new parital solution.
       struct actionList *result;
       result = planner_solveProblem_aux_v2(problem,
+                                           probSpace,
                                            actAcc,
                                            depthLimit,
                                            depth+1);
@@ -692,33 +715,43 @@ planner_solveProblem_aux_v2(struct problem *problem,
 }
 
 struct actionList *
-planner_solveProblem_v2(struct problem *problem, int32_t depthLimit)
+planner_solveProblem_v2(struct problem *problem,
+                        struct probSpace *probSpace,
+                        int32_t depthLimit)
 {
-  return planner_solveProblem_aux_v2(problem, NULL, depthLimit, 0);
+  return planner_solveProblem_aux_v2(problem,
+                                     probSpace,
+                                     NULL,
+                                     depthLimit,
+                                     0);
 }
 
 struct actionList *
 planner_iterativeDeepeningSearch_v2(struct problem *problem)
 {
-  ps_init(problem);
+  // Set file scope variable.
+  struct probSpace *probSpace = ps_init(problem);
+
   printf("Problem Space: "); // DEBUG
-  trie_print(ps_getSingleton()); // DEBUG
+  trie_print(probSpace->setFluents); // DEBUG
   printf("\n"); // DEBUG
-  printf("variable occurance: %d\n", ps_calcMaxVarOcc());
+  printf("variable occurance: %d\n", ps_calcMaxVarOcc(probSpace));
 
   for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
     printf("\n### depth search with depth %d\n\n", depth); // DEBUG
-    struct actionList *solution = planner_solveProblem_v2(problem, depth);
+    struct actionList *solution = planner_solveProblem_v2(problem,
+                                                          probSpace,
+                                                          depth);
     if (solution != NULL) {
 
-      ps_cleanup();
+      ps_free(probSpace);
       trie_cleanupSNBuffer();
 
       return solution;
     }
   }
 
-  ps_cleanup();
+  ps_free(probSpace);
   trie_cleanupSNBuffer();
   return NULL;
 }

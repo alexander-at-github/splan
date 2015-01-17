@@ -7,13 +7,8 @@
 #include "trie.h"
 #include "utils.h"
 
-// Problem Space. That is a state, which is an union of all possible
-// states in the problem instance.
-static trie_t probSpace = NULL;
-struct actionList *allGrActInSpace = NULL;
-
-
 // Returns true if it did add an atom to the trie, false otherwise.
+static
 bool
 ps_applyEffElem(trie_t trie,
                 struct groundAction *grAct,
@@ -61,6 +56,7 @@ ps_applyEffElem(trie_t trie,
 // possible atoms in a problems' state.
 // This function returns false, if it did not change the trie, and true
 // otherwise.
+static
 bool
 ps_apply(trie_t trie, struct groundAction *grAct)
 {
@@ -83,11 +79,14 @@ ps_apply(trie_t trie, struct groundAction *grAct)
   return val;
 }
 
-void
+struct probSpace *
 ps_init(struct problem *problem)
 {
+  struct probSpace *probSpace = malloc(sizeof(*probSpace));
+  probSpace->problem = problem;
   // Initialize problem space with initial state of problem.
-  probSpace = trie_clone(problem->init);
+  probSpace->setFluents = trie_clone(problem->init);
+  probSpace->allGrActs = NULL; // Will be set later
 
   struct actionManag *actionManag = problem->domain->actionManag;
 
@@ -121,9 +120,10 @@ ps_init(struct problem *problem)
 
       struct groundAction *grAct = actL->act;
 
-      struct literal *isSatisfied = planner_satisfiesPrecond(probSpace, grAct);
+      struct literal *isSatisfied =
+                        planner_satisfiesPrecond(probSpace->setFluents, grAct);
       if (isSatisfied == NULL) {
-        bool change = ps_apply(probSpace, grAct);
+        bool change = ps_apply(probSpace->setFluents, grAct);
         if (change && done) {
           done = false;
         }
@@ -133,14 +133,16 @@ ps_init(struct problem *problem)
     }
   }
 
-  allGrActInSpace = ps_filter(allGroundActions);
+  probSpace->allGrActs = ps_filter(probSpace, allGroundActions);
   // Don't free allGroundActions, because it just has been reduced to
-  // allGrActInSpace by the previous call. All the unneccessary elements
+  // probSpace->allGrActs by the previous call. All the unneccessary elements
   // have been freed by that call, too.
-  
+
   printf("all ground actions in problem space:\n");
-  utils_print_actionList(allGrActInSpace);
+  utils_print_actionList(probSpace->allGrActs);
   printf("\n");
+
+  return probSpace;
 }
 
 // This function calculates the maximum number of occurrences of a variable as
@@ -151,17 +153,17 @@ ps_init(struct problem *problem)
 //  The number of occurrences of a variable v ∈ V is defined as
 //  Sum_a∈A (occ v (pre(a)) + occ v (eff(a))).i"
 int32_t
-ps_calcMaxVarOcc()
+ps_calcMaxVarOcc(struct probSpace *probSpace)
 {
   // The whole function will only work on a copy of the problem space.
   // Later this copy might be used for more things, like an index onto the
   // actions.
-  trie_t psClone = trie_clone(probSpace);
+  trie_t psClone = trie_clone(probSpace->setFluents);
 
   // Set occurrance count to zero.
   trie_setCount(psClone, 0);
 
-  for (struct actionList *currLE = allGrActInSpace;
+  for (struct actionList *currLE = probSpace->allGrActs;
        currLE != NULL;
        currLE = currLE->next) {
 
@@ -175,7 +177,7 @@ ps_calcMaxVarOcc()
     // be only counted once per precodition. In order to achieve that
     // we will use another set of fluents to accumulate the ground atoms,
     // which we already considered.
-    trie_t precondSet = trie_createEmptyFrom(probSpace);
+    trie_t precondSet = trie_createEmptyFrom(probSpace->setFluents);
     // Add and count all the positive precondition fluents.
     for (int32_t idxPP = 0; idxPP < precond->numOfPos; ++idxPP) {
       struct atom *atom = &precond->posLiterals[idxPP];
@@ -207,7 +209,7 @@ ps_calcMaxVarOcc()
     // counted once per effect. In order to achieve that we will use another
     // set of fluents to accumulate the ground atoms, which we already
     // considered.
-    trie_t effectSet = trie_createEmptyFrom(probSpace);
+    trie_t effectSet = trie_createEmptyFrom(probSpace->setFluents);
     for (int32_t idxE = 0; idxE < effect->numOfElems; ++idxE) {
       struct effectElem *effElem = &effect->elems[idxE];
       if (effElem->type == POS_LITERAL || effElem->type == NEG_LITERAL) {
@@ -239,29 +241,18 @@ ps_calcMaxVarOcc()
   return result;
 }
 
-trie_t
-ps_getSingleton()
-{
-  if (probSpace == NULL) {
-    assert(false);
-    fprintf(stderr, "\nERROR: ps_getSingleton(): not initialized. Please call "
-                    "ps_init() first");
-  }
-  return probSpace;
-}
-
 void
-ps_cleanup()
+ps_free(struct probSpace *probSpace)
 {
-  trie_free(probSpace);
-  probSpace = NULL;
-  utils_free_actionList(allGrActInSpace);
-  allGrActInSpace = NULL;
+  trie_free(probSpace->setFluents);
+  utils_free_actionList(probSpace->allGrActs);
+  free(probSpace);
 }
 
 // Checks the ground actions precondition. It only considers positive
 // precondtions. Returns true if they are all satisfied by the state, and false
 // otherwise.
+static
 bool
 ps_satisfiesPosPrecondAtoms(trie_t state, struct groundAction *grAct)
 {
@@ -282,7 +273,7 @@ ps_satisfiesPosPrecondAtoms(trie_t state, struct groundAction *grAct)
 }
 
 struct actionList *
-ps_filter(struct actionList *actL)
+ps_filter(struct probSpace *probSpace, struct actionList *actL)
 {
   //printf("ps_filter()\n"); // DEBUG
   //utils_print_actionListCompact(actL); // DEBUG
@@ -298,7 +289,8 @@ ps_filter(struct actionList *actL)
 
     struct groundAction *grAct = actLIter->act;
 
-    bool isSatisfied = ps_satisfiesPosPrecondAtoms(probSpace, grAct);
+    bool isSatisfied = ps_satisfiesPosPrecondAtoms(probSpace->setFluents,
+                                                   grAct);
     if (isSatisfied) {
       // Add ground action to result.
       actLIter->next = result;

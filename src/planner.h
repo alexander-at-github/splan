@@ -2,16 +2,20 @@
 #define PLANNER_H
 
 #include "libpddl31.h"
+#include "probSpace.h"
 #include "utils.h"
 
 struct gap *planner_hasGap( trie_t initState,
                             struct goal *goal,
                             struct actionList *actions);
 struct actionList *planner_getActsToFixGap( struct problem *problem,
+                                            struct probSpace *probSpace,
                                             struct gap *gap);
 struct actionList *planner_solveProblem(struct problem *problem,
+                                        struct probSpace *probSpace,
                                         int32_t depthLimit);
 struct actionList *planner_solveProblem_v2( struct problem *problem,
+                                            struct probSpace *probSpace,
                                             int32_t depthLimit);
 
 struct literal *planner_satisfies(trie_t state, struct goal *goal);
