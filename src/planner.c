@@ -388,7 +388,6 @@ planner_solveProblem(struct problem *problem,
 struct actionList *
 planner_iterativeDeepeningSearch(struct problem *problem)
 {
-  // Set file scope variable.
   struct probSpace *probSpace = ps_init(problem);
 
   printf("Problem Space: "); // DEBUG
@@ -413,13 +412,15 @@ planner_iterativeDeepeningSearch(struct problem *problem)
   return NULL;
 }
 
+// TODO: Add a precondition of the next action to considere it too.
+
 // This function will edit the weights of the list in place.
 // It produces weights between 0 and INT32_MAX.
 // If an actions' precondition is fulfilled by the state, then its weight will
 // be zero. For every atom of the precondition, which is not fulfilled, its
 // weight will be incremented by one.
-void planner_actionList_calculateWeights(struct actionList *actL,
-                                         trie_t state)
+void
+planner_actionList_calculateWeights(struct actionList *actL, trie_t state)
 {
   //printf("CALL: planner_actionList_calculateWeights()\n"); // DEBUG
 
@@ -729,7 +730,6 @@ planner_solveProblem_v2(struct problem *problem,
 struct actionList *
 planner_iterativeDeepeningSearch_v2(struct problem *problem)
 {
-  // Set file scope variable.
   struct probSpace *probSpace = ps_init(problem);
 
   printf("Problem Space: "); // DEBUG
@@ -754,4 +754,170 @@ planner_iterativeDeepeningSearch_v2(struct problem *problem)
   ps_free(probSpace);
   trie_cleanupSNBuffer();
   return NULL;
+}
+
+struct actionList *
+planner_solveProblem_aux_v3(struct probSpace *probSpace,
+                            struct actionList *actAcc,
+                            int32_t depthLimit,
+                            int32_t depth)
+{
+  //if (depth == 17) {
+    printf("\nplanner_solveProblem_aux_v3(): actAcc length: %d\n",
+           utils_actionList_length(actAcc));
+    utils_print_actionListCompact(actAcc);
+    printf("\n");
+  //}
+
+  struct problem *problem = probSpace->problem;
+  trie_t initState = problem->init;
+  struct goal *goal = problem->goal;
+
+  // TODO: Maybe continue checking only from last gap.
+  struct gap *gap = planner_hasGap(initState, goal, actAcc);
+  if (gap == NULL) {
+    // Solution found.
+    printf("SOLUTION FOUND\n"); // DEBUG
+    //utils_print_actionListCompact(actAcc); // DEBUG
+    //printf("\n"); // DEBUG
+    struct actionList *solution = utils_cloneActionList(actAcc);
+    return solution;
+  }
+  utils_print_gap(gap); // DEBUG
+  printf("gap->position: %d\n", gap->position); // DEBUG
+
+  if (depth >= depthLimit) {
+    utils_free_gap(gap);
+    return NULL;
+  }
+
+  struct actionList *actsToFixGap = ps_getActsToFixGap(probSpace, gap->literal);
+  printf("actsToFixGap length: %d\n", utils_actionList_length(actsToFixGap));
+
+  if (actsToFixGap == NULL) {
+    // There is no way (action) to fix the gap.
+    utils_free_gap(gap);
+    return NULL;
+  }
+
+  /*** First: Prepare a list of actions (with coresponding positions) ***/
+
+  trie_t lState = trie_clone(initState);
+
+  // Accumulate actions with their coresponding position.
+  struct actionList *actsToFixGapWithPos = NULL;
+
+  // Note:
+  assert (gap->position >= 1);
+  int32_t idxPos = 0;
+  struct actionList *curr = NULL;
+  struct actionList *afterCurr = actAcc;
+  while (idxPos < gap->position) {
+    struct actionList *actsToFixGapCopy =
+                                    utils_cloneActionListShallow(actsToFixGap);
+    // Calculate weight at this position.
+    planner_actionList_calculateWeights(actsToFixGapCopy, lState);
+    // Set their position.
+    utils_actionList_setPosition(actsToFixGapCopy, idxPos);
+    // Add them to the set of actions with theid positions.
+    actsToFixGapWithPos = utils_concatActionLists(actsToFixGapCopy,
+                                                  actsToFixGapWithPos);
+    // Do not free actsToFixGapCopy. All the actions are accumulated in
+    // actsToFixGapWithPos.
+
+    // Advance loop variables.
+    idxPos++;
+    if (afterCurr != NULL) {
+      curr = afterCurr;
+      afterCurr = afterCurr->next;
+
+      // Apply action to local state.
+      planner_apply(lState, curr->act);
+    } else {
+      // This case should only happen in the last iteration.
+      assert (idxPos == gap->position);
+    }
+  }
+  utils_free_gap(gap);
+  trie_free(lState);
+  // ATTENTION: Do not free actsToFixGap. This list is part of the trie/index
+  // and will be needed again. It will be freed witht he trie.
+
+  // Note: weights in actsToFixGapWithPos are already set.
+  
+  printf("actsToFixGapWithPos length: %d\n",
+         utils_actionList_length(actsToFixGapWithPos));
+
+  /*** Second: Sort that list according to their weights. ***/
+
+  // Sort the list of actions (with their positions now.
+  actsToFixGapWithPos = planner_quicksort(actsToFixGapWithPos);
+
+  utils_print_actionListCompact(actsToFixGapWithPos); // DEBUG
+  printf("\n"); // DEBUG
+
+  /*** Third: Apply that actions ***/
+
+  struct actionList *solution = NULL;
+  for (struct actionList *currAle = actsToFixGapWithPos;
+       currAle != NULL;
+       currAle = currAle->next) {
+
+    actAcc = utils_addActionToListAtPosition( actAcc,
+                                              currAle->act,
+                                              currAle->pos);
+
+    solution = planner_solveProblem_aux_v3(probSpace,
+                                           actAcc,
+                                           depthLimit,
+                                           depth + 1);
+
+    actAcc = utils_removeActionFromListAtPosition(actAcc, currAle->pos);
+
+    // Return the first solution.
+    if (solution != NULL) {
+      break;
+    }
+  }
+
+  utils_free_actionListShallow(actsToFixGapWithPos);
+  // May return NULL, if there was no solution found within this depth-limit.
+  return solution;
+}
+
+struct actionList *
+planner_solveProblem_v3(struct probSpace *probSpace, int32_t depthLimit)
+{
+  return planner_solveProblem_aux_v3(probSpace, NULL, depthLimit, 0);
+}
+
+struct actionList *
+planner_iterativeDeepeningSearch_v3(struct problem *problem)
+{
+  struct probSpace *probSpace = ps_init(problem);
+
+  printf("all ground actions in problem space:\n"); // DEBUG
+  utils_print_actionListCompact(probSpace->allGrActs); // DEBUG
+  printf("\n"); // DEBUG
+  printf("%d", utils_actionList_length(probSpace->allGrActs));
+  printf("\n");
+
+  printf("Problem Space: "); // DEBUG
+  trie_print(probSpace->setFluents); // DEBUG
+  printf("\n"); // DEBUG
+  printf("variable occurance: %d\n", ps_calcMaxVarOcc(probSpace));
+
+  struct actionList *solution = NULL;
+  for (int32_t depth = 17; depth < INT32_MAX; ++depth) {
+    printf("\n### depth search with depth %d\n\n", depth); // DEBUG
+    solution = planner_solveProblem_v3(probSpace, depth);
+    if (solution != NULL) {
+      break;
+    }
+  }
+
+  ps_free(probSpace);
+  trie_cleanupSNBuffer();
+
+  return solution;
 }

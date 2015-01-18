@@ -56,6 +56,16 @@ void utils_free_literal(struct literal *literal)
 /* } */
 
 void
+utils_free_actionListShallow(struct actionList *list)
+{
+  while(list != NULL) {
+    struct actionList *next = list->next;
+    free(list);
+    list = next;
+  }
+}
+
+void
 utils_free_actionList(struct actionList *list)
 {
   while(list != NULL) {
@@ -355,7 +365,7 @@ utils_print_actionListCompact(struct actionList *list)
   printf("ActionList:(");
   while (list != NULL) {
     utils_print_groundActionCompact(list->act);
-    printf("w%d", list->weight);
+    printf("w%dp%d", list->weight, list->pos); // print weights
     if (list->next != NULL) {
       printf(" ");
     }
@@ -611,6 +621,42 @@ utils_free_gap(struct gap *gap)
 }
 
 struct actionList *
+utils_cloneActionListShallow(struct actionList *actL)
+{
+  struct actionList *actLBack = actL;
+
+  struct actionList *head = NULL;
+  struct actionList *curr = NULL;
+  struct actionList *prev = NULL;
+  for (/* empty */; actL != NULL; actL = actL->next) {
+    prev = curr;
+    curr = malloc(sizeof(*curr));
+    if (prev == NULL) {
+      // First element of the list. Save pointer to the head.
+      head = curr;
+    } else {
+      // Set the next-pointer of the previous element.
+      prev->next = curr;
+    }
+    // Set the ground action.
+    curr->act = actL->act;
+
+    curr->weight = actL->weight;
+    curr->pos= actL->pos;
+  }
+
+  // Set next->pointer on last element to NULL
+  if (curr != NULL) {
+    curr->next = NULL;
+  } else {
+    // Note: The list to clone is empty.
+    assert (utils_actionList_length(actLBack) == 0);
+  }
+
+  return head;
+}
+
+struct actionList *
 utils_cloneActionList(struct actionList *actL)
 {
   struct actionList *actLBack = actL;
@@ -641,4 +687,46 @@ utils_cloneActionList(struct actionList *actL)
   }
 
   return head;
+}
+
+// @pos: If zero, removes first element.
+struct actionList *
+utils_removeActionFromListAtPosition(struct actionList *al, int32_t pos)
+{
+  struct actionList *head = al;
+
+  if (pos == 0) {
+    // Removing first element of list.
+    if (al != NULL) {
+      head = al->next;
+      free(al);
+    }
+    return head;
+  }
+
+  int32_t idx = 0;
+  struct actionList *before = NULL;
+  while (al != NULL && idx < pos) {
+    before = al;
+    al = al->next;
+    idx++;
+  }
+
+  if (al == NULL) {
+    return head;
+  }
+
+  assert (before != NULL);
+  before->next = al->next;
+  free(al);
+  return head;
+}
+
+void
+utils_actionList_setPosition(struct actionList *al, int32_t position)
+{
+  while (al != NULL) {
+    al->pos = position;
+    al = al->next;
+  }
 }

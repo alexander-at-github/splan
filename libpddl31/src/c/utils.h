@@ -30,6 +30,11 @@ struct actionList
 
   // A weight for sorting action lists. Often this is not used.
   int32_t weight;
+
+  // A position. This can be used to predefine a position, iat which this
+  // element should be placed at in a sequence of elements. Often this is not
+  // used.
+  int32_t pos;
 };
 
 void utils_free_literal(struct literal *literal);
@@ -65,5 +70,19 @@ void utils_free_gap(struct gap *gap);
 struct actionList *utils_cloneActionList(struct actionList *actL);
 void utils_print_groundAction(struct groundAction *grAct);
 void utils_print_actionListCompact(struct actionList *list);
+
+// @pos: If zero, removes first element.
+struct actionList *utils_removeActionFromListAtPosition(struct actionList *,
+                                                        int32_t);
+// Sets the position variable of a whole list.
+void utils_actionList_setPosition(struct actionList *al, int32_t position);
+
+struct actionList *utils_addActionToListAtPosition(struct actionList *head,
+                                                   struct groundAction *grAct,
+                                                   int32_t position);
+struct actionList *utils_addActionToList(struct actionList *head,
+                                         struct groundAction *grAct);
+void utils_free_actionListShallow(struct actionList *list);
+struct actionList *utils_cloneActionListShallow(struct actionList *actL);
 
 #endif

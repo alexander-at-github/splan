@@ -2,6 +2,7 @@
 #define PROBSPACE_H
 
 #include "libpddl31.h"
+#include "utils.h"
 
 struct probSpace {
   // The corresponding problem.
@@ -21,4 +22,6 @@ struct actionList *ps_filter(struct probSpace *probSpace,
                              struct actionList *actL);
 int32_t ps_calcMaxVarOcc(struct probSpace *probSpace);
 
+struct actionList *ps_getActsToFixGap(struct probSpace *probSpace,
+                                      struct literal *literal);
 #endif

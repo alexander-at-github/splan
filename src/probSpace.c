@@ -79,6 +79,33 @@ ps_apply(trie_t trie, struct groundAction *grAct)
   return val;
 }
 
+void
+ps_createIndex(struct probSpace *probSpace)
+{
+  trie_t trie = probSpace->setFluents;
+  for (struct actionList *alE = probSpace->allGrActs;
+       alE != NULL;
+       alE = alE->next) {
+
+    struct groundAction *grAct = alE->act;
+    struct action *action = grAct->action;
+    struct effect *effect = action->effect;
+    for (int32_t idxE = 0; idxE < effect->numOfElems; ++idxE) {
+      struct effectElem *effE = &effect->elems[idxE];
+      struct atom *atom = effE->it.literal;
+      // TODO: Is that correct?
+      if (effE->type == POS_LITERAL) {
+        trie_addIndexPos(trie, atom, grAct);
+      } else if (effE->type == NEG_LITERAL) {
+        trie_addIndexNeg(trie, atom, grAct);
+      } else {
+        // This code does not support conditional effects.
+        assert (false);
+      }
+    }
+  }
+}
+
 struct probSpace *
 ps_init(struct problem *problem)
 {
@@ -138,9 +165,10 @@ ps_init(struct problem *problem)
   // probSpace->allGrActs by the previous call. All the unneccessary elements
   // have been freed by that call, too.
 
-  printf("all ground actions in problem space:\n");
-  utils_print_actionList(probSpace->allGrActs);
-  printf("\n");
+
+
+  /* Extend the probSpace->setFluents to an index into probSpace->allGrActs. */
+  ps_createIndex(probSpace);
 
   return probSpace;
 }
@@ -313,4 +341,14 @@ ps_filter(struct probSpace *probSpace, struct actionList *actL)
 
   return result;
 
+}
+
+struct actionList *
+ps_getActsToFixGap(struct probSpace *probSpace, struct literal *literal)
+{
+  if (literal->isPos) {
+    return trie_getActsPos(probSpace->setFluents, literal->atom);
+  }
+  // Else
+  return trie_getActsNeg(probSpace->setFluents, literal->atom);
 }

@@ -58,6 +58,13 @@ struct tNode {
   // favourable. The count has actually nothing to do with the trie itself.
   // I will just do that, cause it is so much easier.
   int32_t count;
+
+  // This trie should also be used as an index into the ground actions. That is,
+  // for a certain gap you should be able to retrieve all actions which will
+  // fix the gap easily (and fast).
+  // To achieve that we will have two pointers here.
+  struct actionList *actsWPosEff;
+  struct actionList *actsWNegEff;
 };
 
 // Composition of term and tNode child.
@@ -69,7 +76,7 @@ struct tNodeArrE {
 
 
 struct tNodeBuffer {
-  int32_t numOfSNodes;
+  int32_t numOfTNodes;
   int32_t numAlloced;
   // An array of pointers to unused tNodes.
   struct tNode **store;
@@ -118,7 +125,7 @@ trie_initSNBuffer()
   }
 
   tNodeBuffer = malloc(sizeof(*tNodeBuffer));
-  tNodeBuffer->numOfSNodes = 0;
+  tNodeBuffer->numOfTNodes = 0;
   tNodeBuffer->numAlloced = calcBufferSize(0);
   tNodeBuffer->store = malloc(sizeof(*tNodeBuffer->store) *
                               tNodeBuffer->numAlloced);
@@ -141,7 +148,7 @@ trie_cleanupSNBuffer()
     return;
   }
   if (tNodeBuffer->store != NULL) {
-    for (int32_t idx = 0; idx < tNodeBuffer->numOfSNodes; ++idx) {
+    for (int32_t idx = 0; idx < tNodeBuffer->numOfTNodes; ++idx) {
       snFreeShallow_aux(tNodeBuffer->store[idx]);
     }
     free(tNodeBuffer->store);
@@ -202,20 +209,30 @@ tNodeBufferAdd_aux(struct tNode *tNode)
     return;
   }
 
-  tNodeBuffer->numOfSNodes ++;
-  if (tNodeBuffer->numOfSNodes > tNodeBuffer->numAlloced) {
-    //printf( "numOfSNodes: %d numAlloced: %d ",
-    //        tNodeBuffer->numOfSNodes,
+  // If there is an index, then free it. That should be rare.
+  if (tNode->actsWPosEff != NULL) {
+    utils_free_actionListShallow(tNode->actsWPosEff);
+    tNode->actsWPosEff = NULL;
+  }
+  if (tNode->actsWNegEff != NULL) {
+    utils_free_actionListShallow(tNode->actsWNegEff);
+    tNode->actsWNegEff = NULL;
+  }
+
+  tNodeBuffer->numOfTNodes ++;
+  if (tNodeBuffer->numOfTNodes > tNodeBuffer->numAlloced) {
+    //printf( "numOfTNodes: %d numAlloced: %d ",
+    //        tNodeBuffer->numOfTNodes,
     //        tNodeBuffer->numAlloced); // DEBUG
     tNodeBuffer->numAlloced = calcBufferSize(tNodeBuffer->numAlloced);
     tNodeBuffer->store = realloc(tNodeBuffer->store,
                       sizeof(*tNodeBuffer->store) * tNodeBuffer->numAlloced);
-    //printf( "NEW: numOfSNodes: %d numAlloced: %d\n",
-    //        tNodeBuffer->numOfSNodes,
+    //printf( "NEW: numOfTNodes: %d numAlloced: %d\n",
+    //        tNodeBuffer->numOfTNodes,
     //        tNodeBuffer->numAlloced); // DEBUG
   }
 
-  tNodeBuffer->store[tNodeBuffer->numOfSNodes - 1] = tNode;
+  tNodeBuffer->store[tNodeBuffer->numOfTNodes - 1] = tNode;
 }
 
 struct tNode *
@@ -227,16 +244,18 @@ snGetOrCreate_aux()
 
   // Try to retrieve from tNodeBuffer.
   assert (tNodeBuffer != NULL);
-  if (tNodeBuffer->numOfSNodes > 0) {
+  if (tNodeBuffer->numOfTNodes > 0) {
     // Take a tNode from the tNodeBuffer.
-    tNodeBuffer->numOfSNodes --;
-    struct tNode *reusedSN = tNodeBuffer->store[tNodeBuffer->numOfSNodes];
-    tNodeBuffer->store[tNodeBuffer->numOfSNodes] = NULL;
+    tNodeBuffer->numOfTNodes --;
+    struct tNode *reusedSN = tNodeBuffer->store[tNodeBuffer->numOfTNodes];
+    tNodeBuffer->store[tNodeBuffer->numOfTNodes] = NULL;
     // Set number of children and count of the tNode. We will not change the
     // other values. Note: There still might be some pointers to other nodes.
     // Don't use them.
     reusedSN->numOfChldrn = 0;
     reusedSN->count = 0;
+    assert (reusedSN->actsWPosEff == NULL);
+    assert (reusedSN->actsWNegEff == NULL);
     return reusedSN;
   }
 
@@ -246,6 +265,8 @@ snGetOrCreate_aux()
   result->numAlloced = 0;
   result->chldrn = NULL;
   result->count = 0;
+  result->actsWPosEff = NULL;
+  result->actsWNegEff = NULL;
   return result;
 }
 
@@ -794,6 +815,11 @@ trie_getMaxCountRec_aux(struct tNode *tNode)
 {
   if (tNode->numOfChldrn == 0) {
     // It is ia leaf node.
+
+    //if (tNode->count == 15) { // DEBUG
+    //  printf("max: 15\n"); // DEBUG
+    //} // DEBUG
+
     return tNode->count;
   }
   int32_t max = 0;
@@ -821,9 +847,137 @@ trie_getMaxCount(trie_t trie)
     }
     int32_t subTreeMax = trie_getMaxCountRec_aux(currSN);
     if (subTreeMax > max) {
+
+      //if (subTreeMax == 15) { // DEBUG
+      //  printf("predicate: %s max: 15\n",
+      //         (trie->predManagFirst + idxP)->name); // DEBUG
+      //} // DEBUG
+
       max = subTreeMax;
     }
   }
 
   return max;
+}
+
+void
+trie_addIndex(trie_t trie,
+              struct atom *atom,
+              struct groundAction *grAct,
+              bool positive)
+{
+  // Later asserts will check exactly this fact again. This line is just for
+  // humans.
+  assert (trie_containsGr(trie, atom, grAct));
+
+  // Pointer arithmetic. See struct st_trie.
+  // A pointer into the tries' array of predicates.
+  int32_t triePredIdx = atom->pred - trie->predManagFirst;
+  struct tNode *currSN = trie->chldrn[triePredIdx];
+  if (currSN == NULL) {
+    assert (false);
+  }
+
+  for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
+    assert (currSN != NULL);
+    struct term *atomTerm = NULL;
+
+    // Pointer arithmentic.
+    int32_t idxGrounding = atom->terms[idxTerm] - grAct->action->params;
+    if (0 <= idxGrounding && idxGrounding < grAct->action->numOfParams) {
+      // Action variable
+      atomTerm = grAct->terms[idxGrounding];
+    } else {
+      // Constant in action.
+      atomTerm = atom->terms[idxTerm];
+    }
+    struct tNodeArrE *snae = snNextAe_aux(currSN, atomTerm);
+    if (snae == NULL) {
+      assert (false);
+    }
+    struct tNode *nextSN = snae->chld;
+    assert (nextSN != NULL);
+    currSN = nextSN;
+  }
+  //printf("currSN->numOfChldrn: %d, currSN->chldrn: %p\n",
+  //       currSN->numOfChldrn,
+  //       currSN->chldrn); // DEBUG
+
+  // This predicate can not have any further terms as arguments. I.e., it's a
+  // leave node.
+  assert (currSN->numOfChldrn == 0);
+
+  // Here will will add the refernece to the action.
+  if (positive) {
+    currSN->actsWPosEff = utils_addActionToList(currSN->actsWPosEff, grAct);
+  } else {
+    currSN->actsWNegEff = utils_addActionToList(currSN->actsWNegEff, grAct);
+  }
+}
+
+void
+trie_addIndexPos(trie_t t, struct atom *a, struct groundAction *ga)
+{
+  trie_addIndex(t, a, ga, true);
+}
+
+void
+trie_addIndexNeg(trie_t t, struct atom *a, struct groundAction *ga)
+{
+  trie_addIndex(t, a, ga, false);
+}
+
+struct actionList *
+trie_getActs(trie_t trie, struct atom *atom, bool positive)
+{
+  // Later asserts will check exactly this fact again. This line is just for
+  // humans.
+  assert (trie_contains(trie, atom));
+
+  // Pointer arithmetic. See struct st_trie.
+  // A pointer into the tries' array of predicates.
+  int32_t triePredIdx = atom->pred - trie->predManagFirst;
+  struct tNode *currSN = trie->chldrn[triePredIdx];
+  if (currSN == NULL) {
+    assert (false);
+  }
+
+  for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
+    assert (currSN != NULL);
+    struct term *atomTerm = atom->terms[idxTerm];
+
+    struct tNodeArrE *snae = snNextAe_aux(currSN, atomTerm);
+    if (snae == NULL) {
+      assert (false);
+    }
+    struct tNode *nextSN = snae->chld;
+    assert (nextSN != NULL);
+    currSN = nextSN;
+  }
+  //printf("currSN->numOfChldrn: %d, currSN->chldrn: %p\n",
+  //       currSN->numOfChldrn,
+  //       currSN->chldrn); // DEBUG
+
+  // This predicate can not have any further terms as arguments. I.e., it's a
+  // leave node.
+  assert (currSN->numOfChldrn == 0);
+
+  // Here will will add the refernece to the action.
+  if (positive) {
+    return currSN->actsWPosEff;
+  } else {
+    return currSN->actsWNegEff;
+  }
+}
+
+struct actionList *
+trie_getActsPos(trie_t trie, struct atom *atom)
+{
+  return trie_getActs(trie, atom, true);
+}
+
+struct actionList *
+trie_getActsNeg(trie_t trie, struct atom *atom)
+{
+  return trie_getActs(trie, atom, false);
 }

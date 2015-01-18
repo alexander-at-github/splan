@@ -43,8 +43,8 @@ int main(int argc, char **argv)
   }
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
-  struct actionList *result = planner_iterativeDeepeningSearch_v2(problem);
-  utils_print_actionList(result);
+  struct actionList *result = planner_iterativeDeepeningSearch_v3(problem);
+  utils_print_actionListCompact(result);
   printf("\n");
 
   // Clean up

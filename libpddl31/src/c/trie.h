@@ -3,12 +3,9 @@
 
 #include "pddl31structs.h"
 
-typedef struct st_trie * trie_t;
+#include "utils.h"
 
-//// Forward declarations of pddl31 structs
-//struct domain;
-//struct atom;
-//struct groundAction;
+typedef struct st_trie * trie_t;
 
 trie_t trie_createEmptyFrom(trie_t trie);
 trie_t trie_createEmpty(struct domain *domain);
@@ -38,5 +35,11 @@ bool trie_incCountGr(trie_t trie,
                       struct groundAction *grAct);
 int32_t trie_getMaxCount(trie_t trie);
 void trie_setCount(trie_t trie, int32_t num);
+
+void trie_addIndexPos(trie_t, struct atom *, struct groundAction *);
+void trie_addIndexNeg(trie_t, struct atom *, struct groundAction *);;
+
+struct actionList *trie_getActsPos(trie_t trie, struct atom *atom);
+struct actionList *trie_getActsNeg(trie_t trie, struct atom *atom);
 
 #endif // TRIE_H

@@ -4,7 +4,7 @@
 #include "utils.h"
 
 /* All the test cases use test instances (that is, domains and problems)
- * from the test/utils-domain.pddl and test/utils-problem0.pddl files.
+ * from the test/c/utils-domain.pddl and test/c/utils-problem0.pddl files.
  */
 
 int tests_run = 0;
@@ -12,9 +12,9 @@ int tests_run = 0;
 static char *
 test_actionFixesGap_simple()
 {
-  char *domainFilename = "test/utils-domain.pddl";
+  char *domainFilename = "test/c/utils-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/utils-problem0.pddl";
+  char *problemFilename = "test/c/utils-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   // Prepare gap.
@@ -76,9 +76,9 @@ test_actionFixesGap_simple()
 static char *
 test_actionFixesGap_advanced_positive()
 {
-  char *domainFilename = "test/utils-domain.pddl";
+  char *domainFilename = "test/c/utils-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/utils-problem0.pddl";
+  char *problemFilename = "test/c/utils-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   // Prepare gap.
@@ -156,9 +156,9 @@ test_actionFixesGap_advanced_positive()
 static char *
 test_actionFixesGap_advanced_negative()
 {
-  char *domainFilename = "test/utils-domain.pddl";
+  char *domainFilename = "test/c/utils-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/utils-problem0.pddl";
+  char *problemFilename = "test/c/utils-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   // Prepare gap.
@@ -289,9 +289,9 @@ static char *
 test_actionFixesGap_advanced_when()
 {
   // TODO
-  char *domainFilename = "test/utils-domain.pddl";
+  char *domainFilename = "test/c/utils-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/utils-problem0.pddl";
+  char *problemFilename = "test/c/utils-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   // Prepare gap.
@@ -389,9 +389,9 @@ test_actionFixesGap_advanced_when()
 static char *
 test_actionFixesGap_advanced_forall()
 {
-  char *domainFilename = "test/utils-domain.pddl";
+  char *domainFilename = "test/c/utils-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/utils-problem0.pddl";
+  char *problemFilename = "test/c/utils-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   // Prepare gap.
@@ -480,9 +480,9 @@ test_actionFixesGap_advanced_forall()
 static char *
 test_actionFixesGap_advanced_typed()
 {
-  char *domainFilename = "test/utils-domain.pddl";
+  char *domainFilename = "test/c/utils-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/utils-problem0.pddl";
+  char *problemFilename = "test/c/utils-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   // Prepare gap.
@@ -544,9 +544,9 @@ test_actionFixesGap_advanced_typed()
 static char *
 test_groundActions_simple()
 {
-  char *domainFilename = "test/utils-domain.pddl";
+  char *domainFilename = "test/c/utils-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/utils-problem0.pddl";
+  char *problemFilename = "test/c/utils-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   struct action *action = NULL;
@@ -610,9 +610,9 @@ test_groundActions_simple()
 static char *
 test_groundActions_basic()
 {
-  char *domainFilename = "test/utils-domain.pddl";
+  char *domainFilename = "test/c/utils-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/utils-problem0.pddl";
+  char *problemFilename = "test/c/utils-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   struct action *action = NULL;
@@ -673,9 +673,9 @@ test_groundActions_basic()
 static char *
 test_groundActions_typeChecks()
 {
-  char *domainFilename = "test/utils-domain.pddl";
+  char *domainFilename = "test/c/utils-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/utils-problem0.pddl";
+  char *problemFilename = "test/c/utils-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   struct action *action = NULL;
@@ -749,9 +749,9 @@ test_groundActions_typeChecks()
 static char *
 test_groundActions_multipleActions()
 {
-  char *domainFilename = "test/utils-domain.pddl";
+  char *domainFilename = "test/c/utils-domain.pddl";
   struct domain *domain = libpddl31_domain_parse(domainFilename);
-  char *problemFilename = "test/utils-problem0.pddl";
+  char *problemFilename = "test/c/utils-problem0.pddl";
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   struct action *action = NULL;
