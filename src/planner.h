@@ -27,7 +27,7 @@ struct literal *planner_satisfies(trie_t state, struct goal *goal);
 /*                           struct atom *atom); */
 struct actionList *planner_iterativeDeepeningSearch(struct problem *problem);
 struct actionList *planner_iterativeDeepeningSearch_v2(struct problem *problem);
-struct actionList *planner_iterativeDeepeningSearch_v3(struct problem *problem);
+struct actionList *planner_iterativeDeepeningSearch_v3(struct problem *problem, int32_t planLengthguess);
 
 // Returns NULL iff the state satisfies the goal.
 // Returns the first literal which is not satisfied otherwise.

@@ -99,8 +99,7 @@ ps_createIndex(struct probSpace *probSpace)
       } else if (effE->type == NEG_LITERAL) {
         trie_addIndexNeg(trie, atom, grAct);
       } else {
-        // This code does not support conditional effects.
-        assert (false);
+        assert (false && "This code does not support conditional effects.");
       }
     }
   }

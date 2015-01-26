@@ -16,15 +16,19 @@ int main(int argc, char **argv)
 {
   char *domainFilename = NULL;
   char *problemFilename = NULL;
+  int32_t planLengthGuess = 1;
 
   int opt;
-  while ((opt = getopt(argc, argv, "d:p:")) != -1) {
+  while ((opt = getopt(argc, argv, "d:p:l:")) != -1) {
     switch (opt) {
     case 'd':
       domainFilename = optarg;
       break;
     case 'p':
       problemFilename = optarg;
+      break;
+    case 'l':
+      planLengthGuess = (int32_t) strtol(optarg, NULL, 10);
       break;
     default:
       print_usage(argv);
@@ -43,7 +47,8 @@ int main(int argc, char **argv)
   }
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
-  struct actionList *result = planner_iterativeDeepeningSearch_v3(problem);
+  struct actionList *result = planner_iterativeDeepeningSearch_v3(problem,
+                                                               planLengthGuess);
   utils_print_actionListCompact(result);
   printf("\n");
 

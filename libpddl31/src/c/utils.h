@@ -84,5 +84,6 @@ struct actionList *utils_addActionToList(struct actionList *head,
                                          struct groundAction *grAct);
 void utils_free_actionListShallow(struct actionList *list);
 struct actionList *utils_cloneActionListShallow(struct actionList *actL);
+struct actionList *utils_actionList_reverse(struct actionList *list);
 
 #endif

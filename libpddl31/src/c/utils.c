@@ -730,3 +730,19 @@ utils_actionList_setPosition(struct actionList *al, int32_t position)
     al = al->next;
   }
 }
+
+struct actionList *
+utils_actionList_reverse(struct actionList *list)
+{
+  struct actionList *newHead = NULL;
+
+  while (list != NULL) {
+    struct actionList *listNextOld = list->next;
+    list->next = newHead;
+    newHead = list;
+
+    list = listNextOld;
+  }
+
+  return newHead;
+}

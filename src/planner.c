@@ -412,7 +412,67 @@ planner_iterativeDeepeningSearch(struct problem *problem)
   return NULL;
 }
 
-// TODO: Add a precondition of the next action to considere it too.
+uint32_t
+planner_actionList_calculateWeights_aux_v3(trie_t state,
+                                           struct groundAction *grAct,
+                                           struct goal *precond)
+{
+  uint32_t weight = 0;
+  // Iterate over precondition atoms.
+  for (int32_t idxPrecond = 0; idxPrecond < precond->numOfPos; ++idxPrecond) {
+    struct atom *atom = &precond->posLiterals[idxPrecond];
+    if ( ! trie_containsGr(state, atom, grAct)) {
+      // Actually increasing the weight, when a precondition is not met.
+      weight++;
+    }
+  }
+  for (int32_t idxPrecond = 0; idxPrecond < precond->numOfNeg; ++idxPrecond) {
+    struct atom *atom = &precond->negLiterals[idxPrecond];
+    if (trie_containsGr(state, atom, grAct)) {
+      // Actually increasing the weight, when a precondition is not met.
+      weight++;
+    }
+  }
+  return weight;
+}
+
+// Sets the weight on all actions in actL.
+// @nextGrAct is the action in the solution which will be after the ones
+//   considered in actL.
+void
+planner_actionList_calculateWeights_v3(struct actionList *actL,
+                                       trie_t state,
+                                       struct groundAction *nextGrAct)
+{
+  //if (nextGrAct == NULL) {
+  //  return planner_actionList_calculateWeights(actL, state);
+  //}
+
+  for (/* empty */; actL != NULL; actL = actL->next) {
+
+    struct groundAction *grAct = actL->act;
+    struct action *action = grAct->action;
+    struct goal *precond = action->precond;
+
+    // Consider weight before action in actL.
+    uint32_t weight =
+                    planner_actionList_calculateWeights_aux_v3(state,
+                                                               grAct,
+                                                               precond);
+    if (nextGrAct != NULL) {
+      trie_t stateCopy = trie_clone(state);
+      planner_apply(stateCopy, actL->act);
+      // Consider weight after action in actL.
+      weight += planner_actionList_calculateWeights_aux_v3(stateCopy,
+                                                    nextGrAct,
+                                                    nextGrAct->action->precond);
+      trie_free(stateCopy);
+    }
+
+    // Write weight to actual action-list-element.
+    actL->weight = weight > INT32_MAX ? INT32_MAX : (int32_t) weight;
+  }
+}
 
 // This function will edit the weights of the list in place.
 // It produces weights between 0 and INT32_MAX.
@@ -756,24 +816,28 @@ planner_iterativeDeepeningSearch_v2(struct problem *problem)
   return NULL;
 }
 
+// Count the number of calls to this function
+static int64_t planner_solveProblem_aux_v3_callCount = 0;
+
 struct actionList *
 planner_solveProblem_aux_v3(struct probSpace *probSpace,
                             struct actionList *actAcc,
                             int32_t depthLimit,
                             int32_t depth)
 {
+  planner_solveProblem_aux_v3_callCount ++;
+
   //if (depth == 17) {
-    printf("\nplanner_solveProblem_aux_v3(): actAcc length: %d\n",
-           utils_actionList_length(actAcc));
-    utils_print_actionListCompact(actAcc);
-    printf("\n");
+  //  printf("\nplanner_solveProblem_aux_v3(): actAcc length: %d\n",
+  //         utils_actionList_length(actAcc));
+  //  utils_print_actionListCompact(actAcc);
+  //  printf("\n");
   //}
 
   struct problem *problem = probSpace->problem;
   trie_t initState = problem->init;
   struct goal *goal = problem->goal;
 
-  // TODO: Maybe continue checking only from last gap.
   struct gap *gap = planner_hasGap(initState, goal, actAcc);
   if (gap == NULL) {
     // Solution found.
@@ -783,16 +847,16 @@ planner_solveProblem_aux_v3(struct probSpace *probSpace,
     struct actionList *solution = utils_cloneActionList(actAcc);
     return solution;
   }
-  utils_print_gap(gap); // DEBUG
-  printf("gap->position: %d\n", gap->position); // DEBUG
 
   if (depth >= depthLimit) {
     utils_free_gap(gap);
     return NULL;
   }
+  //utils_print_gap(gap); // DEBUG
+  //printf("gap->position: %d\n", gap->position); // DEBUG
 
   struct actionList *actsToFixGap = ps_getActsToFixGap(probSpace, gap->literal);
-  printf("actsToFixGap length: %d\n", utils_actionList_length(actsToFixGap));
+  //printf("actstofixgap length: %d\n", utils_actionList_length(actsToFixGap));
 
   if (actsToFixGap == NULL) {
     // There is no way (action) to fix the gap.
@@ -816,7 +880,11 @@ planner_solveProblem_aux_v3(struct probSpace *probSpace,
     struct actionList *actsToFixGapCopy =
                                     utils_cloneActionListShallow(actsToFixGap);
     // Calculate weight at this position.
-    planner_actionList_calculateWeights(actsToFixGapCopy, lState);
+    //planner_actionList_calculateWeights(actsToFixGapCopy, lState);
+    planner_actionList_calculateWeights_v3(actsToFixGapCopy,
+                                           lState,
+                                           afterCurr == NULL ? NULL : afterCurr->act);
+
     // Set their position.
     utils_actionList_setPosition(actsToFixGapCopy, idxPos);
     // Add them to the set of actions with theid positions.
@@ -844,17 +912,22 @@ planner_solveProblem_aux_v3(struct probSpace *probSpace,
   // and will be needed again. It will be freed witht he trie.
 
   // Note: weights in actsToFixGapWithPos are already set.
-  
-  printf("actsToFixGapWithPos length: %d\n",
-         utils_actionList_length(actsToFixGapWithPos));
+
+  //printf("actsToFixGapWithPos length: %d\n",
+  //       utils_actionList_length(actsToFixGapWithPos));
 
   /*** Second: Sort that list according to their weights. ***/
 
-  // Sort the list of actions (with their positions now.
+  // Note: Do not reverse the order here. It might be better to have the actions
+  // with high positions first.
+  //utils_print_actionListCompact(actsToFixGapWithPos); // DEBUG
+  //printf("\n"); // DEBUG
+
+  // Sort the list of actions (with their positions) now.
   actsToFixGapWithPos = planner_quicksort(actsToFixGapWithPos);
 
-  utils_print_actionListCompact(actsToFixGapWithPos); // DEBUG
-  printf("\n"); // DEBUG
+  //utils_print_actionListCompact(actsToFixGapWithPos); // DEBUG
+  //printf("\n"); // DEBUG
 
   /*** Third: Apply that actions ***/
 
@@ -892,14 +965,16 @@ planner_solveProblem_v3(struct probSpace *probSpace, int32_t depthLimit)
 }
 
 struct actionList *
-planner_iterativeDeepeningSearch_v3(struct problem *problem)
+planner_iterativeDeepeningSearch_v3(struct problem *problem,
+                                    int32_t planLengthGuess)
 {
   struct probSpace *probSpace = ps_init(problem);
 
   printf("all ground actions in problem space:\n"); // DEBUG
   utils_print_actionListCompact(probSpace->allGrActs); // DEBUG
   printf("\n"); // DEBUG
-  printf("%d", utils_actionList_length(probSpace->allGrActs));
+  printf("number of ground actions in problem space: %d",
+         utils_actionList_length(probSpace->allGrActs));
   printf("\n");
 
   printf("Problem Space: "); // DEBUG
@@ -908,9 +983,13 @@ planner_iterativeDeepeningSearch_v3(struct problem *problem)
   printf("variable occurance: %d\n", ps_calcMaxVarOcc(probSpace));
 
   struct actionList *solution = NULL;
-  for (int32_t depth = 17; depth < INT32_MAX; ++depth) {
-    printf("\n### depth search with depth %d\n\n", depth); // DEBUG
+  for (int32_t depth = planLengthGuess; depth < INT32_MAX; ++depth) {
+    printf("\n### depth search with depth %d\n", depth); // DEBUG
     solution = planner_solveProblem_v3(probSpace, depth);
+    printf("planner_solveProblem_aux_v3_callCount, i.e., nodes expanded: %d\n",
+            planner_solveProblem_aux_v3_callCount);
+    printf("\n");
+
     if (solution != NULL) {
       break;
     }
