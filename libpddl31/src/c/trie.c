@@ -47,7 +47,7 @@ struct tNode {
   // Siyze of array alloced for children.
   int32_t numAlloced;
 
-  // This is an unordered array. TODO: It might be good to do an ordered
+  // This is an ordered array.
   // array.
   struct tNodeArrE *chldrn;
 
@@ -162,7 +162,6 @@ trie_cleanupSNBuffer()
 trie_t
 trie_createEmpty(struct domain *domain)
 {
-  // TODO: Check for correctness.
   trie_t trie = malloc(sizeof(*trie));
   trie->domain = domain;
   trie->numOfChldrn = domain->predManag->numOfPreds;
@@ -263,7 +262,9 @@ snGetOrCreate_aux()
   struct tNode *result = malloc(sizeof(*result));
   result->numOfChldrn = 0;
   result->numAlloced = 0;
-  result->chldrn = NULL;
+  // malloc(0) returns an pointer != NULL. That is needed in
+  // snArrBinSearch_aux().
+  result->chldrn = malloc(0);
   result->count = 0;
   result->actsWPosEff = NULL;
   result->actsWNegEff = NULL;
@@ -280,28 +281,127 @@ snGrowArray_aux(struct tNode *tNode)
                           sizeof(*tNode->chldrn) * tNode->numAlloced);
 }
 
+// Returns a pointer to the element searched for or to the location
+// where the element should be inserted. You can check that by comparing
+// the term with the term of the array element of the returned pointer.
+// If the element should be appended to the end of the array, the pointer
+// will pointer to that location, which is one element after the array.
+struct tNodeArrE *
+snArrBinSearch_aux(struct tNode *tNode, struct term *term)
+{
+  //printf("tNode->numOfChldrn: %d\n", tNode->numOfChldrn); // DEBUG
+
+  struct tNodeArrE *idxP = NULL;
+  int32_t lowR = 0;
+  int32_t highR = tNode->numOfChldrn;
+  while (true) {
+    // +1 to "round up" at the division by two.
+    idxP = tNode->chldrn + lowR + (highR - lowR + 1) / 2;
+
+    if (lowR == highR) {
+      // Position / index found.
+      break;
+    }
+
+    assert (idxP > tNode->chldrn);
+    // Index pointer minus one.
+    struct tNodeArrE *idxPMO = idxP - 1;
+
+    if ( idxPMO->term >= term) {
+      // Move to the left.
+      highR = idxPMO - tNode->chldrn;
+      continue;
+    }
+    if (idxP == tNode->chldrn + highR) {
+      // Moving to the left is not neccessary, cause we checked that already
+      // in the previous if-statemenet.
+      // Since idxP points to the right most element, which is not initialized
+      // (comparing it would cause an error, too), there is no need to move to
+      // the right either.
+      // That is, we are done. Position / index found.
+      break;
+    }
+    if (idxP->term < term) {
+      // Move to the right.
+      lowR = idxP - tNode->chldrn + 1;
+      continue;
+    }
+    // Position found
+    break;
+  }
+  // Make sure, that the index is in the range at all.
+  assert (tNode->chldrn <= idxP &&
+          idxP <= tNode->chldrn + tNode->numOfChldrn);
+  //printf("idxP: %p tNode->chldrn: %p (idxP - 1)->term: %p term: %p\n",
+  //        idxP, tNode->chldrn, (idxP - 1)->term, term); // DEBUG
+  //fflush(stdout); // DEBUG
+  assert (idxP == tNode->chldrn || (idxP - 1)->term < term);
+  assert (idxP == tNode->chldrn + tNode->numOfChldrn || idxP->term >= term);
+  return idxP;
+}
+
+struct tNodeArrE *
+snNextAe_aux(struct tNode *tNode, struct term *searchTerm)
+{
+  // Use the binary search.
+  struct tNodeArrE *idxP = snArrBinSearch_aux(tNode, searchTerm);
+  assert (tNode->chldrn <= idxP && idxP <= tNode->chldrn + tNode->numOfChldrn);
+
+  if (idxP < tNode->chldrn + tNode->numOfChldrn) {
+    if (libpddl31_term_equal(idxP->term, searchTerm)) {
+      return idxP;
+    }
+  }
+  return NULL;
+
+  //// Naive method.
+  //for (int32_t idx = 0; idx < tNode->numOfChldrn; ++idx) {
+  //  struct tNodeArrE *snae = &tNode->chldrn[idx];
+  //  if (libpddl31_term_equal(snae->term, searchTerm)) {
+  //    return snae;
+  //  }
+  //}
+  //return NULL;
+}
+
 struct tNode *
 snFindOrAdd_aux(struct tNode *tNode, struct term *term)
 {
-  // Naive method.
-  for (int32_t idx = 0; idx < tNode->numOfChldrn; ++idx) {
-    struct tNodeArrE *snae = &tNode->chldrn[idx];
-    if (libpddl31_term_equal(snae->term, term)) {
-      return snae->chld;
-    }
+  // Find the element or place to insert by binary search.
+  struct tNodeArrE *idxP = snArrBinSearch_aux(tNode, term);
+  assert (tNode->chldrn <= idxP && idxP <= tNode->chldrn + tNode->numOfChldrn);
+
+  if (idxP == tNode->chldrn + tNode->numOfChldrn) {
+    // That is the index is one element after the array. We need to insert it
+    // there. Do not dereference this pointer yet.
+  } else if (libpddl31_term_equal(idxP->term, term)) {
+    // Term found.
+    return idxP->chld;
   }
-  // tNode does not contain term yet. Create it.
+  // We have to insert a new element at the idxP.
+  // This code makes sure to order the new element in an orderly manner.
+
+  // Grow memory if neccessary.
   tNode->numOfChldrn ++;
-
   if (tNode->numOfChldrn > tNode->numAlloced) {
+    // snGrowArray_aux() moves the array of tNode->chldrn and thus invalidates
+    // idxP.
+    // Quickfix:
+    int32_t idxBack = idxP - tNode->chldrn;
     snGrowArray_aux(tNode);
+    idxP = tNode->chldrn + idxBack;
   }
 
-  struct tNodeArrE *newSNodeArrE = &tNode->chldrn[tNode->numOfChldrn - 1];
-  newSNodeArrE->term = term;
-  newSNodeArrE->chld = snGetOrCreate_aux();
+  // Move elements to the right.
+  // Note tNode->numOfChldrn has already been increased.
+  uint32_t nelems = tNode->numOfChldrn - (idxP - tNode->chldrn) - 1;
+  memmove(idxP + 1, idxP, sizeof(*idxP) * nelems);
 
-  return newSNodeArrE->chld;
+  // Write new element in its place.
+  idxP->term = term;
+  idxP->chld = snGetOrCreate_aux();
+
+  return idxP->chld;
 }
 
 void
@@ -354,7 +454,6 @@ trie_addGr(trie_t trie, struct atom *atom, struct groundAction *grAct)
     }
 
     currSN = snFindOrAdd_aux(currSN, termToAdd);
-    // TODO: Is that correct?
   }
 }
 
@@ -373,21 +472,7 @@ trie_add(trie_t trie, struct atom *atom)
   for (int32_t idxTerm = 0; idxTerm < atom->pred->numOfParams; ++idxTerm) {
     struct term *atomTerm = atom->terms[idxTerm];
     currSN = snFindOrAdd_aux(currSN, atomTerm);
-    // TODO: Is that correct?
   }
-}
-
-struct tNodeArrE *
-snNextAe_aux(struct tNode *tNode, struct term *searchTerm)
-{
-  // Naive method.
-  for (int32_t idx = 0; idx < tNode->numOfChldrn; ++idx) {
-    struct tNodeArrE *snae = &tNode->chldrn[idx];
-    if (libpddl31_term_equal(snae->term, searchTerm)) {
-      return snae;
-    }
-  }
-  return NULL;
 }
 
 bool
@@ -907,7 +992,7 @@ trie_addIndex(trie_t trie,
   // leave node.
   assert (currSN->numOfChldrn == 0);
 
-  // Here will will add the refernece to the action.
+  // Here we will add the refernece to the action.
   if (positive) {
     currSN->actsWPosEff = utils_addActionToList(currSN->actsWPosEff, grAct);
   } else {
