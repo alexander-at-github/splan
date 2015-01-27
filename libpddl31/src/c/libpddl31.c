@@ -421,6 +421,8 @@ libpddl31_action_free(struct action *action)
     }
 }
 
+// This alters the domains' object manager. Cloneing the domains' object manager
+// in struct problem would cause a nasty bug (pointers don't corespond anymore).
 struct problem *
 libpddl31_problem_parse(struct domain *domain, char *filename)
 {
@@ -493,10 +495,8 @@ libpddl31_problem_free(struct problem *problem)
         problem->requirements = NULL;
     }
 
-    if (problem->objManag != NULL) {
-        objManag_free(problem->objManag);
-        problem->objManag = NULL;
-    }
+    // The object manager is only a pointer to the domains' object manager.
+    // No need to free anything for that.
 
     if (problem->init != NULL) {
         trie_free(problem->init);

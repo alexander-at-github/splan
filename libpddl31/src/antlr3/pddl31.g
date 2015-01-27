@@ -986,7 +986,11 @@ problem[struct domain *domain] returns [struct problem *value]
     // Save reference to domain.
     $value->domain = $domain; // It works without'$'. Why?
     // Set the problems own object manager.
-    $value->objManag = objManag_clone($domain->objManag);
+    // Don't clone the object manager here, because pointers to constant
+    // terms already point here. The planner later works with these pointes.
+    // It could get buggy when one pointer points to the domains' object
+    // manager and another pointer points to the problems' object manager.
+    $value->objManag = $domain->objManag;
 
     bool hasRequirements = false;
     bool hasObjects = false;

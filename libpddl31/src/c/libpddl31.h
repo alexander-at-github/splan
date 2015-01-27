@@ -11,8 +11,8 @@ struct domain *libpddl31_domain_parse(char *filename);
 void libpddl31_domain_free(struct domain *domain);
 void libpddl31_domain_print(struct domain *domain);
 
-// TODO: Does this call actually alter the domains' object manager?
-// It should not.
+// This alters the domains' object manager. Cloneing the domains' object manager
+// in struct problem would cause a nasty bug (pointers don't corespond anymore).
 struct problem *libpddl31_problem_parse(struct domain *domain, char *filename);
 // Attention: struct problem must be free'd before domain!
 void libpddl31_problem_free(struct problem *problem);

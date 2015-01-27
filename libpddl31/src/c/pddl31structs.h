@@ -65,10 +65,10 @@ struct problem
     // A reference to the coresponding domain.
     struct domain *domain;
 
-    // A problem will have its' own object manager. Here it will add the
-    // constants which are defined in the problems' definition. We do not
-    // want to alter the domain, since it is semantically independent of the
-    // problem.
+    // A problem will _not_ have its own problem manager. That is only a
+    // pointer to the domains' problem manager. Makeing a seperate one
+    // (cloneing) introduces a nasty bug (pointers point to these two different
+    // locations).
     struct objManag *objManag;
 
     int32_t numOfRequirements;
