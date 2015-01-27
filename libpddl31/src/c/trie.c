@@ -951,9 +951,16 @@ trie_addIndex(trie_t trie,
               struct groundAction *grAct,
               bool positive)
 {
-  // Later asserts will check exactly this fact again. This line is just for
-  // humans.
-  assert (trie_containsGr(trie, atom, grAct));
+  // Insert atom into trie. Normally it is already in the trie. When a
+  // problem instance got a negative effect, which the whole problem instance
+  // does not have a positive effect or initial fluent for, then this fluent
+  // could be still missing from the trie. Let's just add it.
+  //
+  //if ( ! trie_containsGr(trie, atom, grAct)) { // DEBUG
+  //  assert ( ! positive); // DEBUG
+  //  trie_addGr(trie, atom, grAct); // DEBUG
+  //} // DEBUG
+  trie_addGr(trie, atom, grAct); // DEBUG
 
   // Pointer arithmetic. See struct st_trie.
   // A pointer into the tries' array of predicates.

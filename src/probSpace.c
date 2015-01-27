@@ -82,7 +82,7 @@ ps_apply(trie_t trie, struct groundAction *grAct)
 void
 ps_createIndex(struct probSpace *probSpace)
 {
-  trie_t trie = probSpace->setFluents;
+  probSpace->setPNFluents = trie_clone(probSpace->setFluents);
   for (struct actionList *alE = probSpace->allGrActs;
        alE != NULL;
        alE = alE->next) {
@@ -93,11 +93,10 @@ ps_createIndex(struct probSpace *probSpace)
     for (int32_t idxE = 0; idxE < effect->numOfElems; ++idxE) {
       struct effectElem *effE = &effect->elems[idxE];
       struct atom *atom = effE->it.literal;
-      // TODO: Is that correct?
       if (effE->type == POS_LITERAL) {
-        trie_addIndexPos(trie, atom, grAct);
+        trie_addIndexPos(probSpace->setPNFluents, atom, grAct);
       } else if (effE->type == NEG_LITERAL) {
-        trie_addIndexNeg(trie, atom, grAct);
+        trie_addIndexNeg(probSpace->setPNFluents, atom, grAct);
       } else {
         assert (false && "This code does not support conditional effects.");
       }
@@ -112,6 +111,7 @@ ps_init(struct problem *problem)
   probSpace->problem = problem;
   // Initialize problem space with initial state of problem.
   probSpace->setFluents = trie_clone(problem->init);
+  probSpace->setPNFluents = NULL; // Will be set only in ps_creatIndex()
   probSpace->allGrActs = NULL; // Will be set later
 
   struct actionManag *actionManag = problem->domain->actionManag;
@@ -346,8 +346,8 @@ struct actionList *
 ps_getActsToFixGap(struct probSpace *probSpace, struct literal *literal)
 {
   if (literal->isPos) {
-    return trie_getActsPos(probSpace->setFluents, literal->atom);
+    return trie_getActsPos(probSpace->setPNFluents, literal->atom);
   }
   // Else
-  return trie_getActsNeg(probSpace->setFluents, literal->atom);
+  return trie_getActsNeg(probSpace->setPNFluents, literal->atom);
 }

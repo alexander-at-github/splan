@@ -8,8 +8,14 @@ struct probSpace {
   // The corresponding problem.
   struct problem *problem;
   // Problem Space. That is a state, which is an union of all possible
-  // states in the problem instance.
+  // states in the problem instance. (From only positive effect literals).
   trie_t setFluents;
+
+  // A copy from setFluents + the literals which could be negated effect. We
+  // need that for the index. Otherwise some negative effect literals might
+  // not have a element to put its index.
+  trie_t setPNFluents;
+
   // A set of all possible actions in the problem space.
   struct actionList *allGrActs;
 };
