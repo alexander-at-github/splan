@@ -64,11 +64,9 @@ OPEN QUESTIONS
   I chose second option for now.
 
 TODO:
-* Improve tries tNodes, so it does not have to search for children.
 * Turn off assertions for time measurments.
 * Put return value and function name on separate lines.
 * Parser: type -> (either type+) . Should I still do that?
-* Remove requirement :conditional-effect from parser
 
 NOTES:
 * Testrun for test_instances/openstacks-strips/p01.pddl with searchdepth 4 took
@@ -91,3 +89,10 @@ NOTES:
   planner_solveProblem_aux(). The number of states must be equal to the search
   depth limit.
 * valgrind --tool=callgrind ./bin/splan -d test_instances/tsp-neg-prec/domain.pddl -p test_instances/tsp-neg-prec/p7.pddl
+
+A-Star Algorithm notes:
+* There is a good suggestion for a A*-Heuristic on page 378 of AIMA: Solve
+  each gap individualy and take the maximum of them as the result to the
+  heuristic function.
+* To further relax the problem for the heuristic, ignoring delete lists and
+  negative preconditions seems a good idea.
