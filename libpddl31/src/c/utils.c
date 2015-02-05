@@ -351,7 +351,8 @@ void utils_print_groundAction(struct groundAction *grAct)
 void
 utils_print_groundActionCompact(struct groundAction *grAct)
 {
-  printf("grAct:(%s", grAct->action->name);
+  //printf("grAct:(%s", grAct->action->name);
+  printf("(%s", grAct->action->name);
   for (int32_t i = 0; i < grAct->action->numOfParams; ++i) {
     char *termName = grAct->terms[i] == NULL ? "NULL" : grAct->terms[i]->name;
     printf(" %s", termName);
@@ -365,7 +366,7 @@ utils_print_actionListCompact(struct actionList *list)
   printf("ActionList:(");
   while (list != NULL) {
     utils_print_groundActionCompact(list->act);
-    printf("w%dp%d", list->weight, list->pos); // print weights
+    //printf("w%dp%d", list->weight, list->pos); // print weights
     if (list->next != NULL) {
       printf(" ");
     }

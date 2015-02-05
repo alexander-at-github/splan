@@ -69,6 +69,7 @@ struct atom *utils_atom_cloneWithGrounding(struct atom *atom,
 void utils_free_gap(struct gap *gap);
 struct actionList *utils_cloneActionList(struct actionList *actL);
 void utils_print_groundAction(struct groundAction *grAct);
+void utils_print_groundActionCompact(struct groundAction *grAct);
 void utils_print_actionListCompact(struct actionList *list);
 
 // @pos: If zero, removes first element.
