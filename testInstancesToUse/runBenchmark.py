@@ -25,8 +25,8 @@ solutionFound = 'SOLUTION FOUND'
 #        splanCmd, '-d', 'domainDummy', '-p', 'problemDummy']
 # When we swap the order of 'time' and 'timeout' multiple processes will be run
 # run at the same time. Why?
-cmd = ['/usr/bin/time', '-v', 'timeout', timeout,
-        splanCmd, '-d', 'domainDummy', '-p', 'problemDummy']
+cmd = ['/usr/bin/time', '-v',
+        splanCmd, '-d', 'domainDummy', '-p', 'problemDummy', '-t', timeout]
 
 # With argument None uses system time.
 random.seed(None)
@@ -43,7 +43,8 @@ with open(outFN, "a") as outF:
     outF.write("timeout [sec]: ")
     outF.write(timeout)
     outF.write("\n")
-    outF.write("  domain  |  problem  |  runtime [sec]  |  mem [kbytes]")
+    outF.write("  domain  |  problem  |  runtime [sec]  |  mem [kbytes] | " \
+               "nodes expanded")
     outF.write("\n")
 
 def main():
@@ -189,9 +190,19 @@ def runSimplePlan(domain, problem):
         assert len(memLine) == 1
         mem = re.findall("\d+", memLine[0]) [0]
 
+    # Find the number of nodes expanded
+    match = None
+    # Find last occurance of "nodes expanded".
+    for match in re.finditer(r"nodes expanded: \d+", outputStr):
+        pass
+    # Now match holds the last occurance of the deserved string.
+    if match:
+        match = match.group(0) # now it's a string
+        match = [s for s in match.split() if s.isdigit()][0] # get first number
+
     # Write measured numbers to out-file.
     with open(outFN, 'a') as outF: # Append to out file.
-        strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + '\n'
+        strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + ' ' + match +'\n'
         outF.write(strToWrite)
 
 def sorted_nicely( l ): 
