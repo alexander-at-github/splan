@@ -363,6 +363,10 @@ utils_print_groundActionCompact(struct groundAction *grAct)
 void
 utils_print_actionListCompact(struct actionList *list)
 {
+  if (list == NULL) {
+    return;
+  }
+
   printf("ActionList:(");
   while (list != NULL) {
     utils_print_groundActionCompact(list->act);
