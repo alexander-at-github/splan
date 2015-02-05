@@ -104,6 +104,29 @@ ps_createIndex(struct probSpace *probSpace)
   }
 }
 
+// Checks the ground actions precondition. It only considers positive
+// precondtions. Returns true if they are all satisfied by the state, and false
+// otherwise.
+static
+bool
+ps_satisfiesPosPrecondAtoms(trie_t state, struct groundAction *grAct)
+{
+  assert(grAct != NULL);
+
+  struct goal *precond = grAct->action->precond;
+
+  for (int32_t i = 0; i < precond->numOfPos; ++i) {
+    struct atom *atom = &precond->posLiterals[i];
+    if ( ! trie_containsGr(state, atom, grAct)) {
+      return false;
+    }
+  }
+
+  // Ignoring negative precondtions here on purpose.
+
+  return true;
+}
+
 struct probSpace *
 ps_init(struct problem *problem)
 {
@@ -146,15 +169,25 @@ ps_init(struct problem *problem)
 
       struct groundAction *grAct = actL->act;
 
-      struct literal *isSatisfied =
-                        planner_satisfiesPrecond(probSpace->setFluents, grAct);
-      if (isSatisfied == NULL) {
+      // Do not use planner_satisfiesPrecond(). That would be wrong. On
+      // purpose only check the positive preconditions.
+      bool isSatisfied = ps_satisfiesPosPrecondAtoms(probSpace->setFluents,
+                                                     grAct);
+
+      ///* DEBUG */
+      //if (strcmp(grAct->action->name, "move-agent") == 0) {
+      //  utils_print_groundActionCompact(grAct);
+      //  printf("   isSatisfied: %s\n", isSatisfied ? "true" : "false");
+      //}
+      ///* DEBUG */
+
+      if (isSatisfied) {
         bool change = ps_apply(probSpace->setFluents, grAct);
         if (change && done) {
           done = false;
         }
       } else {
-        utils_free_literal(isSatisfied);
+        //utils_free_literal(isSatisfied);
       }
     }
   }
@@ -274,29 +307,6 @@ ps_free(struct probSpace *probSpace)
   trie_free(probSpace->setFluents);
   utils_free_actionList(probSpace->allGrActs);
   free(probSpace);
-}
-
-// Checks the ground actions precondition. It only considers positive
-// precondtions. Returns true if they are all satisfied by the state, and false
-// otherwise.
-static
-bool
-ps_satisfiesPosPrecondAtoms(trie_t state, struct groundAction *grAct)
-{
-  assert(grAct != NULL);
-
-  struct goal *precond = grAct->action->precond;
-
-  for (int32_t i = 0; i < precond->numOfPos; ++i) {
-    struct atom *atom = &precond->posLiterals[i];
-    if ( ! trie_containsGr(state, atom, grAct)) {
-      return false;
-    }
-  }
-
-  // Ignoring negative precondtions here on psrpose.
-
-  return true;
 }
 
 struct actionList *
