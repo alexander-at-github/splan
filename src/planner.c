@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <time.h>
 
 #include "planner.h"
 
@@ -6,6 +7,10 @@
 #include "probSpace.h"
 #include "trie.h"
 #include "utils.h"
+
+clock_t startTime = 0;
+int32_t timeout = -1;
+bool timedout = false;
 
 struct actionList *
 planner_getActsToFixGap(struct problem *problem,
@@ -825,6 +830,15 @@ planner_solveProblem_aux_v3(struct probSpace *probSpace,
                             int32_t depthLimit,
                             int32_t depth)
 {
+  if (timeout >= 0) {
+    clock_t endTime = clock();
+    if ((endTime - startTime) > timeout) {
+      timedout = true;
+      printf("TIMEOUT.\n");
+      return NULL;
+    }
+  }
+
   planner_solveProblem_aux_v3_callCount ++;
 
   //if (depth == 17) {
@@ -951,6 +965,11 @@ planner_solveProblem_aux_v3(struct probSpace *probSpace,
     if (solution != NULL) {
       break;
     }
+
+    // Not strictly neccessary.
+    if (timedout) {
+      break;
+    }
   }
 
   utils_free_actionListShallow(actsToFixGapWithPos);
@@ -966,8 +985,15 @@ planner_solveProblem_v3(struct probSpace *probSpace, int32_t depthLimit)
 
 struct actionList *
 planner_iterativeDeepeningSearch_v3(struct problem *problem,
-                                    int32_t planLengthGuess)
+                                    int32_t planLengthGuess,
+                                    int32_t timeout_) // in seconds
 {
+  if (timeout_ >= 0) {
+    startTime = clock();
+    timeout = timeout_ * CLOCKS_PER_SEC; // in clocks
+    //printf("timeout set to %d circles\n", timeout);
+  }
+
   struct probSpace *probSpace = ps_init(problem);
 
   printf("all ground actions in problem space:\n"); // DEBUG
@@ -990,7 +1016,7 @@ planner_iterativeDeepeningSearch_v3(struct problem *problem,
             planner_solveProblem_aux_v3_callCount);
     printf("\n");
 
-    if (solution != NULL) {
+    if (solution != NULL || timedout) {
       break;
     }
   }

@@ -8,7 +8,8 @@ static void
 print_usage(char **argv)
 {
   fprintf(stderr,
-          "Usage: %s -d domain-file-name -p problem-file-name\n",
+          "Usage: %s -d domain-file-name -p problem-file-name"
+          " [-l plan-length-guess] [-t timeout-in-seconds]\n",
           argv[0]);
 }
 
@@ -17,9 +18,10 @@ int main(int argc, char **argv)
   char *domainFilename = NULL;
   char *problemFilename = NULL;
   int32_t planLengthGuess = 1;
+  int32_t timeout = -1; // in seconds
 
   int opt;
-  while ((opt = getopt(argc, argv, "d:p:l:")) != -1) {
+  while ((opt = getopt(argc, argv, "d:p:l:t:")) != -1) {
     switch (opt) {
     case 'd':
       domainFilename = optarg;
@@ -29,6 +31,10 @@ int main(int argc, char **argv)
       break;
     case 'l':
       planLengthGuess = (int32_t) strtol(optarg, NULL, 10);
+      break;
+    case 't':
+      timeout = (int32_t) strtol(optarg, NULL, 10);
+      //printf("timeout set to %d seconds.\n", timeout);
       break;
     default:
       print_usage(argv);
@@ -48,7 +54,8 @@ int main(int argc, char **argv)
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
   struct actionList *result = planner_iterativeDeepeningSearch_v3(problem,
-                                                               planLengthGuess);
+                                                               planLengthGuess,
+                                                               timeout);
   utils_print_actionListCompact(result);
   printf("\n");
 
