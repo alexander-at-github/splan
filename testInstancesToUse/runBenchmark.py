@@ -206,13 +206,13 @@ def runSimplePlan(domain, problem):
     if numGrActs:
         numGrActs = numGrActs.group(0)
         numGrActs = [s for s in numGrActs.split() if s.isdigit()][0]
-    print(numGrActs)
+    #print(numGrActs)
 
     vo = re.search("variable occurrence: \d+", outputStr)
     if vo:
         vo = vo.group(0)
         vo = [s for s in vo.split() if s.isdigit()][0]
-    print(vo)
+    #print(vo)
 
     # Find last search depth statement
     kk = None
@@ -222,7 +222,7 @@ def runSimplePlan(domain, problem):
     if kk:
         kk = kk.group(0)
         kk = [s for s in kk.split() if s.isdigit()][0]
-    print(kk)
+    #print(kk)
 
     # Write measured numbers to out-file.
     with open(outFN, 'a') as outF: # Append to out file.
