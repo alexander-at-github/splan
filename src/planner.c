@@ -800,7 +800,7 @@ planner_iterativeDeepeningSearch_v2(struct problem *problem)
   printf("Problem Space: "); // DEBUG
   trie_print(probSpace->setFluents); // DEBUG
   printf("\n"); // DEBUG
-  printf("variable occurance: %d\n", ps_calcMaxVarOcc(probSpace));
+  printf("variable occurrence: %d\n", ps_calcMaxVarOcc(probSpace));
 
   for (int32_t depth = 1; depth < INT32_MAX; ++depth) {
     printf("\n### depth search with depth %d\n\n", depth); // DEBUG
@@ -1006,7 +1006,7 @@ planner_iterativeDeepeningSearch_v3(struct problem *problem,
   printf("Problem Space: "); // DEBUG
   trie_print(probSpace->setFluents); // DEBUG
   printf("\n"); // DEBUG
-  printf("variable occurance: %d\n", ps_calcMaxVarOcc(probSpace));
+  printf("variable occurrence: %d\n", ps_calcMaxVarOcc(probSpace));
 
   struct actionList *solution = NULL;
   for (int32_t depth = planLengthGuess; depth < INT32_MAX; ++depth) {

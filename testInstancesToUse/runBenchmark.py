@@ -44,7 +44,8 @@ with open(outFN, "a") as outF:
     outF.write(timeout)
     outF.write("\n")
     outF.write("  domain  |  problem  |  runtime [sec]  |  mem [kbytes] | " \
-               "nodes expanded")
+               "nodes expanded | number of ground actions | " \
+               "variable occurrence | search depth or plan length")
     outF.write("\n")
 
 def main():
@@ -191,18 +192,42 @@ def runSimplePlan(domain, problem):
         mem = re.findall("\d+", memLine[0]) [0]
 
     # Find the number of nodes expanded
-    match = None
+    numNdExp = None
     # Find last occurance of "nodes expanded".
-    for match in re.finditer(r"nodes expanded: \d+", outputStr):
+    for numNdExp in re.finditer(r"nodes expanded: \d+", outputStr):
         pass
-    # Now match holds the last occurance of the deserved string.
-    if match:
-        match = match.group(0) # now it's a string
-        match = [s for s in match.split() if s.isdigit()][0] # get first number
+    # Now numNdExp holds the last occurance of the deserved string.
+    if numNdExp:
+        numNdExp = numNdExp.group(0) # now it's a string
+        numNdExp = [s for s in numNdExp.split() if s.isdigit()][0] # get first number
+
+    # Find number of ground actions in problem space
+    numGrActs = re.search("number of ground actions in problem space: \d+", outputStr)
+    if numGrActs:
+        numGrActs = numGrActs.group(0)
+        numGrActs = [s for s in numGrActs.split() if s.isdigit()][0]
+    print(numGrActs)
+
+    vo = re.search("variable occurrence: \d+", outputStr)
+    if vo:
+        vo = vo.group(0)
+        vo = [s for s in vo.split() if s.isdigit()][0]
+    print(vo)
+
+    # Find last search depth statement
+    kk = None
+    for kk in re.finditer(r"### depth search with depth \d+", outputStr):
+        pass
+    # Now kk holds last occurrence of this string.
+    if kk:
+        kk = kk.group(0)
+        kk = [s for s in kk.split() if s.isdigit()][0]
+    print(kk)
 
     # Write measured numbers to out-file.
     with open(outFN, 'a') as outF: # Append to out file.
-        strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + ' ' + match +'\n'
+        strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + ' ' + \
+                     numNdExp + ' ' + numGrActs + ' ' + vo + ' ' + kk + '\n'
         outF.write(strToWrite)
 
 def sorted_nicely( l ): 
