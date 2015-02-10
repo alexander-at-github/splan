@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, random, re, subprocess, sys
+import math, os, random, re, subprocess, sys
 
 #print("### argv len: ", len(sys.argv))
 #for arg in sys.argv:
@@ -45,7 +45,8 @@ with open(outFN, "a") as outF:
     outF.write("\n")
     outF.write("  domain  |  problem  |  runtime [sec]  |  mem [kbytes] | " \
                "nodes expanded | number of ground actions | " \
-               "variable occurrence | search depth or plan length")
+               "variable occurrence | search depth or plan length | " \
+               " k! * vo^k")
     outF.write("\n")
 
 def main():
@@ -227,7 +228,8 @@ def runSimplePlan(domain, problem):
     # Write measured numbers to out-file.
     with open(outFN, 'a') as outF: # Append to out file.
         strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + ' ' + \
-                     numNdExp + ' ' + numGrActs + ' ' + vo + ' ' + kk + '\n'
+                     numNdExp + ' ' + numGrActs + ' ' + vo + ' ' + kk + ' ' + \
+                     str( math.factorial(int(kk)) * int(vo) ** int(kk) ) + '\n'
         outF.write(strToWrite)
 
 def sorted_nicely( l ): 
