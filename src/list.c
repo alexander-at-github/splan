@@ -64,7 +64,9 @@ list_removeFirst(list_t list)
   first->next = NULL;
 
   list_t second = first->next;
-  second->prev = NULL;
+  if (second != NULL) {
+    second->prev = NULL;
+  }
   return second;
 }
 

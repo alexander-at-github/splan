@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "aStarPlanner.h"
 #include "list.h"
 #include "probSpace.h"
 #include "trie.h"
@@ -324,6 +325,8 @@ aStarPlanner_getAllGaps(struct probSpace *probSpace, aStarNode_t actions)
     }
   }
 
+  trie_free(state);
+
   return result;
 }
 
@@ -358,7 +361,11 @@ aStarPlanner_aStar(struct probSpace *probSpace)
          gaps = gaps->next) {
 
       struct gap *gap = (struct gap *) gaps->payload;
+      //utils_print_gap(gap); // DEBUG
+      //printf("\n"); // DEBUG
       struct actionList *actions = ps_getActsToFixGap(probSpace, gap->literal);
+      //utils_print_actionListCompact(actions); // DEBUG
+      //printf("\n"); // DEBUG
 
       for (struct actionList *currAct = actions;
            currAct != NULL;
@@ -370,7 +377,13 @@ aStarPlanner_aStar(struct probSpace *probSpace)
              idxPos++) {
 
           aStarNode_t chld = utils_cloneActionListShallow(currN);
-          chld = utils_addActionToListAtPosition(chld, grAct, gap->position);
+          //printf("chld: "); // DEBUG
+          //utils_print_actionListCompact(chld); // DEBUG
+          //printf("\n"); // DEBUG
+          chld = utils_addActionToListAtPosition(chld, grAct, gap->position -1);
+          //printf("chld: "); // DEBUG
+          //utils_print_actionListCompact(chld); // DEBUG
+          //printf("\n"); // DEBUG
 
           /* If explored contains chld. */
           if (asnl_find(explored, chld) != NULL) {
@@ -408,4 +421,14 @@ aStarPlanner_aStar(struct probSpace *probSpace)
 
   // No solution exists.
   return NULL;
+}
+
+struct actionList *
+aStarPlanner(struct problem *problem)
+{
+  struct probSpace *probSpace = ps_init(problem);
+  struct actionList *solution = aStarPlanner_aStar(probSpace);
+  ps_free(probSpace);
+  trie_cleanupSNBuffer();
+  return solution;
 }

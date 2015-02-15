@@ -1035,97 +1035,97 @@ planner_iterativeDeepeningSearch_v3(struct problem *problem,
 
 /*** Under Construction. ***/
 
-static
-void
-planner_applyEffElemPos(trie_t trie,
-                struct groundAction *grAct,
-                struct effectElem *effElem)
-{
-  assert (effElem != NULL);
-  if (effElem->type != POS_LITERAL) {
-    return;
-  }
-  trie_addGr(trie, effElem->it.literal, grAct);
-}
+/* static */
+/* void */
+/* planner_applyEffElemPos(trie_t trie, */
+/*                 struct groundAction *grAct, */
+/*                 struct effectElem *effElem) */
+/* { */
+/*   assert (effElem != NULL); */
+/*   if (effElem->type != POS_LITERAL) { */
+/*     return; */
+/*   } */
+/*   trie_addGr(trie, effElem->it.literal, grAct); */
+/* } */
 
-static
-void
-planner_applyEffElemNeg(trie_t trie,
-                struct groundAction *grAct,
-                struct effectElem *effElem)
-{
-  assert (effElem != NULL);
-  if (effElem->type != NEG_LITERAL) {
-    return;
-  }
-  trie_addGr(trie, effElem->it.literal, grAct);
-}
+/* static */
+/* void */
+/* planner_applyEffElemNeg(trie_t trie, */
+/*                 struct groundAction *grAct, */
+/*                 struct effectElem *effElem) */
+/* { */
+/*   assert (effElem != NULL); */
+/*   if (effElem->type != NEG_LITERAL) { */
+/*     return; */
+/*   } */
+/*   trie_addGr(trie, effElem->it.literal, grAct); */
+/* } */
 
-typedef void (*applyEffElemFun)(trie_t,
-                                struct groundAction *,
-                                struct effectElem) ;
+/* typedef void (*applyEffElemFun)(trie_t, */
+/*                                 struct groundAction *, */
+/*                                 struct effectElem) ; */
 
-static
-void
-planner_applyF(trie_t trie, struct groundAction *grAct, applyEffElemFun)
-{
-  assert (trie != NULL);
-  assert (grAct != NULL);
+/* static */
+/* void */
+/* planner_applyF(trie_t trie, struct groundAction *grAct, applyEffElemFun) */
+/* { */
+/*   assert (trie != NULL); */
+/*   assert (grAct != NULL); */
 
-  struct effect *effCurr = grAct->action->effect;
+/*   struct effect *effCurr = grAct->action->effect; */
 
-  for (int32_t idx = 0; idx < effCurr->numOfElems; ++idx) {
-    struct effectElem *effElem = &effCurr->elems[idx];
-    (*applyEffElemFun)(trie, grAct, effElem);
-  }
-}
+/*   for (int32_t idx = 0; idx < effCurr->numOfElems; ++idx) { */
+/*     struct effectElem *effElem = &effCurr->elems[idx]; */
+/*     (*applyEffElemFun)(trie, grAct, effElem); */
+/*   } */
+/* } */
 
-static
-void
-planner_applyPos(trie_t trie, struct groundAction *grAct)
-{
-  plannerApplyF(trie, grAct, &planner_applyEffElemPos);
-}
+/* static */
+/* void */
+/* planner_applyPos(trie_t trie, struct groundAction *grAct) */
+/* { */
+/*   plannerApplyF(trie, grAct, &planner_applyEffElemPos); */
+/* } */
 
-static
-void
-planner_applyNeg(trie_t trie, struct groundAction *grAct)
-{
-  plannerApplyF(trie, grAct, &planner_applyEffElemNeg);
-}
+/* static */
+/* void */
+/* planner_applyNeg(trie_t trie, struct groundAction *grAct) */
+/* { */
+/*   plannerApplyF(trie, grAct, &planner_applyEffElemNeg); */
+/* } */
 
-typedef struct actionList * aStarNode_t;
+/* typedef struct actionList * aStarNode_t; */
 
-typedef struct aStarNodeList {
-  aStarNode_t node;
-  struct aStarNodeList *next;
-  // prev? struct aStarNodeList *prev;
-} * aStarNodeList_t;
+/* typedef struct aStarNodeList { */
+/*   aStarNode_t node; */
+/*   struct aStarNodeList *next; */
+/*   // prev? struct aStarNodeList *prev; */
+/* } * aStarNodeList_t; */
 
-static
-aStarNodeList_t
-asnl_createElem(aStarNode_t aStarNode)
-{
-  aStarNodeList_t asnle = malloc(sizeof(*asnle));
-  asnle->node = aStarNode;
-  return asnle;
-}
+/* static */
+/* aStarNodeList_t */
+/* asnl_createElem(aStarNode_t aStarNode) */
+/* { */
+/*   aStarNodeList_t asnle = malloc(sizeof(*asnle)); */
+/*   asnle->node = aStarNode; */
+/*   return asnle; */
+/* } */
 
-struct actionList *
-planner_aStar(struct probSpace *probSpace)
-{
-  aStarNode_t aStarNode = NULL;    // The empty list of actions.
-  aStarNodeList_t frontier = asnl_createElem(aStarNode);
-  aStarNodeList_t explored = NULL;    // An empty set.
+/* struct actionList * */
+/* planner_aStar(struct probSpace *probSpace) */
+/* { */
+/*   aStarNode_t aStarNode = NULL;    // The empty list of actions. */
+/*   aStarNodeList_t frontier = asnl_createElem(aStarNode); */
+/*   aStarNodeList_t explored = NULL;    // An empty set. */
 
-  while(frontier != NULL) {
-    aStarNode_t currN;
-    /* currN = pop(frontier) */
-    currN = frontier->node;
-    frontier = asnl_removeFirst(frontier);
+/*   while(frontier != NULL) { */
+/*     aStarNode_t currN; */
+/*     /1* currN = pop(frontier) *1/ */
+/*     currN = frontier->node; */
+/*     frontier = asnl_removeFirst(frontier); */
 
-  }
+/*   } */
 
-  // No solution.
-  return NULL;
-}
+/*   // No solution. */
+/*   return NULL; */
+/* } */

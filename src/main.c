@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "aStarPlanner.h"
 #include "planner.h"
 #include "utils.h"
 
@@ -53,9 +54,13 @@ int main(int argc, char **argv)
   }
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
 
-  struct actionList *result = planner_iterativeDeepeningSearch_v3(problem,
-                                                               planLengthGuess,
-                                                               timeout);
+//  struct actionList *result = planner_iterativeDeepeningSearch_v3(problem,
+//                                                               planLengthGuess,
+//                                                               timeout);
+
+  struct actionList *result = aStarPlanner(problem);
+
+  printf("SOLUTION FOUND\n");
   utils_print_actionListCompact(result);
   printf("\n");
 

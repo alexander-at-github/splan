@@ -305,6 +305,7 @@ void
 ps_free(struct probSpace *probSpace)
 {
   trie_free(probSpace->setFluents);
+  trie_free(probSpace->setPNFluents);
   utils_free_actionList(probSpace->allGrActs);
   free(probSpace);
 }
