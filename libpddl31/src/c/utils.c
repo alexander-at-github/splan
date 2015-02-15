@@ -498,6 +498,28 @@ utils_groundActions(struct problem *problem,
 }
 
 bool
+utils_grAct_equal(struct groundAction *ga1, struct groundAction *ga2)
+{
+  if (ga1 == NULL && ga2 == NULL) {
+    return true;
+  }
+  if (ga1 == NULL || ga2 == NULL) {
+    return false;
+  }
+
+  if (ga1->action != ga2->action) {
+      return false;
+  }
+  assert (ga1->action->numOfParams == ga2->action->numOfParams);
+  for (int idx = 0; idx < ga1->action->numOfParams; ++idx) {
+    if ( ! libpddl31_term_equal(ga1->terms[idx], ga2->terms[idx])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool
 utils_atom_equal(struct atom *a1, struct atom *a2)
 {
   if (a1 == NULL && a2 == NULL) {

@@ -86,5 +86,6 @@ struct actionList *utils_addActionToList(struct actionList *head,
 void utils_free_actionListShallow(struct actionList *list);
 struct actionList *utils_cloneActionListShallow(struct actionList *actL);
 struct actionList *utils_actionList_reverse(struct actionList *list);
+bool utils_grAct_equal(struct groundAction *ga1, struct groundAction *ga2);
 
 #endif

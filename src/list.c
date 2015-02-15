@@ -1,16 +1,14 @@
+#include <assert.h>
 #include <stdlib.h>
 
 #include "list.h"
 
 
-struct list {
-  void *payload;
-
-  struct list *prev;
-  struct list *next;
-
-  int intValue;
-};
+bool
+list_isEmpty(list_t list)
+{
+  return list == NULL;
+}
 
 list_t
 list_initElem(list_t listElem,
@@ -43,6 +41,16 @@ list_push(list_t list, list_t singleton)
   return singleton;
 }
 
+void *
+list_getFirstPayload(list_t list)
+{
+  if (list == NULL) {
+    return NULL;
+  }
+
+  return list->payload;
+}
+
 list_t
 list_removeFirst(list_t list)
 {
@@ -60,21 +68,21 @@ list_removeFirst(list_t list)
   return second;
 }
 
-typedef int (*listFindFun_t)(list_t listElem, list_t anotherElem);
+//typedef int (*listFindFun_t)(list_t listElem, void *payload);
 
 list_t
-list_find(list_t list, listFindFun_t fun, list_t singleton)
+list_find(list_t list, listFindFun_t fun, void *payload)
 {
-  // Singleton can be NULL on purpose.
+  // payload can be NULL on purpose.
   if (list == NULL || fun == NULL) {
     return NULL;
   }
 
-  if ((*fun)(list, singleton) < 0) {
+  if ((*fun)(list, payload) < 0) {
     return NULL;
   }
 
-  while (list != NULL && (*fun)(list, singleton) != 0) {
+  while (list != NULL && (*fun)(list, payload) != 0) {
     list = list->next;
   }
 
@@ -97,3 +105,42 @@ list_find(list_t list, listFindFun_t fun, list_t singleton)
 
 
 /* } */
+
+list_t
+list_remove(list_t list, list_t elem)
+{
+  if (list == NULL || elem == NULL) {
+    return list;
+  }
+
+  if (list == elem) {
+    // Remove first element.
+    return list_removeFirst(list);
+  }
+
+  assert(elem->prev != NULL);
+  elem->prev->next = elem->next;
+  if (elem->next != NULL) {
+    elem->next->prev = elem->prev;
+  }
+
+  // TODO: What to do with the element? Free or reuse.
+  elem->next = NULL;
+  elem->prev = NULL;
+
+  return list;
+}
+
+typedef void (*freePayload_t)(void *);
+
+void
+list_freeWithPayload(list_t list, freePayload_t freeFun)
+{
+  while (list != NULL) {
+    list_t listNext = list->next;
+    // TODO: Maybe reuse the list elements.
+    (*freeFun)(list->payload);
+    free(list);
+    list = listNext;
+  }
+}

@@ -3,11 +3,31 @@
 
 #include <stdbool.h>
 
+struct list {
+  void *payload;
+
+  struct list *prev;
+  struct list *next;
+
+  int intValue;
+};
+
 typedef struct list * list_t;
 
 // A function signature for checking list elements.
-typedef int (*listFindFun_t)(list_t listElem, list_t anotherElem);
+typedef int (*listFindFun_t)(list_t listElem, void *payload);
 
-list_t list_find(list_t list, listFindFun_t fun, list_t singleton);
+// A function to free payloads.
+typedef void (*freePayload_t)(void *);
+
+bool list_isEmpty(list_t list);
+list_t list_createElem(void *payload);
+list_t list_push(list_t list, list_t singleton);
+list_t list_removeFirst(list_t list);
+list_t list_remove(list_t list, list_t elem);
+list_t list_find(list_t list, listFindFun_t fun, void *payload);
+
+void list_freeWithPayload(list_t list, freePayload_t freeFun);
+void *list_getFirstPayload(list_t list);
 
 #endif

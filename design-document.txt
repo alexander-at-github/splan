@@ -89,6 +89,8 @@ NOTES:
   planner_solveProblem_aux(). The number of states must be equal to the search
   depth limit.
 * valgrind --tool=callgrind ./bin/splan -d test_instances/tsp-neg-prec/domain.pddl -p test_instances/tsp-neg-prec/p7.pddl
+* LAST ITERATIVE DEEPENING DEPTH-FIRST SEARCH COMMIT:
+  292c948ba201661ce7832b5c4c00d43409b3ea8a
 
 A-Star Algorithm notes:
 * There is a good suggestion for a A*-Heuristic on page 378 of AIMA: Solve
@@ -96,3 +98,5 @@ A-Star Algorithm notes:
   heuristic function.
 * To further relax the problem for the heuristic, ignoring delete lists and
   negative preconditions seems a good idea.
+
+

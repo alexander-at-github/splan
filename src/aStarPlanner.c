@@ -1,21 +1,14 @@
 #include <assert.h>
 
+#include "list.h"
 #include "probSpace.h"
 #include "trie.h"
+#include "utils.h"
 
 
-
+// Here we use the old implementation of actionList, since there are many 
+// useful function in utils.c to be used.
 typedef struct actionList * aStarNode_t;
-
-typedef struct aStarNodeList {
-  aStarNode_t node;
-  struct aStarNodeList *next;
-  // prev? struct aStarNodeList *prev;
-  int32_t fScore;
-} * aStarNodeList_t;
-
-
-
 
 static
 void
@@ -86,81 +79,26 @@ aStarPlanner_apply(trie_t trie, struct groundAction *grAct)
   aStarPlanner_applyNeg(trie, grAct);
 }
 
-static
-aStarNodeList_t
-asnl_createElem(aStarNode_t aStarNode)
-{
-  aStarNodeList_t asnle = malloc(sizeof(*asnle));
-  asnle->node = aStarNode;
-  asnle->fScore = -1;
-  return asnle;
-}
-
-static
-aStarNodeList_t
-asnl_removeFirst(aStarNodeList_t *asnl)
-{
-  if (asnl == NULL) {
-    // Should be correct -right?
-    return NULL;
-  }
-
-  aStarNodeList_t first = asnl;
-  aStarNodeList_t second = asnl->next;
-
-  // TODO: Deal with first element. Either free it or reuse it!
-  // For now just unset next pointer.
-  first->next = NULL;
-
-  return second;
-}
-
-static
-int32_t
-asnl_indexOf(aStarNodeList_t list, aStarNode_t node)
-{
-  // TODO
-  if contains:
-    return index;
-
-  return -1;
-}
-
-// TODO: Maybe change to return pointer to the element.
-static
-int32_t
-asnl_contains(aStarNodeList_t list, aStarNode_t node)
-{
-  return asnl_indexOf(list, node);
-}
-
-static
-aStarNodeList_t
-asnl_push(aStarNodeList_t list, aStarNodeList_t elem)
-{
-  elem->next = list;
-  return elem;
-}
-
 // A comparison function for finding locations in lists for inserting
 // elements in an ordered manner by their intValue property.
 static
 int
-compIntValueFun(list_t e1, list_t another e2)
+compIntValueFun(list_t e1, void *fScore_)
 {
-  if (e1 == NULL || e2 == NULL) {
+  if (e1 == NULL || fScore_ == NULL) {
     assert(false);
   }
+  int fScore = *(int *) fScore_;
 
-  if (e1->intValue > e2->intValue) {
+  if (e1->intValue > fScore) {
     return -1;
   }
-  assert(e1->intValue <= e2->intValue);
+  assert(e1->intValue <= fScore);
 
   if (e1->next == NULL) {
     return 0;
   }
-  if (e1->next->intValue > e2->intValue) {
+  if (e1->next->intValue > fScore) {
     return 0;
   }
 
@@ -168,11 +106,67 @@ compIntValueFun(list_t e1, list_t another e2)
 }
 
 static
-aStarNodeList_t
-asnl_insertOrdered(aStarNodeList_t list, aStarNodeList_t elem)
+bool
+aStarPlanner_aStarNodeEqual(aStarNode_t n1, aStarNode_t n2)
 {
-  if (elem == NULL) {
-    return;
+  // Note: typedef struct actionList * aStarNode_t;
+  if (n1 == NULL && n2 == NULL) {
+    return true;
+  }
+  if (n1 == NULL || n2 == NULL) {
+    return false;
+  }
+
+  while (n1 != NULL && n2 != NULL) {
+    struct groundAction *ga1 = n1->act;
+    struct groundAction *ga2 = n2->act;
+    if ( ! utils_grAct_equal(ga1, ga2)) {
+      return false;
+    }
+    n1 = n1->next;
+    n2 = n2->next;
+  }
+  if (n1 == NULL && n2 == NULL) {
+    return true;
+  }
+  return false;
+}
+
+
+// A comparison function for finding a sequence of ground actions in a list
+// of sequences of ground actions.
+static
+int
+compActList(list_t e1, void *e2)
+{
+  if (e1 == NULL || e2 == NULL) {
+    assert(false);
+  }
+  aStarNode_t n1 = (aStarNode_t) e1->payload;
+  aStarNode_t n2 = (aStarNode_t) e2;
+
+  if ( ! aStarPlanner_aStarNodeEqual(n1, n2)) {
+    return 1;
+  }
+
+  // Both action lists equal.
+  return 0;
+}
+
+// Arguments are a list of aStarNode_t and a aStarNode_t in a payload list.
+static
+list_t
+asnl_find(list_t list, void *payload)
+{
+  return list_find(list, &compActList, payload);
+}
+
+static
+list_t
+asnl_insertOrdered(list_t list, void *payload, int fScore)
+{
+  if (payload == NULL) {
+    return list;
   }
   // If list == NULL then it represents the empty list.
 
@@ -180,102 +174,78 @@ asnl_insertOrdered(aStarNodeList_t list, aStarNodeList_t elem)
 
   /* aStarNodeList_t beforeCurr = NULL; */
   /* aStarNodeList_t curr = list; */
-  /* while (curr != NULL && curr->fScore <= elem->fScore) { */
+  /* while (curr != NULL && curr->fScore <= payload->fScore) { */
   /*   beforeCurr = curr; */
   /*   curr = curr->next; */
   /* } */
-  /* assert(curr == NULL || curr->fScore > elem->fScore); */
+  /* assert(curr == NULL || curr->fScore > payload->fScore); */
 
-  /* elem->next = curr; */
+  /* payload->next = curr; */
   /* if (beforeCurr == NULL) { */
-  /*   head = elem; */
+  /*   head = payload; */
   /* } else { */
-  /*   beforeCurr->next = elem; */
+  /*   beforeCurr->next = payload; */
   /* } */
 
   /* return head; */
 
-  list_t found = list_find(list, &compIntValueFun, elem)
+  list_t singleton = list_createElem(payload);
+  singleton->intValue = fScore;
+
+  list_t found = list_find(list, &compIntValueFun, &fScore);
   // The new element should now be inserted right after "found".
   if (found == NULL) {
     // Insert new element as head.
-    elem->next = list;
+    singleton->next = list;
     if (list != NULL) {
-      list->prev = elem;
+      list->prev = singleton;
     }
-    return elem;
+    return singleton;
   }
 
   if (found->next != NULL) {
-    found->next->prev = elem;
+    found->next->prev = singleton;
   }
-  elem->next = found->next;
-  found->next = elem;
-  elem->prev = found;
+  singleton->next = found->next;
+  found->next = singleton;
+  singleton->prev = found;
 
   return list;
 }
 
-
-
-struct actionList *
-aStarPlanner_aStar(struct probSpace *probSpace)
+// Note: typedef void (*freePayload)(void *);
+void
+freeGap(void *gap)
 {
-  aStarNode_t aStarNode = NULL;    // The empty list of actions.
-  aStarNodeList_t frontier = asnl_createElem(aStarNode);
-  aStarNodeList_t explored = NULL;    // An empty set.
-
-  while(frontier != NULL) {
-    aStarNodeList_t currNLE;
-    aStarNode_t currN;
-    /* Pseudo-Code: currN = pop(frontier) */
-    currNLE = frontier
-    currN = currNLE->node;
-    frontier = asnl_removeFirst(frontier);
-
-    gaps = aStarPlanner_getAllGaps(probSpace, currN);
-    if (gaps == NULL) {
-      // Note: typedef struct actionList * aStarNode_t;
-      aStarNode_t solution = utils_cloneActionList(currN);
-      return solution;
-    }
-
-    explored = asnl_push(explored, currNLE);
-
-    actions = get(gaps);
-    for action in actions {
-      aStarNode_t chld = utils_cloneActionListShallow(currN);
-      chld = utils_addActionToListAtPosition(chld, gap, gap->position);
-
-      /* If explored contains chld. */
-      if (asnl_contains(explored, chld) != -1) {
-        utils_free_actionListShallow(chld);
-        continue;
-      }
-      /* If frontier contains chld. */
-      int32_t idxFrontier = asnl_contains(frontier, chld);
-      if (idxFrontier != -1) {
-        // TODO: If new score is lower, then replace node in frontier.
-        continue;
-      }
-
-      /* Add node to frontier. */
-      frontier = asnl_insertOrdered(frontier, chld);
-    }
-
-  }
-
-  // No solution.
-  return NULL;
+  utils_free_gap((struct gap *) gap);
 }
 
-typedef struct gapList {
-  struct gap *gap;
-  struct gapList *next;
-} * gapList_t;
+static
+int
+aStarPlanner_calcFScore(aStarNode_t node)
+{
+  // TODO TODO TODO
+  return 0;
+}
 
 static
-gapList_t
+struct actionList *
+aStarPlanner_getActions(struct probSpace *probSpace, list_t gaps)
+{
+  struct actionList *result = NULL;
+
+  while (gaps != NULL) {
+    struct gap *gap = (struct gap *) list_getFirstPayload(gaps);
+    gaps = list_removeFirst(gaps);
+
+    struct actionList *actsTFGap = ps_getActsToFixGap(probSpace, gap->literal);
+    result = utils_concatActionLists(result, actsTFGap);
+  }
+  return result;
+}
+
+static
+list_t
 aStarPlanner_getAllGaps(struct probSpace *probSpace, aStarNode_t actions)
 {
   /* Note: typedef struct actionList * aStarNode_t; */
@@ -283,7 +253,7 @@ aStarPlanner_getAllGaps(struct probSpace *probSpace, aStarNode_t actions)
   trie_t state = trie_clone(probSpace->problem->init);
   struct goal *goal = probSpace->problem->goal;
 
-  gapList_t result = NULL;
+  list_t result = NULL;
   struct literal *gapLiteral = NULL;
 
   /* Check action's precondition and apply the action. */
@@ -299,36 +269,143 @@ aStarPlanner_getAllGaps(struct probSpace *probSpace, aStarNode_t actions)
     struct groundAction *grAct = pAct->act;
     // Check if precondition holds.
     struct goal *precond = grAct->action->precond;
+
     for (int32_t idx = 0; idx < precond->numOfPos; ++idx) {
-      struct atom *atom = &precond->posLiteral[idx];
+      struct atom *atom = &precond->posLiterals[idx];
       if ( ! trie_containsGr(state, atom, grAct)) {
-        // TODO: Positive literal not fulfilled.
+        // Positive literal not fulfilled.
+        struct gap *gap = malloc(sizeof(*gap));
+        gap->position = idxAct;
+        gap->literal = malloc(sizeof(*gap->literal));
+        gap->literal->atom = utils_atom_cloneWithGrounding(atom, grAct);
+        gap->literal->isPos = true;
+        result = list_push(result, list_createElem(gap));
       }
     }
     for (int32_t idx = 0; idx < precond->numOfNeg; ++idx) {
-      struct atom *atom = &precond->negLiteral[idx];
+      struct atom *atom = &precond->negLiterals[idx];
       if (trie_containsGr(state, atom, grAct)) {
-        // TODO: Negative literal not fulfilled.
+        // Negative literal not fulfilled.
+        struct gap *gap = malloc(sizeof(*gap));
+        gap->position = idxAct;
+        gap->literal = malloc(sizeof(*gap->literal));
+        gap->literal->atom = utils_atom_cloneWithGrounding(atom, grAct);
+        gap->literal->isPos = false;
+        result = list_push(result, list_createElem(gap));
       }
     }
     aStarPlanner_apply(state, grAct);
-    }
   }
 
   /* Check if the goal is met after applying all the actions. */
 
   for (int32_t idx = 0; idx < goal->numOfPos; ++idx) {
-    struct atom *atom = &goal->posLiteral[idx];
-    if ( ! trie_containsGr(state, atom, grAct)) {
-      // TODO: Positive literal not fulfilled.
+    struct atom *atom = &goal->posLiterals[idx];
+    if ( ! trie_contains(state, atom)) {
+      // Positive literal not fulfilled.
+      struct gap *gap = malloc(sizeof(*gap));
+      gap->position = idxAct;
+      gap->literal = malloc(sizeof(*gap->literal));
+      gap->literal->atom = utils_atom_clone(atom);
+      gap->literal->isPos = true;
+      result = list_push(result, list_createElem(gap));
     }
   }
-  for (int32_t idx = 0; idx < precond->numOfNeg; ++idx) {
-    struct atom *atom = &goal->negLiteral[idx];
-    if (trie_containsGr(state, atom, grAct)) {
-      // TODO: Negative literal not fulfilled.
+  for (int32_t idx = 0; idx < goal->numOfNeg; ++idx) {
+    struct atom *atom = &goal->negLiterals[idx];
+    if (trie_contains(state, atom)) {
+      // Negative literal not fulfilled.
+      struct gap *gap = malloc(sizeof(*gap));
+      gap->position = idxAct;
+      gap->literal = malloc(sizeof(*gap->literal));
+      gap->literal->atom = utils_atom_clone(atom);
+      gap->literal->isPos = false;
+      result = list_push(result, list_createElem(gap));
     }
   }
 
   return result;
+}
+
+struct actionList *
+aStarPlanner_aStar(struct probSpace *probSpace)
+{
+  aStarNode_t aStarNode = NULL;    // The empty list of actions.
+  list_t frontier = list_createElem(aStarNode);
+  list_t explored = NULL;    // An empty set.
+
+  while( ! list_isEmpty(frontier)) {
+    list_t currNLE;
+    aStarNode_t currN;
+    /* Pseudo-Code: currN = pop(frontier) */
+    currNLE = frontier;
+    currN = (aStarNode_t) currNLE->payload;
+    frontier = list_removeFirst(frontier);
+
+    list_t gaps = aStarPlanner_getAllGaps(probSpace, currN);
+    if (list_isEmpty(gaps)) {
+      // Note: typedef struct actionList * aStarNode_t;
+      aStarNode_t solution = utils_cloneActionList(currN);
+      return solution;
+    }
+
+    explored = list_push(explored, currNLE);
+
+    //list_t actions = aStarPlanner_getActions(gaps);
+
+    for (list_t gapE = gaps;
+         gaps != NULL;
+         gaps = gaps->next) {
+
+      struct gap *gap = (struct gap *) gaps->payload;
+      struct actionList *actions = ps_getActsToFixGap(probSpace, gap->literal);
+
+      for (struct actionList *currAct = actions;
+           currAct != NULL;
+           currAct = currAct->next) {
+
+        struct groundAction *grAct = currAct->act;
+        for (int idxPos = 0;
+             idxPos < gap->position; // Note: gap->position > 0
+             idxPos++) {
+
+          aStarNode_t chld = utils_cloneActionListShallow(currN);
+          chld = utils_addActionToListAtPosition(chld, grAct, gap->position);
+
+          /* If explored contains chld. */
+          if (asnl_find(explored, chld) != NULL) {
+            utils_free_actionListShallow(chld);
+            continue;
+          }
+          // Calculate f-score
+          int fScore = aStarPlanner_calcFScore(chld);
+
+          /* If frontier contains chld. */
+          list_t frontierElem = asnl_find(frontier, chld);
+          if (frontierElem != NULL) {
+            // If new score is lower, then replace node in frontier, otherwise
+            // free chld.
+            if (frontierElem->intValue > fScore) {
+              aStarNode_t frontierElemPayload =
+                                          (aStarNode_t) frontierElem->payload;
+              frontier = list_remove(frontier, frontierElem);
+              frontier = asnl_insertOrdered(frontier, chld, fScore);
+              utils_free_actionListShallow(frontierElemPayload);
+            } else {
+              utils_free_actionListShallow(chld);
+            }
+            continue;
+          }
+
+          /* Add node to frontier. */
+          frontier = asnl_insertOrdered(frontier, chld, fScore);
+        }
+      }
+    }
+
+    list_freeWithPayload(gaps, &freeGap);
+  }
+
+  // No solution exists.
+  return NULL;
 }
