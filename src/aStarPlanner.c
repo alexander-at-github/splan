@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <time.h>
 
 #include "aStarPlanner.h"
 #include "list.h"
@@ -6,6 +7,9 @@
 #include "trie.h"
 #include "utils.h"
 
+
+static clock_t startTime = 0;
+static int timeout = -1; // in clocks
 
 // Here we use the old implementation of actionList, since there are many 
 // useful function in utils.c to be used.
@@ -346,8 +350,16 @@ aStarPlanner_aStar(struct probSpace *probSpace)
 
   while( ! list_isEmpty(frontier)) {
 
-    printf("\nfrontier at beginning of loop:\n");
-    list_print(frontier, &printActionList); // DEBUG
+    if (timeout >= 0) {
+      clock_t endTime = clock();
+      if ((endTime - startTime) > timeout) {
+        printf("TIMEOUT.\n");
+        break;
+      }
+    }
+
+    //printf("\nfrontier at beginning of loop:\n");
+    //list_print(frontier, &printActionList); // DEBUG
 
     list_t currNLE;
     aStarNode_t currN;
@@ -356,12 +368,12 @@ aStarPlanner_aStar(struct probSpace *probSpace)
     currN = (aStarNode_t) currNLE->payload;
     frontier = list_removeFirst(frontier);
 
-    printf("\nfrontier after removeFirst:\n");
-    list_print(frontier, &printActionList); // DEBUG
+    //printf("\nfrontier after removeFirst:\n");
+    //list_print(frontier, &printActionList); // DEBUG
 
-    printf("current node (action list):\n");
-    utils_print_actionListCompact(currN); // DEBUG
-    printf("\n"); // DEBUG
+    //printf("current node (action list):\n");
+    //utils_print_actionListCompact(currN); // DEBUG
+    //printf("\n"); // DEBUG
 
     list_t gaps = aStarPlanner_getAllGaps(probSpace, currN);
     if (list_isEmpty(gaps)) {
@@ -429,11 +441,11 @@ aStarPlanner_aStar(struct probSpace *probSpace)
           }
 
           /* Add node to frontier. */
-          printf("frontier before insertOrdered:\n");
-          list_print(frontier, &printActionList);
+          //printf("frontier before insertOrdered:\n"); // DEBUG
+          //list_print(frontier, &printActionList); // DEBUG
           frontier = asnl_insertOrdered(frontier, chld, fScore);
-          printf("frontier after insertOrdered:\n");
-          list_print(frontier, &printActionList);
+          //printf("frontier after insertOrdered:\n"); // DEBUG
+          //list_print(frontier, &printActionList); // DEBUG
         }
       }
     }
@@ -446,8 +458,13 @@ aStarPlanner_aStar(struct probSpace *probSpace)
 }
 
 struct actionList *
-aStarPlanner(struct problem *problem)
+aStarPlanner(struct problem *problem, int timeout_)
 {
+  if (timeout_ > 0) {
+    startTime = clock();
+    timeout = timeout_ *CLOCKS_PER_SEC; // in clocks
+  }
+
   struct probSpace *probSpace = ps_init(problem);
   struct actionList *solution = aStarPlanner_aStar(probSpace);
   ps_free(probSpace);

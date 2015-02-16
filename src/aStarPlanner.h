@@ -3,6 +3,6 @@
 
 #include "libpddl31.h"
 
-struct actionList *aStarPlanner(struct problem *problem);
+struct actionList *aStarPlanner(struct problem *problem, int timeout);
 
 #endif

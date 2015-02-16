@@ -8,9 +8,9 @@
 #include "trie.h"
 #include "utils.h"
 
-clock_t startTime = 0;
-int32_t timeout = -1;
-bool timedout = false;
+static clock_t startTime = 0;
+static int32_t timeout = -1;
+static bool timedout = false;
 
 struct actionList *
 planner_getActsToFixGap(struct problem *problem,
