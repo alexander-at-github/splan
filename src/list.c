@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "list.h"
@@ -59,14 +60,16 @@ list_removeFirst(list_t list)
   }
 
   list_t first = list;
-  // TODO: What to do with the first element? Either free or reuse.
-  // This is a memory leak.
-  first->next = NULL;
 
   list_t second = first->next;
   if (second != NULL) {
     second->prev = NULL;
   }
+
+  // TODO: What to do with the first element? Either free or reuse.
+  // This is a memory leak.
+  first->next = NULL;
+
   return second;
 }
 
@@ -145,4 +148,17 @@ list_freeWithPayload(list_t list, freePayload_t freeFun)
     free(list);
     list = listNext;
   }
+}
+
+//typedef void (*printF_t)(void *);
+
+void
+list_print(list_t list, printF_t fun)
+{
+  printf("List:(\n");
+  for ( /* empty */; list != NULL; list = list->next) {
+    (*fun)(list->payload);
+    printf("\n");
+  }
+  printf(")\n");
 }

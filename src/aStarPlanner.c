@@ -330,6 +330,13 @@ aStarPlanner_getAllGaps(struct probSpace *probSpace, aStarNode_t actions)
   return result;
 }
 
+static
+void
+printActionList(void *al)
+{
+  utils_print_actionListCompact((struct actionList *) al);
+}
+
 struct actionList *
 aStarPlanner_aStar(struct probSpace *probSpace)
 {
@@ -338,6 +345,10 @@ aStarPlanner_aStar(struct probSpace *probSpace)
   list_t explored = NULL;    // An empty set.
 
   while( ! list_isEmpty(frontier)) {
+
+    printf("\nfrontier at beginning of loop:\n");
+    list_print(frontier, &printActionList); // DEBUG
+
     list_t currNLE;
     aStarNode_t currN;
     /* Pseudo-Code: currN = pop(frontier) */
@@ -345,6 +356,10 @@ aStarPlanner_aStar(struct probSpace *probSpace)
     currN = (aStarNode_t) currNLE->payload;
     frontier = list_removeFirst(frontier);
 
+    printf("\nfrontier after removeFirst:\n");
+    list_print(frontier, &printActionList); // DEBUG
+
+    printf("current node (action list):\n");
     utils_print_actionListCompact(currN); // DEBUG
     printf("\n"); // DEBUG
 
@@ -414,7 +429,11 @@ aStarPlanner_aStar(struct probSpace *probSpace)
           }
 
           /* Add node to frontier. */
+          printf("frontier before insertOrdered:\n");
+          list_print(frontier, &printActionList);
           frontier = asnl_insertOrdered(frontier, chld, fScore);
+          printf("frontier after insertOrdered:\n");
+          list_print(frontier, &printActionList);
         }
       }
     }
