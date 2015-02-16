@@ -345,6 +345,9 @@ aStarPlanner_aStar(struct probSpace *probSpace)
     currN = (aStarNode_t) currNLE->payload;
     frontier = list_removeFirst(frontier);
 
+    utils_print_actionListCompact(currN); // DEBUG
+    printf("\n"); // DEBUG
+
     list_t gaps = aStarPlanner_getAllGaps(probSpace, currN);
     if (list_isEmpty(gaps)) {
       // Note: typedef struct actionList * aStarNode_t;
@@ -380,7 +383,7 @@ aStarPlanner_aStar(struct probSpace *probSpace)
           //printf("chld: "); // DEBUG
           //utils_print_actionListCompact(chld); // DEBUG
           //printf("\n"); // DEBUG
-          chld = utils_addActionToListAtPosition(chld, grAct, gap->position -1);
+          chld = utils_addActionToListAtPosition(chld, grAct, idxPos);
           //printf("chld: "); // DEBUG
           //utils_print_actionListCompact(chld); // DEBUG
           //printf("\n"); // DEBUG
