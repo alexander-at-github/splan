@@ -30,9 +30,13 @@ list_t list_removeFirst(list_t list);
 list_t list_remove(list_t list, list_t elem);
 list_t list_find(list_t list, listFindFun_t fun, void *payload);
 
+
+void list_free(list_t list);
 void list_freeWithPayload(list_t list, freePayload_t freeFun);
 void *list_getFirstPayload(list_t list);
 
 void list_print(list_t list, printF_t fun);
+
+list_t list_cloneShallow(list_t src);
 
 #endif

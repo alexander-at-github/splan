@@ -150,6 +150,38 @@ list_freeWithPayload(list_t list, freePayload_t freeFun)
   }
 }
 
+list_t
+list_cloneShallow(list_t src)
+{
+  list_t head = NULL;
+  list_t curr = NULL;
+  while (src != NULL) {
+    list_t tmp = list_createElem(src->payload);
+    tmp->intValue = src->intValue;
+
+    if (head == NULL) {
+      head = tmp;
+      curr = head;
+    } else {
+      curr->next = tmp;
+      tmp->prev = curr;
+      curr = curr->next;
+    }
+    src = src->next;
+  }
+  return head;
+}
+
+void
+list_free(list_t list)
+{
+  while (list != NULL) {
+    list_t listNext = list->next;
+    free(list);
+    list = listNext;
+  }
+}
+
 //typedef void (*printF_t)(void *);
 
 void
