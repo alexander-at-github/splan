@@ -325,7 +325,7 @@ printGap(void *vGap)
 }
 
 // This a special return value for the function
-// aStarPlanner_estimateCost_fixGaps() in order to differenciate between
+// aStarPlanner_estimateCost_v1_fixGaps() in order to differenciate between
 // cutoff (depth-limit met) and no solution exists.
 struct estimateCost_fixGaps
 {
@@ -338,14 +338,14 @@ struct estimateCost_fixGaps
 
 static
 struct estimateCost_fixGaps
-aStarPlanner_estimateCost_fixGaps(struct probSpace *probSpace,
+aStarPlanner_estimateCost_v1_fixGaps(struct probSpace *probSpace,
                                   struct actionList *actL,
                                   list_t gaps,
                                   int depthLimit,
                                   int depth)
 
 {
-  //printf("aStarPlanner_estimateCost_fixGaps() START, depth: %d\n", depth);
+  //printf("aStarPlanner_estimateCost_v1_fixGaps() START, depth: %d\n", depth);
   //utils_print_actionListCompact(actL);
   //printf("\n");
   //printf("gaps to fix:\n");
@@ -360,7 +360,7 @@ aStarPlanner_estimateCost_fixGaps(struct probSpace *probSpace,
   if (gaps == NULL) {
     result.sol = utils_cloneActionListShallow(actL);
     result.numActsAdded = depth;
-    //printf("aStarPlanner_estimateCost_fixGaps() found result (to estimation)\n");
+    //printf("aStarPlanner_estimateCost_v1_fixGaps() found result (to estimation)\n");
     return result;
   }
 
@@ -438,7 +438,7 @@ aStarPlanner_estimateCost_fixGaps(struct probSpace *probSpace,
       //list_print(lGaps, &printGap);
 
       /* Recursicve call */
-      result = aStarPlanner_estimateCost_fixGaps(probSpace,
+      result = aStarPlanner_estimateCost_v1_fixGaps(probSpace,
                                                    actL,
                                                    lGaps,
                                                    depthLimit,
@@ -478,9 +478,9 @@ aStarPlanner_estimateCost_fixGaps(struct probSpace *probSpace,
 
 static
 int
-aStarPlanner_estimateCost(struct probSpace *probSpace, aStarNode_t node)
+aStarPlanner_estimateCost_v1(struct probSpace *probSpace, aStarNode_t node)
 {
-  //printf("aStarPlanner_estimateCost(): START node: "); // DEBUG
+  //printf("aStarPlanner_estimateCost_v1(): START node: "); // DEBUG
   //utils_print_actionListCompact(node); // DEBUG
   //printf("\n"); // DEBUG
 
@@ -507,7 +507,7 @@ aStarPlanner_estimateCost(struct probSpace *probSpace, aStarNode_t node)
     for (int depthLimit = 0; depthLimit < INT_MAX; ++depthLimit) {
       //estimateSolution =
       esSol =
-          aStarPlanner_estimateCost_fixGaps(probSpace,
+          aStarPlanner_estimateCost_v1_fixGaps(probSpace,
                                             nodeClone,
                                             singletonGap,
                                             depthLimit,
@@ -536,7 +536,7 @@ aStarPlanner_estimateCost(struct probSpace *probSpace, aStarNode_t node)
 
   }
 
-  //printf("aStarPlanner_estimateCost(): END result: %d\n", maxLength); // DEBUG
+  //printf("aStarPlanner_estimateCost_v1(): END result: %d\n", maxLength); // DEBUG
 
   return maxLength;
 }
@@ -548,7 +548,7 @@ aStarPlanner_calcFScore(struct probSpace *probSpace, aStarNode_t node)
   // f(n) = g(n) + h(n)
   // TODO: Check: Should we use gScore here?
   int gScore = utils_actionList_length(node);
-  int hScore = aStarPlanner_estimateCost(probSpace, node);
+  int hScore = aStarPlanner_estimateCost_v1(probSpace, node);
   assert(gScore >= 0);
   assert(hScore >= 0);
   int fScore = gScore + hScore;
