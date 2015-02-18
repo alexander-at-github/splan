@@ -39,4 +39,6 @@ void list_print(list_t list, printF_t fun);
 
 list_t list_cloneShallow(list_t src);
 
+int list_length(list_t list);
+
 #endif

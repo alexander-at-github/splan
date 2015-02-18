@@ -189,8 +189,20 @@ list_print(list_t list, printF_t fun)
 {
   printf("List:(\n");
   for ( /* empty */; list != NULL; list = list->next) {
+    printf("%d_", list->intValue);
     (*fun)(list->payload);
     printf("\n");
   }
   printf(")\n");
+}
+
+int
+list_length(list_t list)
+{
+  int length = 0;
+  while (list != NULL) {
+    length++;
+    list = list->next;
+  }
+  return length;
 }
