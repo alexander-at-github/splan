@@ -542,13 +542,291 @@ aStarPlanner_estimateCost_v1(struct probSpace *probSpace, aStarNode_t node)
 }
 
 static
+struct estimateCost_fixGaps
+aStarPlanner_estimateCost_v2_fixGaps(struct probSpace *probSpace,
+                                  struct actionList *actL,
+                                  list_t gaps,
+                                  int depthLimit,
+                                  int depth)
+
+{
+  printf("aStarPlanner_estimateCost_v2_fixGaps() START, depth: %d\n", depth);
+  utils_print_actionListCompact(actL);
+  printf("\n");
+  printf("gaps to fix:\n");
+  list_print(gaps, &printGap);
+
+  struct estimateCost_fixGaps result;
+  result.sol = NULL;
+  result.numActsAdded = -1;
+  result.cutoff = false;
+  result.nESol = false;
+
+  if (gaps == NULL) {
+    result.sol = utils_cloneActionListShallow(actL);
+    result.numActsAdded = depth;
+    //printf("aStarPlanner_estimateCost_v2_fixGaps() found result (to estimation)\n");
+    return result;
+  }
+
+  if (depth >= depthLimit) {
+    result.cutoff = true;
+    //printf("CUTOFF\n");
+    return result;
+  }
+
+  /* gap = pop(gaps); */
+  struct gap *gap = (struct gap *) gaps->payload;
+  gaps = list_removeFirst(gaps);
+
+  struct actionList *actsTFGap = ps_getActsToFixGap(probSpace, gap->literal);
+  // Note: Do not free actsTFGap. This list is part of the problem space
+  // data structure and will be used again.
+  if (actsTFGap == NULL) {
+    result.nESol = true;
+    return result;
+  }
+
+  result.nESol = true;
+  result.cutoff = true;
+  trie_t lState0 = trie_clone(probSpace->problem->init);
+  struct actionList *actL1 = actL;
+  for (int idxPos = 0; idxPos < gap->position; ++idxPos) {
+    for (struct actionList *currActE = actsTFGap;
+         currActE != NULL;
+         currActE = currActE->next) {
+
+      actL = utils_addActionToListAtPosition(actL, currActE->act, idxPos);
+
+      trie_t lState1 = trie_clone(lState0);
+
+      list_t lGaps = list_cloneShallow(gaps);
+
+      /* Collect new gaps. */
+      struct groundAction *grAct = currActE->act;
+      struct goal *precond = grAct->action->precond;
+      if (gap->literal->isPos) {
+        for (int32_t idx = 0; idx < precond->numOfPos; ++idx) {
+          struct atom *atom = &precond->posLiterals[idx];
+          if ( ! trie_containsGr(lState1, atom, grAct)) {
+            // Positive literal not fulfilled.
+            struct gap *gapNew = malloc(sizeof(*gapNew));
+            gapNew->position = idxPos + 1; // +1 because idxPos starts with 0
+            gapNew->literal = malloc(sizeof(*gapNew->literal));
+            gapNew->literal->atom = utils_atom_cloneWithGrounding(atom, grAct);
+            gapNew->literal->isPos = true;
+            lGaps = list_push(lGaps, list_createElem(gapNew));
+          }
+        }
+      } else {
+        assert ( ! gap->literal->isPos);
+        for (int32_t idx = 0; idx < precond->numOfNeg; ++idx) {
+          struct atom *atom = &precond->negLiterals[idx];
+          if (trie_containsGr(lState1, atom, grAct)) {
+            // Negative literal not fulfilled.
+            struct gap *gapNew = malloc(sizeof(*gapNew));
+            gapNew->position = idxPos + 1; // +1 because idxPos starts with 0
+            gapNew->literal = malloc(sizeof(*gapNew->literal));
+            gapNew->literal->atom = utils_atom_cloneWithGrounding(atom, grAct);
+            gapNew->literal->isPos = false;
+            lGaps = list_push(lGaps, list_createElem(gapNew));
+          }
+        }
+      }
+      // TODO: Maybe condsider all gaps! Positive and negative.
+      // Maybe consider also the gaps after the  new action.
+
+
+
+      //utils_print_actionListCompact(actL);
+      //printf("lGaps to fix new:\n");
+      //list_print(lGaps, &printGap);
+
+      /* Recursicve call */
+      result = aStarPlanner_estimateCost_v2_fixGaps(probSpace,
+                                                   actL,
+                                                   lGaps,
+                                                   depthLimit,
+                                                   depth + 1);
+
+      list_free(lGaps);
+      actL = utils_removeActionFromListAtPosition(actL, idxPos);
+
+      trie_free(lState1);
+      if (result.sol != NULL) {
+        //printf("RETURN SOLUTION\n");
+        trie_free(lState0);
+        return result;
+      }
+      if ( ! result.nESol) {
+        assert(result.cutoff);
+        result.nESol = false;
+      }
+      if ( ! result.cutoff) {
+        assert(result.nESol);
+        result.cutoff = false;
+      }
+    }
+    if (actL1 != NULL) {
+      // FIXME: Should we only use positive or negative effects according to 
+      // the gap ??? FIXME FIXME FIXME
+      aStarPlanner_apply(lState0, actL1->act);
+      actL1 = actL1->next; // Important!
+    } else {
+      // Last iteration of the loop.
+      assert(idxPos == gap->position - 1);
+    }
+  }
+  trie_free(lState0);
+  return result;
+}
+
+static
+int
+max(int aa, int bb)
+{
+  return aa > bb ? aa : bb;
+}
+
+static
+int
+aStarPlanner_estimateCost_v2(struct probSpace *probSpace, aStarNode_t node)
+{
+  printf("aStarPlanner_estimateCost_v2(): START node: "); // DEBUG
+  utils_print_actionListCompact(node); // DEBUG
+  printf("\n"); // DEBUG
+
+  /* int maxLength = 0; */
+
+  list_t gaps = aStarPlanner_getAllGaps(probSpace, node);
+  list_print(gaps, &printGap); // DEBUG
+  printf(" list_length: %d\n", list_length(gaps)); // DEBUG
+
+  // Devide the gaps into positive and negative gaps.
+  list_t gapsPos = NULL;
+  list_t gapsNeg = NULL;
+  // Attention: The loop variable will be advanced by the call to
+  // list_removeFirst().
+  while (gaps != NULL) {
+  //for (list_t ll = gaps; ll != NULL; ll = ll->next) {
+    list_print(gaps, &printGap); // DEBUG
+    struct gap *gg = (struct gap *) gaps->payload;
+    gaps = list_removeFirst(gaps); // Advances loop variable "gaps".
+    // The call to list_removeFirst might free the memory for the list
+    // container. So we should not reuse it and use list_createElem() again
+    // later.
+    if (gg->literal->isPos) {
+      gapsPos = list_push(gapsPos, list_createElem(gg));
+    } else {
+      assert( ! gg->literal->isPos);
+      gapsNeg = list_push(gapsNeg, list_createElem(gg));
+    }
+  }
+  assert(gaps == NULL);
+  printf("gapsPos: "); // DEBUG
+  list_print(gapsPos, &printGap); // DEBUG
+  printf("\n"); // DEBUG
+  printf("gapsNeg: "); // DEBUG
+  list_print(gapsNeg, &printGap); // DEBUG
+  printf("\n"); // DEBUG
+
+  // Make a list which holds gapsPos (a list with all the positive gaps) and
+  // another list with gapsNeg (a list with all negative gaps). This list
+  // is a list of lists of gaps.
+  list_t lstLstGps = list_createElem(gapsPos);
+  lstLstGps = list_push(lstLstGps, list_createElem(gapsNeg));
+  assert(list_length(lstLstGps) == 2);
+
+  int result = 0;
+  for (list_t llgTmp = lstLstGps; llgTmp != NULL; llgTmp = llgTmp->next) {
+    list_t gapsTmp = (list_t) llgTmp->payload;
+    struct estimateCost_fixGaps esSol;
+    for (int depthLimit = 0; depthLimit < INT_MAX; ++depthLimit) {
+      esSol = aStarPlanner_estimateCost_v2_fixGaps(probSpace,
+                                                   node,
+                                                   gapsTmp,
+                                                   depthLimit,
+                                                   0);
+      utils_free_actionListShallow(esSol.sol);
+      if (esSol.cutoff) {
+        continue;
+      }
+      if (esSol.nESol) {
+        result = INT_MAX;
+        break;
+      }
+      printf("esSol.numActsAdded %d\n", esSol.numActsAdded);
+      result = max(result, esSol.numActsAdded);
+      break;
+    }
+  }
+  list_freeWithPayload(gapsPos, &freeGap);
+  list_freeWithPayload(gapsNeg, &freeGap);
+  printf("aStarPlanner_estimateCost_v2(): END result: %d\n", result); // DEBUG
+  return result;
+
+  /* for (list_t gapE = gaps; */
+  /*      gapE != NULL; */
+  /*      gapE = gapE->next) { */
+
+  /*   struct gap *gap = (struct gap *) gapE->payload; */
+  /*   struct literal *gapLiteral = gap->literal; */
+
+  /*   list_t singletonGap = list_createElem(gap); */
+  /*   aStarNode_t nodeClone = utils_cloneActionListShallow(node); */
+
+  /*   struct actionList *estimateSolution = NULL; */
+  /*   struct estimateCost_fixGaps esSol; */
+
+  /*   int estimateLength = 0; */
+  /*   for (int depthLimit = 0; depthLimit < INT_MAX; ++depthLimit) { */
+  /*     //estimateSolution = */
+  /*     esSol = */
+  /*         aStarPlanner_estimateCost_v2_fixGaps(probSpace, */
+  /*                                           nodeClone, */
+  /*                                           singletonGap, */
+  /*                                           depthLimit, */
+  /*                                           0); */
+
+  /*     utils_free_actionListShallow(esSol.sol); */
+
+  /*     if (esSol.cutoff) { */
+  /*       continue; */
+  /*     } */
+  /*     if (esSol.nESol) { // No solution exists. */
+  /*       //estimateLength = INT_MAX; */
+  /*       //printf("INT_MAX is %d\n", INT_MAX); // DEBUG */
+  /*       //fflush(stdout); // DEBUG */
+  /*       maxLength = INT_MAX; */
+  /*       break; */
+  /*       //return INT_MAX; */
+  /*     } */
+  /*     estimateLength = esSol.numActsAdded; */
+  /*     break; */
+  /*   } */
+
+  /*   if (estimateLength > maxLength) { */
+  /*     maxLength = estimateLength; */
+  /*   } */
+
+  /* } */
+
+
+  /* return maxLength; */
+}
+
+// TODO: aStarPlanner_estimateCost_v3(): Solve the problem fully, but only
+// consider negative or positive effects.
+
+
+static
 int
 aStarPlanner_calcFScore(struct probSpace *probSpace, aStarNode_t node)
 {
   // f(n) = g(n) + h(n)
   // TODO: Check: Should we use gScore here?
   int gScore = utils_actionList_length(node);
-  int hScore = aStarPlanner_estimateCost_v1(probSpace, node);
+  int hScore = aStarPlanner_estimateCost_v2(probSpace, node);
   assert(gScore >= 0);
   assert(hScore >= 0);
   int fScore = gScore + hScore;
