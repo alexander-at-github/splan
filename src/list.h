@@ -26,6 +26,7 @@ typedef void (*printF_t)(void *);
 bool list_isEmpty(list_t list);
 list_t list_createElem(void *payload);
 list_t list_push(list_t list, list_t singleton);
+list_t list_removeFirstWOReuse(list_t list);
 list_t list_removeFirst(list_t list);
 list_t list_remove(list_t list, list_t elem);
 list_t list_find(list_t list, listFindFun_t fun, void *payload);
@@ -40,5 +41,7 @@ void list_print(list_t list, printF_t fun);
 list_t list_cloneShallow(list_t src);
 
 int list_length(list_t list);
+
+void list_cleanupLEBuffer();
 
 #endif

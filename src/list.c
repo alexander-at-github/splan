@@ -4,6 +4,34 @@
 
 #include "list.h"
 
+list_t listElemBuffer = NULL;
+
+// Stores list elements to reuse them later. The arguments must be really a
+// singleton list.
+static
+void
+list_addToBuffer(list_t singleton)
+{
+  if (singleton == NULL) {
+    return;
+  }
+  if (singleton->next != NULL) {
+    assert(false);
+  }
+
+  listElemBuffer = list_push(listElemBuffer, singleton);
+}
+
+// Really free the elements.
+void
+list_cleanupLEBuffer()
+{
+  while (listElemBuffer != NULL) {
+    list_t next = listElemBuffer->next;
+    free(listElemBuffer);
+    listElemBuffer = next;
+  }
+}
 
 bool
 list_isEmpty(list_t list)
@@ -28,13 +56,26 @@ list_initElem(list_t listElem,
 list_t
 list_createElem(void *payload)
 {
-  list_t elem = malloc(sizeof(*elem));
+  list_t elem = NULL;
+  // Reuse list elements from the listElemBuffer if possible.
+  if (listElemBuffer != NULL) {
+    /* elem = pop(listElemBuffer); */
+    elem = listElemBuffer;
+    listElemBuffer = list_removeFirst(listElemBuffer);
+  } else {
+    elem = malloc(sizeof(*elem));
+  }
   return list_initElem(elem, payload, NULL, NULL, -1);
 }
 
 list_t
 list_push(list_t list, list_t singleton)
 {
+  if (singleton == NULL) {
+    return list;
+  }
+  assert(singleton->next == NULL);
+
   singleton->next = list;
   if (list != NULL) {
     list->prev = singleton;
@@ -52,8 +93,9 @@ list_getFirstPayload(list_t list)
   return list->payload;
 }
 
+// This function does not reuse the list element.
 list_t
-list_removeFirst(list_t list)
+list_removeFirstWOReuse(list_t list)
 {
   if (list == NULL) {
     return NULL;
@@ -66,11 +108,28 @@ list_removeFirst(list_t list)
     second->prev = NULL;
   }
 
-  // TODO: What to do with the first element? Either free or reuse.
-  // This is a memory leak.
+  // Do not reuse!
   first->next = NULL;
 
   return second;
+}
+
+// Attention this will reuse the list element. Be careful if you want to
+// reuse it yourself.
+list_t
+list_removeFirst(list_t list)
+{
+  if (list == NULL) {
+    return NULL;
+  }
+
+  list_t first = list;
+  list = list_removeFirstWOReuse(list);
+
+  // Reuse the first element.
+  list_addToBuffer(first);
+
+  return list;
 }
 
 //typedef int (*listFindFun_t)(list_t listElem, void *payload);
@@ -132,6 +191,7 @@ list_remove(list_t list, list_t elem)
   // TODO: What to do with the element? Free or reuse.
   elem->next = NULL;
   elem->prev = NULL;
+  list_addToBuffer(elem);
 
   return list;
 }
@@ -145,7 +205,9 @@ list_freeWithPayload(list_t list, freePayload_t freeFun)
     list_t listNext = list->next;
     // TODO: Maybe reuse the list elements.
     (*freeFun)(list->payload);
-    free(list);
+    //free(list);
+    list->next = NULL;
+    list_addToBuffer(list);
     list = listNext;
   }
 }
@@ -177,7 +239,10 @@ list_free(list_t list)
 {
   while (list != NULL) {
     list_t listNext = list->next;
-    free(list);
+    //free(list);
+    list->next = NULL;
+    list_addToBuffer(list);
+
     list = listNext;
   }
 }

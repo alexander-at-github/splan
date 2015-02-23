@@ -507,6 +507,9 @@ utils_grAct_equal(struct groundAction *ga1, struct groundAction *ga2)
     return false;
   }
 
+  //printf("\n### a1: %s, a2: %s\n\n\n", ga1->action->name, ga2->action->name); // DE BUG
+  //fflush(stdout); // DEBUG
+
   if (ga1->action != ga2->action) {
       return false;
   }
