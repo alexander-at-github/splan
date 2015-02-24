@@ -1029,6 +1029,17 @@ aStarPlanner_estimateCost_v3_fixGaps(struct probSpace *probSpace,
   result.cutoff = false;
   result.nESol = false;
 
+  clock_t endTime = clock();
+  if (timeout >= 0) {
+    if ((endTime - startTime) > timeout) {
+      // It is a timeout. We just say 'no solution exists' in order to
+      // terminate the function.
+      // Without that the timeout does not work.
+      result.nESol = true;
+      return result;
+    }
+  }
+
   struct gap *gap = NULL;
   if (positive) {
     gap = aStarPlanner_getFirstPosGap(probSpace, actL);
