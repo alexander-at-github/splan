@@ -62,9 +62,7 @@ struct asnList {
 // A comparison function for A-Star nodes.
 typedef int (*elTreeCompFun)(aStarNode_t, aStarNode_t);
 
-
-
-
+void asnList_cleanup();
 asnList_t asnList_createEmpty();
 bool asnList_isEmpty(asnList_t list);
 asnList_t asnList_push(asnList_t asnl, aStarNode_t asn);

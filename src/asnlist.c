@@ -4,6 +4,12 @@
 
 #include "asnlist.h"
 
+void
+asnList_cleanup()
+{
+  list_cleanupLEBuffer();
+}
+
 static
 asnTree_t
 asnTreeCreateEmpty_aux(enum treeNodeType type)
@@ -347,6 +353,7 @@ void
 asnTreeReuse(asnTree_t treeNode)
 {
   // TODO: Maybe reuse. For now free.
+  free(treeNode->chldrn);
   free(treeNode);
 }
 

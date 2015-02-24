@@ -1049,6 +1049,7 @@ aStarPlanner_estimateCost_v3_fixGaps(struct probSpace *probSpace,
   if (depth >= depthLimit) {
     //printf("aStarPlanner_estimateCost_v3_fixGaps() END\n");
     //printf("\n");
+    utils_free_gap(gap);
     result.cutoff = true;
     return result;
   }
@@ -1081,6 +1082,7 @@ aStarPlanner_estimateCost_v3_fixGaps(struct probSpace *probSpace,
       if (result.sol != NULL) {
         //printf("aStarPlanner_estimateCost_v3_fixGaps() END\n");
         //printf("\n");
+        utils_free_gap(gap);
         return result;
       }
       if ( ! result.nESol) {
@@ -1093,6 +1095,7 @@ aStarPlanner_estimateCost_v3_fixGaps(struct probSpace *probSpace,
       }
     }
   }
+  utils_free_gap(gap); // Gap is not needed anymore.
   //printf("aStarPlanner_estimateCost_v3_fixGaps() END\n");
   //printf("\n");
   return result;
@@ -1178,7 +1181,7 @@ aStarPlanner_estimateCost_v3(struct probSpace *probSpace, aStarNode_t node)
   //printf("aStarPlanner_estimateCost_v3(): maxLength %d solution: ", result);
   //utils_print_actionListCompact(longestSol);
   //printf("\n");
-  //utils_free_actionListShallow(longestSol);
+  utils_free_actionListShallow(longestSol);
 
   //printf("aStarPlanner_estimateCost_v3(): END result: %d\n", result); // DEBUG
   return result;
@@ -1417,6 +1420,6 @@ aStarPlanner(struct problem *problem, int timeout_)
   struct actionList *solution = aStarPlanner_aStar(probSpace);
   ps_free(probSpace);
   trie_cleanupSNBuffer();
-  list_cleanupLEBuffer();
+  asnList_cleanup();
   return solution;
 }
