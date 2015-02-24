@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <time.h>
 
+#include "asnlist.h"
 #include "aStarPlanner.h"
 #include "list.h"
 #include "probSpace.h"
@@ -1224,12 +1225,14 @@ struct actionList *
 aStarPlanner_aStar(struct probSpace *probSpace)
 {
   aStarNode_t aStarNode = NULL;    // The empty list of actions.
-  list_t frontier = list_createElem(aStarNode);
-  list_t explored = NULL;    // An empty set.
+  //list_t frontier = list_createElem(aStarNode);
+  asnList_t frontier = asnList_push(asnList_createEmpty(), aStarNode);
+  //list_t explored = NULL;    // An empty set.
+  asnList_t explored = asnList_createEmpty();
 
   int bestHScore = INT_MAX;
 
-  while( ! list_isEmpty(frontier)) {
+  while( ! asnList_isEmpty(frontier)) {
 
     if (timeout >= 0) {
       clock_t endTime = clock();
@@ -1244,8 +1247,8 @@ aStarPlanner_aStar(struct probSpace *probSpace)
 
     aStarNode_t currN;
     /* Pseudo-Code: currN = pop(frontier) */
-    currN = (aStarNode_t) list_getFirstPayload(frontier);
-    frontier = list_removeFirst(frontier);
+    currN = (aStarNode_t) asnList_getFirstPayload(frontier);
+    frontier = asnList_removeFirst(frontier);
 
     //printf("\nfrontier after removeFirst:\n");
     //list_print(frontier, &printActionList); // DEBUG
@@ -1263,7 +1266,8 @@ aStarPlanner_aStar(struct probSpace *probSpace)
       return solution;
     }
 
-    explored = list_push(explored, list_createElem(currN));
+    //explored = list_push(explored, list_createElem(currN));
+    explored = asnList_push(explored, currN);
     //printf("explored length: %d\n", list_length(explored));
 
     for (list_t gapE = gaps;
@@ -1296,7 +1300,8 @@ aStarPlanner_aStar(struct probSpace *probSpace)
           //printf("\n"); // DEBUG
 
           /* If explored contains chld. */
-          if (asnl_find(explored, chld) != NULL) {
+          //if (asnl_find(explored, chld) != NULL) {
+          if (asnList_find(explored, chld) != NULL) {
             utils_free_actionListShallow(chld);
             continue;
           }
@@ -1324,20 +1329,23 @@ aStarPlanner_aStar(struct probSpace *probSpace)
             bestHScore = hScore;
             printf("new best h-score %d. %d nodes expanded.\n",
                    bestHScore,
-                   list_length(explored));
+                   list_length(explored->list));
           }
 
           /* If frontier contains chld. */
-          list_t frontierElem = asnl_find(frontier, chld);
+          //list_t frontierElem = asnl_find(frontier, chld);
+          list_t frontierElem = asnList_find(frontier, chld);
           if (frontierElem != NULL) {
             // If new score is lower, then replace node in frontier, otherwise
             // free chld.
             if (frontierElem->intValue > fScore) {
               aStarNode_t frontierElemPayload =
                                           (aStarNode_t) frontierElem->payload;
-              frontier = list_remove(frontier, frontierElem);
-              // TODO: Can I insert it before elements with the same fScore?
-              frontier = asnl_insertOrdered(frontier, chld, fScore);
+              //frontier = list_remove(frontier, frontierElem);
+              frontier = asnList_remove(frontier, frontierElemPayload);
+              // Can I insert it before elements with the same fScore? Yes.
+              //frontier = asnl_insertOrdered(frontier, chld, fScore);
+              frontier = asnList_insertOrdered(frontier, chld, fScore);
               utils_free_actionListShallow(frontierElemPayload);
             } else {
               utils_free_actionListShallow(chld);
@@ -1348,7 +1356,8 @@ aStarPlanner_aStar(struct probSpace *probSpace)
           /* Add node to frontier. */
           //printf("frontier before insertOrdered:\n"); // DEBUG
           //list_print(frontier, &printActionList); // DEBUG
-          frontier = asnl_insertOrdered(frontier, chld, fScore);
+          //frontier = asnl_insertOrdered(frontier, chld, fScore);
+          frontier = asnList_insertOrdered(frontier, chld, fScore);
           //printf("frontier after insertOrdered:\n"); // DEBUG
           //list_print(frontier, &printActionList); // DEBUG
         }

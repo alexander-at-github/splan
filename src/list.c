@@ -86,9 +86,13 @@ list_push(list_t list, list_t singleton)
 void *
 list_getFirstPayload(list_t list)
 {
-  if (list == NULL) {
-    return NULL;
-  }
+  /* // How to differenciate this case from the payload beeing NULL? => This is */
+  /* // wrong */
+  /* if (list == NULL) { */
+  /*   return NULL; */
+  /* } */
+
+  assert(list != NULL);
 
   return list->payload;
 }
@@ -188,9 +192,9 @@ list_remove(list_t list, list_t elem)
     elem->next->prev = elem->prev;
   }
 
-  // TODO: What to do with the element? Free or reuse.
   elem->next = NULL;
   elem->prev = NULL;
+  // Reuse the list element.
   list_addToBuffer(elem);
 
   return list;
@@ -203,8 +207,8 @@ list_freeWithPayload(list_t list, freePayload_t freeFun)
 {
   while (list != NULL) {
     list_t listNext = list->next;
-    // TODO: Maybe reuse the list elements.
     (*freeFun)(list->payload);
+    // Reuse the list element.
     //free(list);
     list->next = NULL;
     list_addToBuffer(list);
@@ -239,7 +243,7 @@ list_free(list_t list)
 {
   while (list != NULL) {
     list_t listNext = list->next;
-    //free(list);
+    // Reuse the list element.
     list->next = NULL;
     list_addToBuffer(list);
 
