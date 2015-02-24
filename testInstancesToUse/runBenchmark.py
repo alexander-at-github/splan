@@ -17,6 +17,11 @@ if len(sys.argv) > 2:
     print(sys.argv[2])
     timeout = sys.argv[2]
 
+# The third argument can select an algorithm
+algSelect = "-a"  # Defaults to A-Star Algorithm
+if len(sys.argv) > 3:
+    algSelect = sys.argv[3]
+
 # The solution-found message from the planner
 solutionFound = 'SOLUTION FOUND'
 
@@ -26,7 +31,8 @@ solutionFound = 'SOLUTION FOUND'
 # When we swap the order of 'time' and 'timeout' multiple processes will be run
 # run at the same time. Why?
 cmd = ['/usr/bin/time', '-v',
-        splanCmd, '-d', 'domainDummy', '-p', 'problemDummy', '-t', timeout]
+        splanCmd, '-d', 'domainDummy', '-p', 'problemDummy', '-t', timeout,
+        algSelect]
 
 # With argument None uses system time.
 random.seed(None)
@@ -201,6 +207,7 @@ def runSimplePlan(domain, problem):
     if numNdExp:
         numNdExp = numNdExp.group(0) # now it's a string
         numNdExp = [s for s in numNdExp.split() if s.isdigit()][0] # get first number
+    #print(numNdExp)
 
     # Find number of ground actions in problem space
     numGrActs = re.search("number of ground actions in problem space: \d+", outputStr)
@@ -215,14 +222,22 @@ def runSimplePlan(domain, problem):
         vo = [s for s in vo.split() if s.isdigit()][0]
     #print(vo)
 
-    # Find last search depth statement
     kk = None
-    for kk in re.finditer(r"### depth search with depth \d+", outputStr):
-        pass
+    kk = re.search("solution length: \d+", outputStr)
+    #if algSelect == "-i":
+    #    # Find last search depth statement
+    #    for kk in re.finditer(r"### depth search with depth \d+", outputStr):
+    #        pass
+    #if algSelect == "-a":
+    #    # Find last number of nodes statement
+    #    # TODO
     # Now kk holds last occurrence of this string.
     if kk:
         kk = kk.group(0)
         kk = [s for s in kk.split() if s.isdigit()][0]
+    else:
+        # If the instance was not solved, we will not have a plan length.
+        kk = "0"
     #print(kk)
 
     # Write measured numbers to out-file.

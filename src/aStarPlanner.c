@@ -1245,12 +1245,13 @@ aStarPlanner_aStar(struct probSpace *probSpace)
     clock_t endTime = clock();
     if (timeout >= 0) {
       if ((endTime - startTime) > timeout) {
+        printf("nodes expanded: %d\n", list_length(explored->list));
         printf("TIMEOUT.\n");
         break;
       }
     }
     if ((endTime - timeTmp) > OUTPUT_UPDATE_INTERVAL) {
-      printf("%d nodes expanded\n", list_length(explored->list));
+      printf("nodes expanded: %d\n", list_length(explored->list));
       timeTmp = endTime;
     }
 
@@ -1286,7 +1287,7 @@ aStarPlanner_aStar(struct probSpace *probSpace)
     if (list_isEmpty(gaps)) {
       // Note: typedef struct actionList * aStarNode_t;
       aStarNode_t solution = utils_cloneActionList(currN);
-      printf("%d nodes expanded\n", list_length(explored->list));
+      printf("nodes expanded: %d\n", list_length(explored->list));
       return solution;
     }
 
@@ -1354,7 +1355,7 @@ aStarPlanner_aStar(struct probSpace *probSpace)
 
           if (hScore < bestHScore) {
             bestHScore = hScore;
-            printf("new best h-score %d. %d nodes expanded.\n",
+            printf("new best h-score %d. nodes expanded: %d\n",
                    bestHScore,
                    list_length(explored->list));
           }
@@ -1417,6 +1418,19 @@ aStarPlanner(struct problem *problem, int timeout_)
   }
 
   struct probSpace *probSpace = ps_init(problem);
+
+  printf("all ground actions in problem space:\n"); // DEBUG
+  utils_print_actionListCompact(probSpace->allGrActs); // DEBUG
+  printf("\n"); // DEBUG
+  printf("number of ground actions in problem space: %d",
+         utils_actionList_length(probSpace->allGrActs));
+  printf("\n");
+
+  printf("Problem Space: "); // DEBUG
+  trie_print(probSpace->setFluents); // DEBUG
+  printf("\n"); // DEBUG
+  printf("variable occurrence: %d\n", ps_calcMaxVarOcc(probSpace));
+
   struct actionList *solution = aStarPlanner_aStar(probSpace);
   ps_free(probSpace);
   trie_cleanupSNBuffer();
