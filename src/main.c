@@ -10,7 +10,7 @@ print_usage(char **argv)
 {
   fprintf(stderr,
           "Usage: %s -d domain-file-name -p problem-file-name"
-          " [-l plan-length-guess] [-t timeout-in-seconds] [-d | -a]\n",
+          " [-l plan-length-guess] [-t timeout-in-seconds] [-i | -a]\n",
           argv[0]);
 }
 
