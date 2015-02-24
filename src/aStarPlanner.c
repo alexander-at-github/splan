@@ -8,8 +8,10 @@
 #include "trie.h"
 #include "utils.h"
 
+#include "planner.h"
+
 // Set the time interval to see number of expanded nodes when running
-#define OUTPUT_UPDATE_INTERVAL (CLOCKS_PER_SEC * 5)
+#define OUTPUT_UPDATE_INTERVAL (CLOCKS_PER_SEC * 10/*sec*/)
 
 static clock_t startTime = 0;
 static int timeout = -1; // in clocks
@@ -1267,8 +1269,16 @@ aStarPlanner_aStar(struct probSpace *probSpace)
     //utils_print_actionListCompact(currN); // DEBUG
     //printf("\n"); // DEBUG
 
-    list_t gaps = aStarPlanner_getAllGaps(probSpace, currN);
-    //printf("here\n");
+    //list_t gaps = aStarPlanner_getAllGaps(probSpace, currN);
+    struct gap *gap = planner_hasGap(probSpace->problem->init,
+                                     probSpace->problem->goal,
+                                     currN);
+    // We will put this single gap in a (singleton) list, just to not change
+    // the rest of the code.
+    list_t gaps = NULL;
+    if (gap != NULL) {
+      gaps = list_createElem(gap);
+    }
 
     if (list_isEmpty(gaps)) {
       // Note: typedef struct actionList * aStarNode_t;
