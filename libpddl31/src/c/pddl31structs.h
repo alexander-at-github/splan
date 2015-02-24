@@ -86,12 +86,12 @@ struct problem
 // precondition can include constants and variables.
 struct term
 {
-    // true: is variable
-    // false: is constant
-    bool isVariable;
     // In PDDL a variables name starts with the '?' character.
     // If this structure is a constant, then the name is also its value.
     char *name;
+    // true: is variable
+    // false: is constant
+    bool isVariable;
     struct type *type;
 };
 

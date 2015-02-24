@@ -51,3 +51,6 @@ clean:
 
 bin/test_planner: test/planner.c src/planner.c src/probSpace.c $(LIB_PDDL31) $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ -I$(SRC_DIR) -I$(TOOL_DIR) -I$(LIB_PDDL31_BIN_DIR) test/planner.c src/planner.c src/probSpace.c $(LIB_PDDL31) -l$(ANTLR3.4_C_RUNTIME)
+
+bin/test_asnlist: test/asnlist.c src/asnlist.c src/probSpace.c src/list.c $(LIB_PDDL31) $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ -I$(SRC_DIR) -I$(TOOL_DIR) -I$(LIB_PDDL31_BIN_DIR) test/asnlist.c src/asnlist.c src/probSpace.c src/list.c $(LIB_PDDL31) -l$(ANTLR3.4_C_RUNTIME)

@@ -275,3 +275,31 @@ list_length(list_t list)
   }
   return length;
 }
+
+list_t
+list_reverse(list_t list)
+{
+  if (list == NULL) {
+    return NULL;
+  }
+
+  list_t newHead = list;
+  while (newHead->next != NULL) {
+    newHead = newHead->next;
+  }
+
+  list_t l1 = newHead;
+  list_t l2 = newHead->prev;
+  newHead->prev = NULL;
+  while (l2 != NULL) {
+    l1->next = l2;
+    l2->next = NULL;
+    list_t l2Next = l2->prev;
+    l2->prev = l1;
+
+    l1 = l2;
+    l2 = l2Next;
+  }
+
+  return newHead;
+}

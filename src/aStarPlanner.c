@@ -8,6 +8,8 @@
 #include "trie.h"
 #include "utils.h"
 
+// Set the time interval to see number of expanded nodes when running
+#define OUTPUT_UPDATE_INTERVAL (CLOCKS_PER_SEC * 5)
 
 static clock_t startTime = 0;
 static int timeout = -1; // in clocks
@@ -1171,10 +1173,10 @@ aStarPlanner_estimateCost_v3(struct probSpace *probSpace, aStarNode_t node)
     break;
   }
 
-  printf("aStarPlanner_estimateCost_v3(): maxLength %d solution: ", result);
-  utils_print_actionListCompact(longestSol);
-  printf("\n");
-  utils_free_actionListShallow(longestSol);
+  //printf("aStarPlanner_estimateCost_v3(): maxLength %d solution: ", result);
+  //utils_print_actionListCompact(longestSol);
+  //printf("\n");
+  //utils_free_actionListShallow(longestSol);
 
   //printf("aStarPlanner_estimateCost_v3(): END result: %d\n", result); // DEBUG
   return result;
@@ -1232,18 +1234,26 @@ aStarPlanner_aStar(struct probSpace *probSpace)
 
   int bestHScore = INT_MAX;
 
+  clock_t timeTmp = clock();
   while( ! asnList_isEmpty(frontier)) {
 
+    clock_t endTime = clock();
     if (timeout >= 0) {
-      clock_t endTime = clock();
       if ((endTime - startTime) > timeout) {
         printf("TIMEOUT.\n");
         break;
       }
     }
+    if ((endTime - timeTmp) > OUTPUT_UPDATE_INTERVAL) {
+      printf("%d nodes expanded\n", list_length(explored->list));
+      timeTmp = endTime;
+    }
+
 
     //printf("\nNEW ITERATION. frontier at beginning of loop:\n");
-    //list_print(frontier, &printActionList); // DEBUG
+    //list_print(frontier->list, &printActionList); // DEBUG
+    ////asnTreePrint(frontier->tree);
+    //printf("\n");
 
     aStarNode_t currN;
     /* Pseudo-Code: currN = pop(frontier) */
@@ -1263,12 +1273,16 @@ aStarPlanner_aStar(struct probSpace *probSpace)
     if (list_isEmpty(gaps)) {
       // Note: typedef struct actionList * aStarNode_t;
       aStarNode_t solution = utils_cloneActionList(currN);
+      printf("%d nodes expanded\n", list_length(explored->list));
       return solution;
     }
 
     //explored = list_push(explored, list_createElem(currN));
     explored = asnList_push(explored, currN);
     //printf("explored length: %d\n", list_length(explored));
+    
+    // Experimental. This ordering might be better.
+    gaps = list_reverse(gaps);
 
     for (list_t gapE = gaps;
          gaps != NULL;
@@ -1307,16 +1321,16 @@ aStarPlanner_aStar(struct probSpace *probSpace)
           }
 
           /* EXPERIMENTAL START */
-          printf("node: "); // DEBUG
-          utils_print_actionListCompact(chld); // DEBUG
-          printf("\n"); // DEBUG
+          //printf("node: "); // DEBUG
+          //utils_print_actionListCompact(chld); // DEBUG
+          //printf("\n"); // DEBUG
 
           // Attention: only v3 is admissible!
           //int hScore1 = aStarPlanner_estimateCost_v1(probSpace, chld);
           //int hScore2 = aStarPlanner_estimateCost_v2(probSpace, chld);
           int hScore3 = aStarPlanner_estimateCost_v3(probSpace, chld);
 
-          printf("hScores: %d\n", hScore3);
+          //printf("hScores: %d\n", hScore3);
 
           /* EXPERIMENTAL END */
 
@@ -1335,6 +1349,16 @@ aStarPlanner_aStar(struct probSpace *probSpace)
           /* If frontier contains chld. */
           //list_t frontierElem = asnl_find(frontier, chld);
           list_t frontierElem = asnList_find(frontier, chld);
+          // DEbuG START
+          //printf("### frontierElem: ");
+          //if (frontierElem == NULL) {
+          //  printf("NULL");
+          //} else {
+          //  utils_print_actionListCompact(frontierElem->payload);
+          //  //list_print(frontierElem, &printActionList); // DEBUG
+          //}
+          //printf("\n###\n");
+          // DEbuG END
           if (frontierElem != NULL) {
             // If new score is lower, then replace node in frontier, otherwise
             // free chld.

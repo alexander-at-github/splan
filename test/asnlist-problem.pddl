@@ -1,0 +1,5 @@
+(define (problem asnlist)
+  (:domain asnlist)
+  (:objects o1 o2 o3)
+  (:init (p1 o1) (p1 o2))
+  (:goal (p2 o1 o2)))

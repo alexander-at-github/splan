@@ -13,6 +13,7 @@ asnTreeCreateEmpty_aux(enum treeNodeType type)
   treeNode->numAlloced = 0;
   treeNode->chldrn = NULL;
   treeNode->type = type;
+  treeNode->pointerIntoList = NULL;
   return treeNode;
 }
 
@@ -37,6 +38,13 @@ asnTreeGetOrCreate_aux(enum treeNodeType type)
 {
   // TODO: reuse?
   return asnTreeCreateEmpty_aux(type);
+}
+
+static
+void
+printActionList(void *al)
+{
+  utils_print_actionListCompact((struct actionList *) al);
 }
 
 static
@@ -147,6 +155,7 @@ asnTreeFindOrAdd_aux(asnTree_t treeNode,
   } else if ((*compFun)(treeNode->chldrn[aeIdx].edgeLabel, pointer)) {
     // Found
     assert(treeNode->type == type);
+    assert(treeNode->chldrn[aeIdx].chld != NULL);
     return treeNode->chldrn[aeIdx].chld;
   }
 
@@ -167,6 +176,7 @@ asnTreeFindOrAdd_aux(asnTree_t treeNode,
   // is at the beginning of this function.
   treeNode->chldrn[aeIdx].chld = asnTreeGetOrCreate_aux(UNSET);
 
+  assert(treeNode->chldrn[aeIdx].chld != NULL);
   return treeNode->chldrn[aeIdx].chld;
 }
 
@@ -177,15 +187,22 @@ asnTreeInsert_aux(asnTree_t tree, list_t singletonList)
   aStarNode_t asn = singletonList->payload;
 
 
-  printf("asnTreeInsert_aux() ");
-  utils_print_actionListCompact(asn);
-  printf("\n");
+  //printf("asnTreeInsert_aux() ");
+  //utils_print_actionListCompact(asn);
+  //printf("\n");
 
   asnTree_t currTreeNode = tree;
   // Note: typedef struct acionList * aStarNode_t;
   for (/* empty */; asn != NULL; asn = asn->next) {
     struct groundAction *grAct = asn->act;
     struct action *act = grAct->action;
+
+    //utils_print_actionListCompact(asn);
+    //printf("\n");
+    //printf("currTreeNode->type: %d\n", currTreeNode->type);
+
+    // TODO: This MUST be uncommented. Just for debugging purpose it is
+    // commented out.
     assert(currTreeNode->type == ACTION ||
            currTreeNode->type == UNSET);
 
@@ -195,6 +212,7 @@ asnTreeInsert_aux(asnTree_t tree, list_t singletonList)
                                         &actionCompFun);
 
     for (int idxTerm = 0; idxTerm < act->numOfParams; ++idxTerm) {
+      //printf("currTreeNode->type: %d\n", currTreeNode->type);
       assert(currTreeNode->type == TERM || currTreeNode->type == UNSET);
 
       currTreeNode = asnTreeFindOrAdd_aux(currTreeNode,
@@ -220,12 +238,27 @@ static
 struct treeNodeAE *
 asnTreeNext_aux(asnTree_t treeNode, void *pointer, compFun_t compFun)
 {
-  // continue here
   int idx = asnTreeBinSearch_aux(treeNode, pointer);
   assert (0 <= idx && idx <= treeNode->numOfChldrn);
 
+  //printf("treeNode->numOfChldrn: %d, idx: %d\n", treeNode->numOfChldrn, idx);
+
+
   if (idx < treeNode->numOfChldrn) {
-    if ((*compFun)(&treeNode->chldrn[idx], pointer)) {
+    if ((*compFun)(treeNode->chldrn[idx].edgeLabel, pointer)) { // FIXED
+
+      // DEBUG START
+      //if (treeNode->chldrn[idx].chld == NULL) {
+      //  for (int ii = 0; ii < treeNode->numOfChldrn; ++ii) {
+      //    printf("%s ", ((struct term *)treeNode->chldrn[ii].edgeLabel)->name);
+      //  }
+      //}
+      //printf("\n");
+
+      // DEBUG END
+
+      assert(treeNode->chldrn[idx].edgeLabel != NULL);
+      assert(treeNode->chldrn[idx].chld != NULL);
       return &treeNode->chldrn[idx];
     }
   }
@@ -240,7 +273,8 @@ asnTreeFind_aux(asnTree_t asnt, aStarNode_t asn)
   for (/* empty */; asn != NULL; asn = asn->next) {
     struct groundAction *grAct = asn->act;
     struct action *act = grAct->action;
-    assert(currTN->type == ACTION);
+    assert(currTN->type == ACTION ||
+           (currTN->type == UNSET && currTN->numOfChldrn == 0));
     struct treeNodeAE *tnae = asnTreeNext_aux(currTN, act, &actionCompFun);
     if (tnae == NULL) {
       return NULL;
@@ -269,7 +303,43 @@ asnList_find(asnList_t asnl, aStarNode_t asn)
     return NULL;
   }
 
+  //printf("asnList_find():\n");
+  //printf("action list: ");
+  //list_print(asnl->list, &printActionList);
+  //printf("a-star node: ");
+  //utils_print_actionListCompact(asn);
+  //printf("\n");
+
   return asnTreeFind_aux(asnl->tree, asn);
+}
+
+void
+asnTreePrint(asnTree_t tree)
+{
+  assert(tree != NULL);
+  //if (tree == NULL) {
+  //  return;
+  //}
+
+  printf("(%d_", tree->numOfChldrn);
+
+  for (int ii = 0; ii < tree->numOfChldrn; ++ii) {
+    if (tree->type == ACTION) {
+      printf("%s", ((struct action *)tree->chldrn[ii].edgeLabel)->name);
+    } else if (tree->type == TERM) {
+      printf("%s", ((struct term *)tree->chldrn[ii].edgeLabel)->name);
+    } else {
+      assert(false && "If the tree has children, "
+                      "then it must have a type too.");
+    }
+    // Recurse
+    asnTreePrint(tree->chldrn[ii].chld);
+    if (ii < tree->numOfChldrn - 1) {
+      printf(" ");
+    }
+  }
+
+  printf(")");
 }
 
 static
@@ -286,9 +356,12 @@ static
 bool
 asnTreeRemoveRec_aux(asnTree_t tree, aStarNode_t asn, int idx)
 {
-  //assert(asn != NULL);
   assert(-1 <= idx &&
          (asn == NULL || idx < asn->act->action->numOfParams));
+
+  if (asn == NULL) {
+    return true;
+  }
 
   if (tree->numOfChldrn > 0) {
     struct treeNodeAE *tnae = NULL;
@@ -304,11 +377,18 @@ asnTreeRemoveRec_aux(asnTree_t tree, aStarNode_t asn, int idx)
 
     bool recResult = false;
 
-    if (idx < asn->act->action->numOfParams) {
-      recResult = asnTreeRemoveRec_aux(tnae->chld, asn, idx + 1);
-    } else {
+    //if (idx < asn->act->action->numOfParams - 1) {
+    //  recResult = asnTreeRemoveRec_aux(tnae->chld, asn, idx + 1);
+    //} else {
+    //  // Proceed to next ground action.
+    //  recResult = asnTreeRemoveRec_aux(tnae->chld, asn->next, -1);
+    //}
+    //printf("idx: %d\n", idx);
+    if (idx >= asn->act->action->numOfParams - 1) {
       // Proceed to next ground action.
       recResult = asnTreeRemoveRec_aux(tnae->chld, asn->next, -1);
+    } else {
+      recResult = asnTreeRemoveRec_aux(tnae->chld, asn, idx + 1);
     }
     if ( ! recResult) {
       return false;
@@ -323,7 +403,7 @@ asnTreeRemoveRec_aux(asnTree_t tree, aStarNode_t asn, int idx)
       int idxArr = tnae - tree->chldrn;
       memmove(tnae,
               tnae + 1,
-               (tree->numOfChldrn - idxArr - 1) * sizeof(tnae));
+               (tree->numOfChldrn - idxArr - 1) * sizeof(*tnae)); // FIXED
       tree->numOfChldrn--;
     }
   } else if (asn != NULL) {
@@ -358,7 +438,7 @@ asnTreeRemove_aux(asnTree_t tree, aStarNode_t asn)
   /*       return false; */
   /*     } */
   /*     currTree = tnae->chld; */
-  /*     // TODO: continue. */
+  /*     // UNFINISHED: continue. */
   /*   } */
   /* } */
 }
@@ -376,6 +456,32 @@ asnList_removeFirst(asnList_t asnl)
   asnl->list = list_removeFirst(asnl->list);
   bool rmResult = asnTreeRemove_aux(asnl->tree, asn);
   return asnl;
+}
+
+// A comparison function for finding locations in lists for inserting
+// elements in an ordered manner by their intValue property.
+static
+int
+compIntValueFunAfter(list_t e1, void *fScore_)
+{
+  if (e1 == NULL || fScore_ == NULL) {
+    assert(false);
+  }
+  int fScore = *(int *) fScore_;
+
+  if (e1->intValue > fScore) {
+    return -1;
+  }
+  assert(e1->intValue <= fScore);
+
+  if (e1->next == NULL) {
+    return 0;
+  }
+  if (e1->next->intValue > fScore) {
+    return 0;
+  }
+
+  return 1;
 }
 
 // A comparison function for finding locations in lists for inserting
@@ -434,13 +540,6 @@ asnl_insertOrdered(list_t list, list_t singleton)
   return list;
 }
 
-static
-void
-printActionList(void *al)
-{
-  utils_print_actionListCompact((struct actionList *) al);
-}
-
 asnList_t
 asnList_insertOrdered(asnList_t asnl, aStarNode_t asn, int intValue)
 {
@@ -448,17 +547,17 @@ asnList_insertOrdered(asnList_t asnl, aStarNode_t asn, int intValue)
     return asnl;
   }
 
-  printf("asnList_insertOrdered().");
-  list_print(asnl->list, &printActionList);
-  utils_print_actionListCompact(asn);
-  printf("\n");
-  printf("\n");
+  //printf("asnList_insertOrdered().");
+  //list_print(asnl->list, &printActionList);
+  //utils_print_actionListCompact(asn);
+  //printf("\n");
+  //printf("\n");
 
   list_t singleton = list_createElem(asn);
   singleton->intValue = intValue;
 
   asnl->list = asnl_insertOrdered(asnl->list, singleton);
-  list_print(asnl->list, &printActionList);
+  //list_print(asnl->list, &printActionList);
   asnl->tree = asnTreeInsert_aux(asnl->tree, singleton);
 
   return asnl;
@@ -468,6 +567,10 @@ asnList_t
 asnList_remove(asnList_t asnl, aStarNode_t asn)
 {
   list_t elem = asnList_find(asnl, asn);
+  if (elem == NULL) {
+    // Element to remove not found.
+    return asnl;
+  }
 
   // Remove from list
   if (elem->prev == NULL) {

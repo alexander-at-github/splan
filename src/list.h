@@ -41,6 +41,7 @@ void list_print(list_t list, printF_t fun);
 list_t list_cloneShallow(list_t src);
 
 int list_length(list_t list);
+list_t list_reverse(list_t list);
 
 void list_cleanupLEBuffer();
 

@@ -76,4 +76,6 @@ asnList_t asnList_insertOrdered(asnList_t asnl,
                                 int intValue);
 list_t asnList_find(asnList_t asnl, aStarNode_t asn);
 
+void asnTreePrint(asnTree_t tree);
+
 #endif
