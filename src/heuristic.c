@@ -143,6 +143,7 @@ heuristic_estimate(struct probSpace *probSpace, struct actionList *actL)
   //printf("result: %d\n", length);
   //printf("## END heuristic_estimate()\n");
 
+  assert(length >= 0);
   return length;
 }
 

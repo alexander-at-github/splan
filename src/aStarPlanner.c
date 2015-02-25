@@ -1377,8 +1377,9 @@ aStarPlanner_aStar(struct probSpace *probSpace)
           int hScore = heuristic_estimate(probSpace, chld); //hScore4;
           if (hScore < 0) {
             // No solution to this chld exists
-            // TODO: Maybe add it to explored-list. ??
-            utils_free_actionListShallow(chld);
+            // Either add it to explored-list or free it.
+            explored = asnList_push(explored, chld);
+            //utils_free_actionListShallow(chld);
             continue;
           }
 
