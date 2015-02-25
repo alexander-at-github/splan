@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "aStarPlanner.h"
 
 #include "heuristic.h"
@@ -29,6 +30,13 @@ freeGapActL(void *gapActL_)
 }
 
 static
+void
+printGap(void *vGap)
+{
+  utils_print_gap((struct gap *) vGap);
+}
+
+static
 struct actionList *
 intersect(struct actionList *al1, struct actionList *al2)
 {
@@ -54,6 +62,9 @@ int
 heuristic_estimate(struct probSpace *probSpace, struct actionList *actL)
 {
   list_t gaps = aStarPlanner_getAllGaps(probSpace, actL);
+  printf("## START heuristic_estimate()\n");
+  printf("number of gaps: %d\n", list_length(gaps));
+  list_print(gaps, &printGap);
 
   list_t listGapActL = NULL; // Empty list
 
@@ -67,6 +78,7 @@ heuristic_estimate(struct probSpace *probSpace, struct actionList *actL)
                                                                 gap->literal));
     listGapActL = list_push(listGapActL, list_createElem(gapActL));
   }
+  list_free(gaps); // Free shallow, cause the gaps itself are still used.
 
   for (list_t gal1E = listGapActL; gal1E != NULL; gal1E = gal1E->next) {
     for (list_t gal2E = gal1E->next; gal2E != NULL; /* empty */) {
@@ -85,9 +97,18 @@ heuristic_estimate(struct probSpace *probSpace, struct actionList *actL)
 
         // Remove gal2E from list
         list_t gal2ENext = gal2E->next;
-        gal1E->next = gal2E->next;
+        assert(gal2E->prev != NULL);
+        gal2E->prev->next = gal2E->next;
+        if (gal2E->next != NULL) {
+          gal2E->next->prev = gal2E->prev;
+        }
         gal2E->next = NULL;
+        gal2E->prev = NULL;
+
+        //list_freeWithPayload(gal2E, &freeGapActL); // Error
+        free(gal2E->payload);
         list_free(gal2E);
+        gal2E = NULL;
 
         gal2E = gal2ENext; // Advance loop variable
         continue;
@@ -100,6 +121,8 @@ heuristic_estimate(struct probSpace *probSpace, struct actionList *actL)
 
   list_freeWithPayload(listGapActL, &freeGapActL);
 
+  printf("result: %d\n", length);
+  printf("## END heuristic_estimate()\n");
   return length;
 }
 

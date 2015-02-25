@@ -1364,17 +1364,17 @@ aStarPlanner_aStar(struct probSpace *probSpace)
           printf("\n"); // DEBUG
 
           // Attention: only v3 is admissible!
-          int hScore1 = aStarPlanner_estimateCost_v1(probSpace, chld);
+          //int hScore1 = aStarPlanner_estimateCost_v1(probSpace, chld);
           //int hScore2 = aStarPlanner_estimateCost_v2(probSpace, chld);
-          int hScore3 = aStarPlanner_estimateCost_v3(probSpace, chld);
+          //int hScore3 = aStarPlanner_estimateCost_v3(probSpace, chld);
           int hScore4 = heuristic_estimate(probSpace,chld);
 
-          printf("hScores: %d\t%d\t%d\n", hScore1, hScore3, hScore4);
+          //printf("hScores: %d\t%d\t%d\n", hScore1, hScore3, hScore4);
 
           /* EXPERIMENTAL END */
 
           // Calculate f-score
-          int hScore = hScore3; //aStarPlanner_estimateCost_v3(probSpace, chld);
+          int hScore = hScore4; //aStarPlanner_estimateCost_v3(probSpace, chld);
           int gScore = utils_actionList_length(chld);
           int fScore = gScore + hScore;
 
