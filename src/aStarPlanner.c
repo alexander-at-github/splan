@@ -1375,6 +1375,12 @@ aStarPlanner_aStar(struct probSpace *probSpace)
 
           // Calculate f-score
           int hScore = heuristic_estimate(probSpace, chld); //hScore4;
+          if (hScore < 0) {
+            // No solution to this chld exists
+            // TODO: Maybe add it to explored-list. ??
+            utils_free_actionListShallow(chld);
+            continue;
+          }
 
           int gScore = utils_actionList_length(chld);
           int fScore = gScore + hScore;

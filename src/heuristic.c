@@ -58,6 +58,8 @@ intersect(struct actionList *al1, struct actionList *al2)
   return result;
 }
 
+// Returns an estimate solution cost. If there does not exist an solution,
+// then it returns -1.
 int
 heuristic_estimate(struct probSpace *probSpace, struct actionList *actL)
 {
@@ -73,10 +75,26 @@ heuristic_estimate(struct probSpace *probSpace, struct actionList *actL)
   for (list_t gapE = gaps; gapE != NULL; gapE = gapE->next) {
     struct gap *gap = (struct gap *)gapE->payload;
 
+    struct actionList *actsToFixGap = ps_getActsToFixGap(probSpace,
+                                                         gap->literal);
+    if (actsToFixGap == NULL) {
+      // There is no way to fix the gap.
+      // Cleanup
+      if (gapE->prev != NULL) {
+        // Split the gaps-list to free it properly.
+        gapE->prev->next = NULL;
+        list_free(gaps);
+      }
+      list_freeWithPayload(gapE, &freeGap);
+      list_freeWithPayload(listGapActL, &freeGapActL);
+      return -1;
+    }
+
     struct gapActL *gapActL = malloc(sizeof(*gapActL));
     gapActL->gaps = list_createElem(gap); // singleton
-    gapActL->acts = utils_cloneActionListShallow(ps_getActsToFixGap(probSpace,
-                                                                gap->literal));
+
+    gapActL->acts = utils_cloneActionListShallow(actsToFixGap);
+
     listGapActL = list_push(listGapActL, list_createElem(gapActL));
   }
   list_free(gaps); // Free shallow, cause the gaps itself are still used.
