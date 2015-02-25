@@ -18,8 +18,8 @@ ANTLR3.4_C_RUNTIME=antlr3c 	# linker will search the library path for a file
 							# called libantlr3c.a (and libantlr3c.so?).
 
 # Simple Plan (splan)
-bin/splan: src/main.c build/planner.o build/probSpace.o build/aStarPlanner.o build/list.o build/asnlist.o $(BIN_DIR)
-	$(CC) $(CFLAGS) -o $@ -I$(BIN_DIR) -I$(LIB_PDDL31_BIN_DIR) $< build/planner.o build/probSpace.o build/aStarPlanner.o build/list.o build/asnlist.o $(LIB_PDDL31) -l$(ANTLR3.4_C_RUNTIME)
+bin/splan: src/main.c build/planner.o build/probSpace.o build/aStarPlanner.o build/list.o build/asnlist.o build/heuristic.o $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ -I$(BIN_DIR) -I$(LIB_PDDL31_BIN_DIR) $< build/planner.o build/probSpace.o build/aStarPlanner.o build/list.o build/asnlist.o build/heuristic.o $(LIB_PDDL31) -l$(ANTLR3.4_C_RUNTIME)
 
 ## link antlr3 runtime here? Maybe better in the parser.
 #bin/test: src/main_test.c build/planner.o $(BIN_DIR)

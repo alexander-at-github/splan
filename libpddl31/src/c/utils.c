@@ -99,6 +99,7 @@ utils_addActionToListAtPosition(struct actionList *head,
     idxAct++;
   }
   if (idxAct != position) {
+    assert(false);
     // Error.
     return NULL;
   }
@@ -500,7 +501,7 @@ utils_groundActions(struct problem *problem,
 bool
 utils_grAct_equal(struct groundAction *ga1, struct groundAction *ga2)
 {
-  if (ga1 == NULL && ga2 == NULL) {
+  if (ga1 == ga2) { // Includes (ga1 == NULL && ga2 == NULL)
     return true;
   }
   if (ga1 == NULL || ga2 == NULL) {

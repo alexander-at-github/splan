@@ -222,6 +222,8 @@ list_cloneShallow(list_t src)
   list_t head = NULL;
   list_t curr = NULL;
   while (src != NULL) {
+    // list_createElem() also initializes the next and previous pointers to
+    // NULL.
     list_t tmp = list_createElem(src->payload);
     tmp->intValue = src->intValue;
 
@@ -302,4 +304,24 @@ list_reverse(list_t list)
   }
 
   return newHead;
+}
+
+list_t
+list_concat(list_t l1, list_t l2)
+{
+  if (l1 == NULL) {
+    return l2;
+  }
+
+  list_t lTmp = l1; // Will point to last element of l1.
+  while (lTmp->next != NULL) {
+    lTmp = lTmp->next;
+  }
+  assert(lTmp != NULL);
+  lTmp->next = l2;
+  if (l2 != NULL) {
+    l2->prev = lTmp;
+  }
+
+  return l1;
 }

@@ -45,4 +45,6 @@ list_t list_reverse(list_t list);
 
 void list_cleanupLEBuffer();
 
+list_t list_concat(list_t l1, list_t l2);
+
 #endif
