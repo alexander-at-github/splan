@@ -62,9 +62,10 @@ int
 heuristic_estimate(struct probSpace *probSpace, struct actionList *actL)
 {
   list_t gaps = aStarPlanner_getAllGaps(probSpace, actL);
-  printf("## START heuristic_estimate()\n");
-  printf("number of gaps: %d\n", list_length(gaps));
-  list_print(gaps, &printGap);
+
+  //printf("## START heuristic_estimate()\n");
+  //printf("number of gaps: %d\n", list_length(gaps));
+  //list_print(gaps, &printGap);
 
   list_t listGapActL = NULL; // Empty list
 
@@ -121,8 +122,9 @@ heuristic_estimate(struct probSpace *probSpace, struct actionList *actL)
 
   list_freeWithPayload(listGapActL, &freeGapActL);
 
-  printf("result: %d\n", length);
-  printf("## END heuristic_estimate()\n");
+  //printf("result: %d\n", length);
+  //printf("## END heuristic_estimate()\n");
+
   return length;
 }
 
