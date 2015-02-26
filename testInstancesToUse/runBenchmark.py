@@ -186,6 +186,20 @@ def runSimplePlan(domain, problem):
     # the problem, to the actual number.
     time = '-'
     mem = '-'
+    if "terminated by singnal 9" in outputStr:
+        with open(outFN, 'a') as outF: # Append to out file.
+            strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + \
+                         ' memout\n'
+            outF.write(strToWrite)
+        return
+    if "terminated by singnal" in outputStr:
+        sigNum = re.search("terminated by signal \d+", outputStr)
+        with open(outFN, 'a') as outF: # Append to out file.
+            strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + \
+                         ' terminated by signal ' + sigNum + '\n'
+            outF.write(strToWrite)
+        return
+
     if solutionFound in outputStr:
         outLines = outputStr.split('\n')
 
