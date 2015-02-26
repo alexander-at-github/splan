@@ -1468,5 +1468,6 @@ aStarPlanner(struct problem *problem, int timeout_)
   ps_free(probSpace);
   trie_cleanupSNBuffer();
   asnList_cleanup();
+  list_cleanupLEBuffer();
   return solution;
 }
