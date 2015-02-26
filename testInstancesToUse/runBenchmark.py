@@ -28,11 +28,27 @@ solutionFound = 'SOLUTION FOUND'
 # The planner command. Could be changed or set for different planners.
 #cmd = ['timeout', timeout, '/usr/bin/time', '-v',
 #        splanCmd, '-d', 'domainDummy', '-p', 'problemDummy']
-# When we swap the order of 'time' and 'timeout' multiple processes will be run
-# run at the same time. Why?
+
+# Using linux control groups to limit memory usage. IT NEEDS TO BE SET UP
+# BEFORE THIS SCRIPT IS RUN. How to:
+# $ cgcreate -g memory:/myGroup
+# Limit physical memory
+# $ echo $(( 7 * 1024 * 1024 * 1024 )) > /sys/fs/cgroup/memory/myGroup/memory.limit_in_bytes
+# Limit swap
+# $ echo $(( 0 )) > /sys/fs/cgroup/memory/myGroup/memory.memsw.limit_in_bytes
+#
+# Run a command:
+# $ cgexec -g memory:myGroup cmdToRun
+#
+# ATTENTION: First boot with swapaccount=1 in kernel command line.
+
+cmdPrefix = ['cgexec', '-g', 'memory:myGroup']
+
 cmd = ['/usr/bin/time', '-v',
         splanCmd, '-d', 'domainDummy', '-p', 'problemDummy', '-t', timeout,
         algSelect]
+
+cmd = cmdPrefix + cmd
 
 # With argument None uses system time.
 random.seed(None)
