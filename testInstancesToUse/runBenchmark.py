@@ -9,12 +9,12 @@ import math, os, random, re, subprocess, sys
 # The first argument can be the location of the splan executable.
 splanCmd = './bin/splan'
 if len(sys.argv) > 1:
-    print(sys.argv[1])
+    #print(sys.argv[1])
     splanCmd = sys.argv[1]
 # The second argument can be a timeout value
 timeout = '60' # seconds
 if len(sys.argv) > 2:
-    print(sys.argv[2])
+    #print(sys.argv[2])
     timeout = sys.argv[2]
 
 # The third argument can select an algorithm
@@ -49,7 +49,7 @@ with open(outFN, "a") as outF:
     outF.write("timeout [sec]: ")
     outF.write(timeout)
     outF.write("\n")
-    outF.write("  domain  |  problem  |  runtime [sec]  |  mem [kbytes] | " \
+    outF.write("  domain  |  problem  |  sol. found  |  termination  |  runtime [sec]  |  mem [kbytes] | " \
                "nodes expanded | number of ground actions | " \
                "variable occurrence | search depth or plan length | " \
                " k! * vo^k")
@@ -173,93 +173,149 @@ def runSimplePlan(domain, problem):
         output = ex.output
         pass
 
-    outputStr = output.decode('utf-8')
+    cmdOutStr = output.decode('utf-8')
+    #print(cmdOutStr)
 
     with open(logFN, 'a') as logF: # Append to log file
         logF.write('% ') # Signal that this line is a command
         logF.write(' '.join(cmdFinal))
         logF.write('\n')
-        logF.write(outputStr)
+        logF.write(cmdOutStr)
         logF.write('\n\n')
 
-    # Set time an memusage to empty first and then, if the planner did solve
-    # the problem, to the actual number.
-    time = '-'
-    mem = '-'
-    if "terminated by singnal 9" in outputStr:
-        with open(outFN, 'a') as outF: # Append to out file.
-            strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + \
-                         ' memout\n'
-            outF.write(strToWrite)
-        return
-    if "terminated by singnal" in outputStr:
-        sigNum = re.search("terminated by signal \d+", outputStr)
-        with open(outFN, 'a') as outF: # Append to out file.
-            strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + \
-                         ' terminated by signal ' + sigNum + '\n'
-            outF.write(strToWrite)
-        return
+    # The string with will be written to the .out (result) file
+    writeOutStr = domain + ' ' + problem
 
-    if solutionFound in outputStr:
-        outLines = outputStr.split('\n')
+    writeOutStr += ' S' if solutionFound in cmdOutStr else ' -'
 
-        timeLine = [l for l in outLines if 'User time' in l]
-        assert len(timeLine) == 1
-        # Isolate floating point number from string, which gives time.
-        time = re.findall("\d+.\d+", timeLine[0]) [0]
+    if "terminated by signal" in cmdOutStr:
+        sigNum = re.search("terminated by signal \d+", cmdOutStr)
+        sigNum = sigNum.group(0)
+        sigNum = [s for s in sigNum.split() if s.isdigit()][0]
+        writeOutStr += ' sig' + str(sigNum)
+    else:
+        writeOutStr += ' norm'
 
-        memLine = [l for l in outLines if 'Maximum resident set size' in l]
-        assert len(memLine) == 1
-        mem = re.findall("\d+", memLine[0]) [0]
+    cmdOutLines = cmdOutStr.split('\n')
+
+    time = None
+    timeLines = [l for l in cmdOutLines if 'User time' in l]
+    if len(timeLines) > 0:
+        assert len(timeLines) == 1
+        time = re.findall("\d+.\d+", timeLines[0]) [0]
+    writeOutStr += ' ' + (time if time else '-')
+
+    mem = None
+    memLines = [l for l in cmdOutLines if 'Maximum resident set size' in l]
+    if len(memLines) > 0:
+        assert len(memLines) == 1
+        mem = re.findall("\d+", memLines[0]) [0]
+    writeOutStr += ' ' + (mem if mem else '-')
 
     # Find the number of nodes expanded
     numNdExp = None
     # Find last occurance of "nodes expanded".
-    for numNdExp in re.finditer(r"nodes expanded: \d+", outputStr):
+    for numNdExp in re.finditer(r"nodes expanded: \d+", cmdOutStr):
         pass
     # Now numNdExp holds the last occurance of the deserved string.
     if numNdExp:
         numNdExp = numNdExp.group(0) # now it's a string
         numNdExp = [s for s in numNdExp.split() if s.isdigit()][0] # get first number
     #print(numNdExp)
+    writeOutStr += ' ' + (numNdExp if numNdExp else '-')
 
     # Find number of ground actions in problem space
-    numGrActs = re.search("number of ground actions in problem space: \d+", outputStr)
+    numGrActs = re.search("number of ground actions in problem space: \d+", cmdOutStr)
     if numGrActs:
         numGrActs = numGrActs.group(0)
         numGrActs = [s for s in numGrActs.split() if s.isdigit()][0]
     #print(numGrActs)
+    writeOutStr += ' ' + (numGrActs if numGrActs else '-')
 
-    vo = re.search("variable occurrence: \d+", outputStr)
+    vo = re.search("variable occurrence: \d+", cmdOutStr)
     if vo:
         vo = vo.group(0)
         vo = [s for s in vo.split() if s.isdigit()][0]
     #print(vo)
+    writeOutStr += ' ' + (vo if vo else '-')
 
-    kk = None
-    kk = re.search("solution length: \d+", outputStr)
-    #if algSelect == "-i":
-    #    # Find last search depth statement
-    #    for kk in re.finditer(r"### depth search with depth \d+", outputStr):
-    #        pass
-    #if algSelect == "-a":
-    #    # Find last number of nodes statement
-    #    # TODO
-    # Now kk holds last occurrence of this string.
+    kk = re.search("solution length: \d+", cmdOutStr)
     if kk:
         kk = kk.group(0)
         kk = [s for s in kk.split() if s.isdigit()][0]
-    else:
-        # If the instance was not solved, we will not have a plan length.
-        kk = "0"
-    #print(kk)
+    writeOutStr += ' ' + (kk if kk else '-')
 
-    # Write measured numbers to out-file.
+    cplxty = None
+    if vo and kk:
+        cplxt = str( math.factorial(int(kk)) * int(vo) ** int(kk) )
+    writeOutStr += ' ' + (cplxty if cplxty else '-')
+
+    writeOutStr += '\n'
+
     with open(outFN, 'a') as outF: # Append to out file.
-        strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + ' ' + \
-                     numNdExp + ' ' + numGrActs + ' ' + vo + ' ' + kk + ' ' + \
-                     str( math.factorial(int(kk)) * int(vo) ** int(kk) ) + '\n'
-        outF.write(strToWrite)
+        outF.write(writeOutStr)
+
+
+    # if solutionFound in cmdOutStr:
+    #     outLines = cmdOutStr.split('\n')
+
+    #     timeLine = [l for l in outLines if 'User time' in l]
+    #     assert len(timeLine) == 1
+    #     # Isolate floating point number from string, which gives time.
+    #     time = re.findall("\d+.\d+", timeLine[0]) [0]
+
+    #     memLine = [l for l in outLines if 'Maximum resident set size' in l]
+    #     assert len(memLine) == 1
+    #     mem = re.findall("\d+", memLine[0]) [0]
+
+    # # Find the number of nodes expanded
+    # numNdExp = None
+    # # Find last occurance of "nodes expanded".
+    # for numNdExp in re.finditer(r"nodes expanded: \d+", cmdOutStr):
+    #     pass
+    # # Now numNdExp holds the last occurance of the deserved string.
+    # if numNdExp:
+    #     numNdExp = numNdExp.group(0) # now it's a string
+    #     numNdExp = [s for s in numNdExp.split() if s.isdigit()][0] # get first number
+    # #print(numNdExp)
+
+    # # Find number of ground actions in problem space
+    # numGrActs = re.search("number of ground actions in problem space: \d+", cmdOutStr)
+    # if numGrActs:
+    #     numGrActs = numGrActs.group(0)
+    #     numGrActs = [s for s in numGrActs.split() if s.isdigit()][0]
+    # #print(numGrActs)
+
+    # vo = re.search("variable occurrence: \d+", cmdOutStr)
+    # if vo:
+    #     vo = vo.group(0)
+    #     vo = [s for s in vo.split() if s.isdigit()][0]
+    # #print(vo)
+
+    # kk = None
+    # kk = re.search("solution length: \d+", cmdOutStr)
+    # #if algSelect == "-i":
+    # #    # Find last search depth statement
+    # #    for kk in re.finditer(r"### depth search with depth \d+", cmdOutStr):
+    # #        pass
+    # #if algSelect == "-a":
+    # #    # Find last number of nodes statement
+    # #    # TODO
+    # # Now kk holds last occurrence of this string.
+    # if kk:
+    #     kk = kk.group(0)
+    #     kk = [s for s in kk.split() if s.isdigit()][0]
+    # else:
+    #     # If the instance was not solved, we will not have a plan length.
+    #     kk = "0"
+    # #print(kk)
+
+    # # Write measured numbers to out-file.
+    # with open(outFN, 'a') as outF: # Append to out file.
+    #     strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + ' ' + \
+    #                  numNdExp + ' ' + numGrActs + ' ' + vo + ' ' + kk + ' ' + \
+    #                  str( math.factorial(int(kk)) * int(vo) ** int(kk) ) + '\n'
+    #     outF.write(strToWrite)
 
 def sorted_nicely( l ): 
     """ Sort the given iterable in the way that humans expect.""" 
