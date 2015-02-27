@@ -40,7 +40,8 @@ solutionFound = 'SOLUTION FOUND'
 # Run a command:
 # $ cgexec -g memory:myGroup cmdToRun
 #
-# ATTENTION: First boot with swapaccount=1 in kernel command line.
+# ATTENTION: First boot with swapaccount=1 in kernel command line!
+# ATTENTION: Must be run as root!
 
 cmdPrefix = ['cgexec', '-g', 'memory:myGroup']
 
@@ -263,7 +264,7 @@ def runSimplePlan(domain, problem):
 
     cplxty = None
     if vo and kk:
-        cplxt = str( math.factorial(int(kk)) * int(vo) ** int(kk) )
+        cplxty = str( math.factorial(int(kk)) * int(vo) ** int(kk) )
     writeOutStr += ' ' + (cplxty if cplxty else '-')
 
     writeOutStr += '\n'
