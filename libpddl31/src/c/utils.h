@@ -88,4 +88,6 @@ struct actionList *utils_cloneActionListShallow(struct actionList *actL);
 struct actionList *utils_actionList_reverse(struct actionList *list);
 bool utils_grAct_equal(struct groundAction *ga1, struct groundAction *ga2);
 
+bool utils_actionListsEqual(struct actionList *n1, struct actionList *n2);
+
 #endif

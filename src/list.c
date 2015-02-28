@@ -325,3 +325,22 @@ list_concat(list_t l1, list_t l2)
 
   return l1;
 }
+
+//typedef bool *(equalFun_t)(void *, void *);
+
+bool
+list_equal(equalFun_t eqFun, list_t l1, list_t l2)
+{
+  while (l1 != NULL && l2 != NULL) {
+    if ( ! eqFun(l1->payload, l2->payload)) {
+      return false;
+    }
+    l1 = l1->next;
+    l2 = l2->next;
+  }
+  if (l1 != NULL || l2 != NULL) {
+    // Lists don't have the same length.
+    return false;
+  }
+  return true;
+}

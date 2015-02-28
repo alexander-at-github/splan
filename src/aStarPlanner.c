@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include "asnlist.h"
@@ -140,35 +141,6 @@ compIntValueFunBefore(list_t e1, void *fScore_)
   return 1;
 }
 
-
-static
-bool
-aStarPlanner_aStarNodeEqual(aStarNode_t n1, aStarNode_t n2)
-{
-  // Note: typedef struct actionList * aStarNode_t;
-  if (n1 == NULL && n2 == NULL) {
-    return true;
-  }
-  if (n1 == NULL || n2 == NULL) {
-    return false;
-  }
-
-  while (n1 != NULL && n2 != NULL) {
-    struct groundAction *ga1 = n1->act;
-    struct groundAction *ga2 = n2->act;
-    if ( ! utils_grAct_equal(ga1, ga2)) {
-      return false;
-    }
-    n1 = n1->next;
-    n2 = n2->next;
-  }
-  if (n1 == NULL && n2 == NULL) {
-    return true;
-  }
-  return false;
-}
-
-
 // A comparison function for finding a sequence of ground actions in a list
 // of sequences of ground actions.
 static
@@ -181,7 +153,7 @@ compActList(list_t e1, void *e2)
   aStarNode_t n1 = (aStarNode_t) e1->payload;
   aStarNode_t n2 = (aStarNode_t) e2;
 
-  if ( ! aStarPlanner_aStarNodeEqual(n1, n2)) {
+  if ( ! utils_actionListsEqual(n1, n2)) {
     return 1;
   }
 
@@ -1263,6 +1235,8 @@ aStarPlanner_aStar(struct probSpace *probSpace)
 
   int bestHScore = INT_MAX;
 
+  bool didTimeout = false;
+
   clock_t timeTmp = clock();
   while( ! asnList_isEmpty(frontier)) {
 
@@ -1271,6 +1245,7 @@ aStarPlanner_aStar(struct probSpace *probSpace)
       if ((endTime - startTime) > timeout) {
         printf("nodes expanded: %d\n", list_length(explored->list));
         printf("TIMEOUT.\n");
+        didTimeout = true;
         break;
       }
     }
@@ -1367,14 +1342,16 @@ aStarPlanner_aStar(struct probSpace *probSpace)
           ////int hScore1 = aStarPlanner_estimateCost_v1(probSpace, chld);
           ////int hScore2 = aStarPlanner_estimateCost_v2(probSpace, chld);
           ////int hScore3 = aStarPlanner_estimateCost_v3(probSpace, chld);
+          
           //int hScore4 = heuristic_estimate(probSpace, chld);
+          //int hScore5 = heuristic_estimate_NOT_admissible(probSpace, chld);
 
-          ////printf("hScores: %d\t%d\t%d\n", hScore1, hScore3, hScore4);
+          //printf("hScores: %d\t%d\n", hScore4, hScore5);
 
           ///* EXPERIMENTAL END */
 
           // Calculate f-score
-          int hScore = heuristic_estimate(probSpace, chld); //hScore4;
+          int hScore = heuristic_estimate(probSpace, chld);
           if (hScore < 0) {
             // No solution to this chld exists
             // Either add it to explored-list or free it.
@@ -1437,8 +1414,11 @@ aStarPlanner_aStar(struct probSpace *probSpace)
 
     list_freeWithPayload(gaps, &freeGap);
   }
+  // Either timeout or no solution exists.
+  if ( ! didTimeout) {
+    printf("NO SOLUTION EXISTS");
+  }
 
-  // No solution exists.
   return NULL;
 }
 
@@ -1449,6 +1429,7 @@ aStarPlanner(struct problem *problem, int timeout_)
     startTime = clock();
     timeout = timeout_ *CLOCKS_PER_SEC; // in clocks
   }
+  //srand(time(NULL));
 
   struct probSpace *probSpace = ps_init(problem);
 

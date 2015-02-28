@@ -47,4 +47,8 @@ void list_cleanupLEBuffer();
 
 list_t list_concat(list_t l1, list_t l2);
 
+typedef bool (*equalFun_t)(void *, void *);
+
+bool list_equal(equalFun_t eqFun, list_t l1, list_t l2);
+
 #endif

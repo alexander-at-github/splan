@@ -777,3 +777,28 @@ utils_actionList_reverse(struct actionList *list)
 
   return newHead;
 }
+
+bool
+utils_actionListsEqual(struct actionList *n1, struct actionList *n2)
+{
+  if (n1 == NULL && n2 == NULL) {
+    return true;
+  }
+  if (n1 == NULL || n2 == NULL) {
+    return false;
+  }
+
+  while (n1 != NULL && n2 != NULL) {
+    struct groundAction *ga1 = n1->act;
+    struct groundAction *ga2 = n2->act;
+    if ( ! utils_grAct_equal(ga1, ga2)) {
+      return false;
+    }
+    n1 = n1->next;
+    n2 = n2->next;
+  }
+  if (n1 == NULL && n2 == NULL) {
+    return true;
+  }
+  return false;
+}
