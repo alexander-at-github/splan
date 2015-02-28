@@ -139,11 +139,11 @@ def main():
                 domProbTuples.append( (domain, pInstance) )
 
         else:
-            assert all(re.match('P[0-9][0-9].*', file) for file in pddlFiles)
+            assert all(re.match('P[0-9][0-9].*', file, re.IGNORECASE) for file in pddlFiles)
             domainFiles = []
             instanceFiles = []
             for pddlFile in pddlFiles:
-                if re.match('.*DOMAIN.*', pddlFile):
+                if re.match('.*DOMAIN.*', pddlFile, re.IGNORECASE):
                     domainFiles.append(pddlFile)
                 else:
                     instanceFiles.append(pddlFile)
