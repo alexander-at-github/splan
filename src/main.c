@@ -83,6 +83,8 @@ int main(int argc, char **argv)
                                                                planLengthGuess,
                                                                timeout);
     if (result != NULL) {
+      printf("SOLUTION FOUND. solution length: %d\n",
+             utils_actionList_length(result));
       utils_print_actionListCompact(result);
       printf("\n");
       utils_free_actionList(result);
