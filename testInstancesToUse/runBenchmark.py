@@ -172,7 +172,91 @@ def main():
 
 def runSimplePlanArr(array):
     for domain, problem in array:
-        runSimplePlan(domain, problem)
+        if algSelect == '-f': # fast-downward
+            runFastDownward(domain, problem)
+        else:
+            runSimplePlan(domain, problem)
+
+def runFastDownward(domain, problem):
+    cmd = ['/usr/bin/time', '-v', 'timeout', timeout,
+           splanCmd, 'domainDummy', 'problemDummy', '--search', 'astar(lmcut())']
+    cmd = cmdPrefix + cmd
+    cmd = [elem if elem != 'domainDummy' else domain for elem in cmd]
+    cmd = [elem if elem != 'problemDummy' else problem for elem in cmd]
+    print(cmd)
+    sys.stdout.flush()
+    try:
+        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as ex:
+        output = ex.output
+
+    cmdOutStr = output.decode('utf-8')
+
+    with open(logFN, 'a') as logF:
+        logF.write('% ')
+        logF.write(' '.join(cmd))
+        logF.write('\n')
+        logF.write(cmdOutStr)
+        logF.write('\n\n')
+
+    # The string with will be written to the .out (result) file
+    writeOutStr = domain + ' ' + problem
+
+    writeOutStr += ' S' if 'Solution found!' in cmdOutStr else ' -'
+
+    if "terminated by signal" in cmdOutStr:
+        sigNum = re.search("terminated by signal \d+", cmdOutStr)
+        sigNum = sigNum.group(0)
+        sigNum = [s for s in sigNum.split() if s.isdigit()][0]
+        writeOutStr += ' sig' + str(sigNum)
+    else:
+        writeOutStr += ' norm'
+
+    cmdOutLines = cmdOutStr.split('\n')
+
+    time = None
+    timeLines = [l for l in cmdOutLines if 'User time' in l]
+    if len(timeLines) > 0:
+        assert len(timeLines) == 1
+        time = re.findall("\d+.\d+", timeLines[0]) [0]
+    writeOutStr += ' ' + (time if time else '-')
+
+    mem = None
+    memLines = [l for l in cmdOutLines if 'Maximum resident set size' in l]
+    if len(memLines) > 0:
+        assert len(memLines) == 1
+        mem = re.findall("\d+", memLines[0]) [0]
+    writeOutStr += ' ' + (mem if mem else '-')
+
+    # Find the number of nodes expanded
+    numNdExp = None
+    # Find last occurance of "nodes expanded".
+    numNdExp = re.search(r"Evaluated \d+ state\(s\)", cmdOutStr)
+    # Now numNdExp holds the last occurance of the deserved string.
+    if numNdExp:
+        numNdExp = numNdExp.group(0) # now it's a string
+        numNdExp = [s for s in numNdExp.split() if s.isdigit()][0] # get first number
+    #print(numNdExp)
+    writeOutStr += ' ' + (numNdExp if numNdExp else '-')
+
+    # The nest two parameters are not measured by fast-downward
+    writeOutStr += ' - -'
+
+    kk = re.search("Plan length: \d+ step\(s\)", cmdOutStr)
+    if kk:
+        kk = kk.group(0)
+        kk = [s for s in kk.split() if s.isdigit()][0]
+    writeOutStr += ' ' + (kk if kk else '-')
+
+    # The next parameter is not measured by fast-downward
+    writeOutStr += ' -'
+
+    writeOutStr += '\n'
+
+    with open(outFN, 'a') as outF: # Append to out file.
+        outF.write(writeOutStr)
+
+
 
 def runSimplePlan(domain, problem):
     #cmd = ['timeout', timeout, '/usr/bin/time', '-v',
