@@ -274,66 +274,6 @@ def runSimplePlan(domain, problem):
         outF.write(writeOutStr)
 
 
-    # if solutionFound in cmdOutStr:
-    #     outLines = cmdOutStr.split('\n')
-
-    #     timeLine = [l for l in outLines if 'User time' in l]
-    #     assert len(timeLine) == 1
-    #     # Isolate floating point number from string, which gives time.
-    #     time = re.findall("\d+.\d+", timeLine[0]) [0]
-
-    #     memLine = [l for l in outLines if 'Maximum resident set size' in l]
-    #     assert len(memLine) == 1
-    #     mem = re.findall("\d+", memLine[0]) [0]
-
-    # # Find the number of nodes expanded
-    # numNdExp = None
-    # # Find last occurance of "nodes expanded".
-    # for numNdExp in re.finditer(r"nodes expanded: \d+", cmdOutStr):
-    #     pass
-    # # Now numNdExp holds the last occurance of the deserved string.
-    # if numNdExp:
-    #     numNdExp = numNdExp.group(0) # now it's a string
-    #     numNdExp = [s for s in numNdExp.split() if s.isdigit()][0] # get first number
-    # #print(numNdExp)
-
-    # # Find number of ground actions in problem space
-    # numGrActs = re.search("number of ground actions in problem space: \d+", cmdOutStr)
-    # if numGrActs:
-    #     numGrActs = numGrActs.group(0)
-    #     numGrActs = [s for s in numGrActs.split() if s.isdigit()][0]
-    # #print(numGrActs)
-
-    # vo = re.search("variable occurrence: \d+", cmdOutStr)
-    # if vo:
-    #     vo = vo.group(0)
-    #     vo = [s for s in vo.split() if s.isdigit()][0]
-    # #print(vo)
-
-    # kk = None
-    # kk = re.search("solution length: \d+", cmdOutStr)
-    # #if algSelect == "-i":
-    # #    # Find last search depth statement
-    # #    for kk in re.finditer(r"### depth search with depth \d+", cmdOutStr):
-    # #        pass
-    # #if algSelect == "-a":
-    # #    # Find last number of nodes statement
-    # #    # TODO
-    # # Now kk holds last occurrence of this string.
-    # if kk:
-    #     kk = kk.group(0)
-    #     kk = [s for s in kk.split() if s.isdigit()][0]
-    # else:
-    #     # If the instance was not solved, we will not have a plan length.
-    #     kk = "0"
-    # #print(kk)
-
-    # # Write measured numbers to out-file.
-    # with open(outFN, 'a') as outF: # Append to out file.
-    #     strToWrite = domain + ' ' + problem + ' ' + time + ' ' + mem + ' ' + \
-    #                  numNdExp + ' ' + numGrActs + ' ' + vo + ' ' + kk + ' ' + \
-    #                  str( math.factorial(int(kk)) * int(vo) ** int(kk) ) + '\n'
-    #     outF.write(strToWrite)
 
 def sorted_nicely( l ): 
     """ Sort the given iterable in the way that humans expect.""" 
