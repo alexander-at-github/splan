@@ -34,7 +34,8 @@ solutionFound = 'SOLUTION FOUND'
 # $ cgcreate -g memory:/myGroup
 # Limit physical memory
 # $ echo $(( 7 * 1024 * 1024 * 1024 )) > /sys/fs/cgroup/memory/myGroup/memory.limit_in_bytes
-# Limit swap
+# Limit swap. This will limit the sum of physical memory + swap. You can not set this value
+# lower than the physical memory limit. If you try to do so, you will get an error.
 # $ echo $(( 0 )) > /sys/fs/cgroup/memory/myGroup/memory.memsw.limit_in_bytes
 #
 # Run a command:
