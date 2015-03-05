@@ -33,6 +33,35 @@ def med(list):
         med = list[listLenH]
     return med
 
+def printResultString(domain, numIst, numSol, ks, es, ku, eu):
+    #print(ks)
+    #print(es)
+    #print(ku)
+    #print(eu)
+
+    resultStr = "{:s} & " + \
+                "{:d} & " + \
+                "{:d} & " + \
+                "{:s} \\newline {:s} \\newline {:s} & " + \
+                "{:s} \\newline {:s} \\newline {:s} & " + \
+                "{:d} & " + \
+                "{:s} \\newline {:s} \\newline {:s} & " + \
+                "{:s} \\newline {:s} \\newline {:s} \\\\ \hline"
+    ks = mySort(ks) #sorted(list(map(int, ks))) if ks else ks
+    #print(ks)
+    es = mySort(es) #sorted(list(map(int, es))) if es else es
+    ku = mySort(ku) #sorted(list(map(int, ku))) if ku else ku
+    eu = mySort(eu) #sorted(list(map(int, eu))) if eu else eu
+    resultStr = resultStr.format(domain,
+                     numInst,
+                     numSol,
+                     str(first(ks)), str(med(ks)), str(last(ks)),
+                     str(first(es)), str(med(es)), str(last(es)),
+                     numInst - numSol,
+                     str(first(ku)), str(med(ku)), str(last(ku)),
+                     str(first(eu)), str(med(eu)), str(last(eu)))
+    print()
+    print(resultStr)
 
 
 
@@ -68,35 +97,11 @@ with open(sys.argv[1]) as file:
         if domain == '':
             domain = currDomain # Take care for first iteration
         elif currDomain != domain:
-            print()
             #print("### currDomain != domain")
-            #print(ks)
-            #print(es)
-            #print(ku)
-            #print(eu)
 
-            resultStr = "{:s} & " + \
-                        "{:d} & " + \
-                        "{:d} & " + \
-                        "{:s} \\newline {:s} \\newline {:s} & " + \
-                        "{:s} \\newline {:s} \\newline {:s} & " + \
-                        "{:d} & " + \
-                        "{:s} \\newline {:s} \\newline {:s} & " + \
-                        "{:s} \\newline {:s} \\newline {:s} \\\\ \hline"
-            ks = mySort(ks) #sorted(list(map(int, ks))) if ks else ks
-            #print(ks)
-            es = mySort(es) #sorted(list(map(int, es))) if es else es
-            ku = mySort(ku) #sorted(list(map(int, ku))) if ku else ku
-            eu = mySort(eu) #sorted(list(map(int, eu))) if eu else eu
-            resultStr = resultStr.format(domain,
-                             numInst,
-                             numSol,
-                             str(first(ks)), str(med(ks)), str(last(ks)),
-                             str(first(es)), str(med(es)), str(last(es)),
-                             numInst - numSol,
-                             str(first(ku)), str(med(ku)), str(last(ku)),
-                             str(first(eu)), str(med(eu)), str(last(eu)))
-            print(resultStr)
+            # Print the domain data
+            printResultString(domain, numInst, numSol, ks, es, ku, eu)
+
             # Reset all the variables, cause we are looking at a new domain
             domain = currDomain
             numInst = 0
@@ -118,4 +123,7 @@ with open(sys.argv[1]) as file:
             # Not solved
             ku.append(kk)
             eu.append(ee)
+
+    # Finaly print the last domain
+    printResultString(domain, numInst, numSol, ks, es, ku, eu)
 
