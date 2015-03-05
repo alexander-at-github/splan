@@ -178,7 +178,7 @@ def runSimplePlanArr(array):
             runSimplePlan(domain, problem)
 
 def runFastDownward(domain, problem):
-    cmd = ['/usr/bin/time', '-v', 'timeout', timeout,
+    cmd = ['timeout', timeout,
            splanCmd, 'domainDummy', 'problemDummy', '--search', 'astar(lmcut())']
     cmd = cmdPrefix + cmd
     cmd = [elem if elem != 'domainDummy' else domain for elem in cmd]
@@ -215,14 +215,17 @@ def runFastDownward(domain, problem):
     cmdOutLines = cmdOutStr.split('\n')
 
     time = None
-    timeLines = [l for l in cmdOutLines if 'User time' in l]
+    timeLines = [l for l in cmdOutLines if 'Total time: ' in l]
     if len(timeLines) > 0:
         assert len(timeLines) == 1
-        time = re.findall("\d+.\d+", timeLines[0]) [0]
-    writeOutStr += ' ' + (time if time else '-')
+        time = re.findall("\d+", timeLines[0])
+        time = time[0] if len(time) == 1 else (time[0] + '.' + time[1])
+    else:
+        assert len([l for l in cmdOutLines if 'caught signal' in l]) > 0
+    writeOutStr += ' ' + (time if time else timeout) # If fast-downward does not give time, it was a timeout.
 
     mem = None
-    memLines = [l for l in cmdOutLines if 'Maximum resident set size' in l]
+    memLines = [l for l in cmdOutLines if 'Peak memory: ' in l]
     if len(memLines) > 0:
         assert len(memLines) == 1
         mem = re.findall("\d+", memLines[0]) [0]
