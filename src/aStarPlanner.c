@@ -1234,6 +1234,8 @@ aStarPlanner_aStar(struct probSpace *probSpace)
   asnList_t explored = asnList_createEmpty();
 
   int bestHScore = INT_MAX;
+  // The maxmum of the lengths of the evaluated action lists.
+  int maxLength = 0;
 
   bool didTimeout = false;
 
@@ -1271,6 +1273,12 @@ aStarPlanner_aStar(struct probSpace *probSpace)
     //printf("current node (action list):\n");
     //utils_print_actionListCompact(currN); // DEBUG
     //printf("\n"); // DEBUG
+
+    int currNLen = utils_actionList_length(currN);
+    if (currNLen > maxLength) {
+      maxLength = currNLen;
+      printf("new max length: %d\n", maxLength);
+    }
 
     //list_t gaps = aStarPlanner_getAllGaps(probSpace, currN);
     struct gap *gap = planner_hasGap(probSpace->problem->init,
