@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import re, sys
+import decimal, re, sys
 
 def mySort(aList):
     #print("mySort")
@@ -33,6 +33,17 @@ def med(list):
         med = list[listLenH]
     return med
 
+def rmZeros(num):
+    string = str(num)
+    if string == '-':
+        pass
+    else:
+        #string = str(decimal.Decimal(string).normalize())
+        string = string.rstrip('0').rstrip('.') if '.' in string else string
+    #print(num)
+    #print(string)
+    return string
+
 def printResultString(domain, numIst, numSol, ks, es, ku, eu):
     #print(ks)
     #print(es)
@@ -55,11 +66,11 @@ def printResultString(domain, numIst, numSol, ks, es, ku, eu):
     resultStr = resultStr.format(domain,
                      numInst,
                      numSol,
-                     str(first(ks)), str(med(ks)), str(last(ks)),
-                     str(first(es)), str(med(es)), str(last(es)),
+                     rmZeros(first(ks)), rmZeros(med(ks)), rmZeros(last(ks)),
+                     rmZeros(first(es)), rmZeros(med(es)), rmZeros(last(es)),
                      numInst - numSol,
-                     str(first(ku)), str(med(ku)), str(last(ku)),
-                     str(first(eu)), str(med(eu)), str(last(eu)))
+                     rmZeros(first(ku)), rmZeros(med(ku)), rmZeros(last(ku)),
+                     rmZeros(first(eu)), rmZeros(med(eu)), rmZeros(last(eu)))
     print()
     print(resultStr)
 
@@ -72,6 +83,9 @@ if len(sys.argv) < 2:
     raise SystemExit
 
 with open(sys.argv[1]) as file:
+
+    # Write filename to output
+    print("% These are the results from " + sys.argv[1])
 
     # Remove first two lines
     file.readline()
