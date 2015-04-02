@@ -44,33 +44,65 @@ def rmZeros(num):
     #print(string)
     return string
 
-def printResultString(domain, numIst, numSol, ks, es, ku, eu):
+def printResultString(domain, numIst, numSol, vos, ks, es, vou, ku, eu):
     #print(ks)
     #print(es)
     #print(ku)
     #print(eu)
 
+    # domain name
+    # total number of instances
+    # number of solved instances
+    # solution length k
+    # variable occurence vo for solved
+    # number of expanded nodes for solved
+    # number of unsolved instances
+    # search depth unsolved
+    # variable occurence vo for unsolved
+    # number of expanded nodes for unsolved
     resultStr = "{:s} & " + \
                 "{:d} & " + \
                 "{:d} & " + \
                 "{:s} \\newline {:s} \\newline {:s} & " + \
                 "{:s} \\newline {:s} \\newline {:s} & " + \
+                "{:s} \\newline {:s} \\newline {:s} & " + \
                 "{:d} & " + \
                 "{:s} \\newline {:s} \\newline {:s} & " + \
+                "{:s} \\newline {:s} \\newline {:s} & " + \
                 "{:s} \\newline {:s} \\newline {:s} \\\\ \hline"
+
+    vos = mySort(vos)
     ks = mySort(ks) #sorted(list(map(int, ks))) if ks else ks
     #print(ks)
     es = mySort(es) #sorted(list(map(int, es))) if es else es
+
+    # We remove the instances which crashed (out of mem) for the parameter vo.
+    # What should we do with it otherwise?
+    vou = [v for v in vou if v.isdigit()]
+
+    vou = mySort(vou)
     ku = mySort(ku) #sorted(list(map(int, ku))) if ku else ku
-    eu = mySort(eu) #sorted(list(map(int, eu))) if eu else eu
+    euFiltered = [i for i in eu if i.isdigit()]
+    if len(eu) != len(euFiltered):
+        print("\n eu - euFiltered: " + str(len(eu) - len(euFiltered)))
+    euFiltered = [i if i.isdigit() else '0' for i in eu]
+    euFiltered = mySort(euFiltered) #sorted(list(map(int, eu))) if eu else eu
+
+    #print(vou)
+    #print(first(vou))
+    #print(med(vou))
+    #print(last(vou))
+
     resultStr = resultStr.format(domain,
                      numInst,
                      numSol,
                      rmZeros(first(ks)), rmZeros(med(ks)), rmZeros(last(ks)),
+                     rmZeros(first(vos)), rmZeros(med(vos)), rmZeros(last(vos)),
                      rmZeros(first(es)), rmZeros(med(es)), rmZeros(last(es)),
                      numInst - numSol,
                      rmZeros(first(ku)), rmZeros(med(ku)), rmZeros(last(ku)),
-                     rmZeros(first(eu)), rmZeros(med(eu)), rmZeros(last(eu)))
+                     rmZeros(first(vou)), rmZeros(med(vou)), rmZeros(last(vou)),
+                     rmZeros(first(euFiltered)), rmZeros(med(euFiltered)), rmZeros(last(euFiltered)))
     print()
     print(resultStr)
 
@@ -94,8 +126,10 @@ with open(sys.argv[1]) as file:
     domain = ''
     numInst = 0
     numSol = 0
+    vos = [] # a list of variable occurence for solved
     ks = [] # a list of solution length for solved
     es = [] # a list of nodes expanded for solved
+    vou = [] # a list of variable occurence for unsolved
     ku = [] # a list of search depth for unsolved
     eu = [] # a list of nodes expanded for unsolved
     for line in file.readlines(): #lines:
@@ -114,30 +148,35 @@ with open(sys.argv[1]) as file:
             #print("### currDomain != domain")
 
             # Print the domain data
-            printResultString(domain, numInst, numSol, ks, es, ku, eu)
+            printResultString(domain, numInst, numSol, vos, ks, es, vou, ku, eu)
 
             # Reset all the variables, cause we are looking at a new domain
             domain = currDomain
             numInst = 0
             numSol = 0
+            vos = []
             ks = []
             es = []
+            vou = []
             ku = []
             eu = []
 
+        vo = strs[8]
         kk = strs[9]
         ee = strs[6]
 
         numInst += 1
         if strs[2] == 'S': # If solved
             numSol += 1
+            vos.append(vo)
             ks.append(kk)
             es.append(ee)
         else:
             # Not solved
+            vou.append(vo)
             ku.append(kk)
             eu.append(ee)
 
     # Finaly print the last domain
-    printResultString(domain, numInst, numSol, ks, es, ku, eu)
+    printResultString(domain, numInst, numSol, vos, ks, es, vou, ku, eu)
 
