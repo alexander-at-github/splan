@@ -1,11 +1,16 @@
-set terminal pdfcairo solid # postfile
+set terminal pdfcairo dashed # solid # postfile
 set output  "graph_plot.pdf"
 #set title "Energy vs. Time for Sample Data"
 set xlabel "value of parameter k"
 set ylabel "runtime [sec]"
 
+#set xrange [0:28]
+
+set size 1,0.94
+set key at 21, 675
+
 set style line 1 lt rgb "green" lw 3 pt 6
-set style line 2 lt rgb "orange" lw 3 pt 6
+set style line 2 lt rgb "orange" lw 3 pt 2
 set style line 3 lt rgb "blue" lw 3 pt 6
 set style line 4 lt rgb "cyan" lw 3 pt 6
 set style line 5 lt rgb "red" lw 3 pt 6
