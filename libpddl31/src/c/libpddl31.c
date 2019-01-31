@@ -3,6 +3,7 @@
 
 
 #include <assert.h>
+#include <unistd.h>
 
 #include "libpddl31.h"
 #include "pddl31Lexer.h"

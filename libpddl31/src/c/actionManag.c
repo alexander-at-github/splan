@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 
 #include "actionManag.h"
 #include "libpddl31.h"

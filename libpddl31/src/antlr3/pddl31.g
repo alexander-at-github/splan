@@ -1,6 +1,6 @@
 grammar pddl31;     // Combined grammar. That is, parser and lexer.
 
-options { /* Attetion: options must be placed right after grammar-statementi. */
+options { /* Attetion: options must be placed right after grammar-statement. */
           /* Otherwise ANTLR3 will not translate it (error(100)). */
     language = C;
 }

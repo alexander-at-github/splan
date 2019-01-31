@@ -29,7 +29,6 @@ test_groundAction1()
     partialG.terms[i] = NULL;
   }
 
-  // TODO: Don't print. Check programmatically.
   libpddl31_state_print(problem->init);
   printf("\n");
   grounder_groundAction(problem->init, 0, &partialG, grA);
@@ -54,7 +53,6 @@ test_groundAction1()
     partialG.terms[i] = NULL;
   }
 
-  // TODO: Don't print. Check programmatically.
   libpddl31_state_print(problem->init);
   printf("\n");
   grounder_groundAction(problem->init, 0, &partialG, grA);

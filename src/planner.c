@@ -691,7 +691,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
   int32_t idxPos = 0;
   struct actionList *curr = NULL;
   struct actionList *afterCurr = actAcc;
-  // TODO: I think it will be better to iterate from back to front, i.e., from
+  // I think it could be better to iterate from back to front, i.e., from
   // a high to low index. CAUTION: That does not work with updating the state.
   while (idxPos < gap->position) {
 
@@ -763,8 +763,7 @@ planner_solveProblem_aux_v2(struct problem *problem,
       afterCurr = afterCurr->next;
 
       // Apply action to local state.
-      // TODO: Is the location of this call right?
-      planner_apply(lState, curr->act); // TODO: Is that (curr->act) right?
+      planner_apply(lState, curr->act);
 
     } else {
       // This case could only happen in the last iteration.

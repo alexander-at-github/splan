@@ -116,8 +116,6 @@ test_asnList_InsertRemove()
   struct problem *problem = libpddl31_problem_parse(domain, problemFilename);
   struct probSpace *probSpace = ps_init(problem);
 
-  // TODO
-
   ps_free(probSpace);
   libpddl31_problem_free(problem);
   libpddl31_domain_free(domain);

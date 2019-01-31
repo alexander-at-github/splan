@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "asnlist.h"
 
@@ -42,7 +43,6 @@ static
 asnTree_t
 asnTreeGetOrCreate_aux(enum treeNodeType type)
 {
-  // TODO: reuse?
   return asnTreeCreateEmpty_aux(type);
 }
 
@@ -207,8 +207,6 @@ asnTreeInsert_aux(asnTree_t tree, list_t singletonList)
     //printf("\n");
     //printf("currTreeNode->type: %d\n", currTreeNode->type);
 
-    // TODO: This MUST be uncommented. Just for debugging purpose it is
-    // commented out.
     assert(currTreeNode->type == ACTION ||
            currTreeNode->type == UNSET);
 
@@ -352,7 +350,6 @@ static
 void
 asnTreeReuse(asnTree_t treeNode)
 {
-  // TODO: Maybe reuse. For now free.
   free(treeNode->chldrn);
   free(treeNode);
 }

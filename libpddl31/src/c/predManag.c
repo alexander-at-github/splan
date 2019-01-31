@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <antlr3interfaces.h>
+#include <string.h>
 
 #include "predManag.h"
 #include "libpddl31.h"

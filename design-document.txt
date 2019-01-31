@@ -23,7 +23,7 @@
     predicates definition.
 
 
-*** Types:
+*** PDDL Types:
   * Every type must be declared before it is used. The only exception to
     this rule is the type 'object', which we call the root of the type
     system.
@@ -64,9 +64,6 @@ OPEN QUESTIONS
   I chose second option for now.
 
 TODO:
-* Turn off assertions for time measurments.
-* Put return value and function name on separate lines.
-* Parser: type -> (either type+) . Should I still do that?
 
 NOTES:
 * Testrun for test_instances/openstacks-strips/p01.pddl with searchdepth 4 took
@@ -80,17 +77,6 @@ NOTES:
   ---------------------------------------------------------
     tsp-7    |   0:29.79   |   1:02.89   |  0:28.191
     print-1  |   6:01.97   |   5:47.54   |  4:55.62
-
-* v1 seems to be often faster than v2.
-* trie-state: Why are there so many calls to snClone_aux? Expecially in
-  comparision to snFree_aux. Shouldn't this numbers match? They do not match
-  with gprof, but they do match with callgrind.
-* You could allocate an array of states before calling
-  planner_solveProblem_aux(). The number of states must be equal to the search
-  depth limit.
-* valgrind --tool=callgrind ./bin/splan -d test_instances/tsp-neg-prec/domain.pddl -p test_instances/tsp-neg-prec/p7.pddl
-* LAST ITERATIVE DEEPENING DEPTH-FIRST SEARCH COMMIT:
-  292c948ba201661ce7832b5c4c00d43409b3ea8a
 
 A-Star Algorithm notes:
 * There is a good suggestion for a A*-Heuristic on page 378 of AIMA: Solve
