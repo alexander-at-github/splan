@@ -1,1 +1,1 @@
-S-Plan is a AI-Planning solver.
+S-Plan is an AI-Planning solver.
